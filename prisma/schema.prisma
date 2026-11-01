@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id            String         @id @default(uuid())
+  customerCode  String         @unique
+  name          String
+  phone         String
+  email         String?
+  gender        String?        // Male, Female, Other
+  dob           DateTime?
+  address       String?
+  occupation    String?
+  notes         String?
+  prescriptions Prescription[]
+  orders        Order[]
+  appointments  Appointment[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Optometrist {
+  id            String         @id @default(uuid())
+  name          String
+  licenseNumber String?
+  phone         String?
+  email         String?
+  active        Boolean        @default(true)
+  prescriptions Prescription[]
+  appointments  Appointment[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Prescription {
+  id             String       @id @default(uuid())
+  prescriptionNo String       @unique
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  optometristId  String?
+  optometrist    Optometrist? @relation(fields: [optometristId], references: [id])
+  
+  // Right Eye (OD - Oculus Dexter)
+  sphOd          Float?       // Sphere (e.g. -2.50)
+  cylOd          Float?       // Cylinder (e.g. -0.75)
+  axisOd         Int?         // Axis (1 - 180)
+  addOd          Float?       // Addition (e.g. +1.50)
+  vaOd           String?      // Visual Acuity (e.g. 6/6, 20/20)
+  pdOd           Float?       // Monocular PD (e.g. 31.5)
+
+  // Left Eye (OS - Oculus Sinister)
+  sphOs          Float?       // Sphere (e.g. -2.00)
+  cylOs          Float?       // Cylinder (e.g. -0.50)
+  axisOs         Int?         // Axis (1 - 180)
+  addOs          Float?       // Addition (e.g. +1.50)
+  vaOs           String?      // Visual Acuity (e.g. 6/6)
+  pdOs           Float?       // Monocular PD (e.g. 31.5)
+
+  pdTotal        Float?       // Binocular PD (e.g. 63.0)
+  lensType       String?      // Single Vision, Bifocal, Progressive, Reading
+  examDate       DateTime     @default(now())
+  expiryDate     DateTime?
+  notes          String?
+  orders         Order[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Product {
+  id             String       @id @default(uuid())
+  sku            String       @unique
+  barcode        String?      @unique
+  name           String
+  category       String       // FRAME, LENS, CONTACT_LENS, ACCESSORY, SERVICE
+  brand          String?
+  modelNumber    String?
+  color          String?
+  size           String?      // e.g. 52-18-140
+  material       String?      // Acetate, Titanium, Metal, TR90, etc.
+  shape          String?      // Aviator, Rectangle, Round, Cat-Eye, Square, Wayfarer
+  
+  // Specific for Lenses / Contact Lenses
+  lensIndex      String?      // 1.50, 1.56, 1.61, 1.67, 1.74
+  coating        String?      // Blue Cut, Anti-Reflective, Photochromic, Polarized
+  baseCurve      Float?
+  diameter       Float?
+  powerRange     String?
+  
+  costPrice      Float        @default(0)
+  sellingPrice   Float        @default(0)
+  stockQuantity  Int          @default(0)
+  minStockAlert  Int          @default(5)
+  supplier       String?
+  description    String?
+  isActive       Boolean      @default(true)
+  
+  orderItems     OrderItem[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Order {
+  id             String        @id @default(uuid())
+  orderNumber    String        @unique
+  customerId     String?
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  prescriptionId String?
+  prescription   Prescription? @relation(fields: [prescriptionId], references: [id])
+  
+  status         String        @default("PENDING") // PENDING, PROCESSING, IN_LAB, READY_FOR_PICKUP, COMPLETED, CANCELLED
+  paymentStatus  String        @default("UNPAID")  // UNPAID, PARTIAL, PAID, REFUNDED
+  
+  subtotal       Float         @default(0)
+  discount       Float         @default(0)
+  taxRate        Float         @default(0)
+  taxAmount      Float         @default(0)
+  totalAmount    Float         @default(0)
+  paidAmount     Float         @default(0)
+  balanceAmount  Float         @default(0)
+  
+  orderType      String        @default("RETAIL") // RETAIL, PRESCRIPTION_SPECS, CONTACT_LENS, SERVICE
+  deliveryDate   DateTime?
+  notes          String?
+  
+  items          OrderItem[]
+  payments       Payment[]
+  labJob         LabJob?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model OrderItem {
+  id             String        @id @default(uuid())
+  orderId        String
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?      @relation(fields: [productId], references: [id])
+  
+  itemName       String
+  category       String?
+  unitPrice      Float
+  quantity       Int           @default(1)
+  discount       Float         @default(0)
+  totalPrice     Float
+  customDetails  String?       // Any special lab or fitting instructions
+  createdAt      DateTime      @default(now())
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  paymentNo      String        @unique
+  orderId        String
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount         Float
+  paymentMethod  String        @default("CASH") // CASH, CARD, UPI, BANK_TRANSFER
+  referenceNo    String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+}
+
+model LabJob {
+  id             String        @id @default(uuid())
+  jobNo          String        @unique
+  orderId        String        @unique
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  labType        String        @default("IN_HOUSE") // IN_HOUSE, EXTERNAL_LAB
+  labName        String?
+  technicianName String?
+  status         String        @default("PENDING") // PENDING, LENS_ORDERED, IN_WORKSHOP, FITTING, QA_PASSED, COMPLETED
+  
+  lensDetails    String?       // Specifications sent to the lab
+  frameDetails   String?
+  cost           Float         @default(0)
+  instructions   String?
+  sentDate       DateTime?
+  dueDate        DateTime?
+  completedDate  DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Appointment {
+  id              String       @id @default(uuid())
+  customerId      String
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  optometristId   String?
+  optometrist     Optometrist? @relation(fields: [optometristId], references: [id])
+  
+  appointmentDate DateTime
+  appointmentTime String       // e.g. "10:30 AM"
+  type            String       @default("EYE_EXAM") // EYE_EXAM, CONTACT_LENS_FITTING, FRAME_SELECTION, FOLLOW_UP
+  status          String       @default("SCHEDULED") // SCHEDULED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model StoreSetting {
+  id              String       @id @default("default")
+  storeName       String       @default("VisionCraft Optical Studio")
+  tagline         String?      @default("Premium Eyewear & Clinical Optometry")
+  phone           String?      @default("+1 (555) 019-2834")
+  email           String?      @default("care@visioncraftoptics.com")
+  address         String?      @default("108 Healthcare Blvd, Suite 400, Metro City")
+  taxNumber       String?      @default("TAX-9948271A")
+  currencySymbol  String       @default("$")
+  currencyCode    String       @default("USD")
+  defaultTaxRate  Float        @default(8.5)
+  invoiceNotes    String?      @default("Warranty covers manufacturing defects for 12 months. Eyeglass adaptation period is 14 days.")
+  updatedAt       DateTime     @updatedAt
+}

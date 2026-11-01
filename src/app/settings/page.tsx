@@ -1,0 +1,234 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Settings, Save, Check, ShieldCheck, Store, Receipt } from "lucide-react";
+import { Header } from "@/components/Header";
+
+export default function SettingsPage() {
+  const [settings, setSettings] = useState<any>({
+    storeName: "",
+    tagline: "",
+    phone: "",
+    email: "",
+    address: "",
+    taxNumber: "",
+    currencySymbol: "$",
+    currencyCode: "USD",
+    defaultTaxRate: 8.875,
+    invoiceNotes: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch("/api/settings");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setSettings(json.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setSavedSuccess(false);
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
+      <Header
+        title="Store & Clinic Settings"
+        subtitle="Branding, Sales Tax, Optical Warranty & Receipt Configuration"
+      />
+
+      <div className="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-6 text-xs">
+          {savedSuccess && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <span>Optical studio settings successfully updated!</span>
+            </div>
+          )}
+
+          {/* Optical Studio Profile */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <Store className="w-4 h-4 text-cyan-600" />
+              <h3 className="font-bold text-slate-800 text-sm">
+                Studio Identity & Clinic Branding
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Optical Store Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settings.storeName || ""}
+                  onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Tagline / Subheading
+                </label>
+                <input
+                  type="text"
+                  value={settings.tagline || ""}
+                  onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Contact Phone
+                </label>
+                <input
+                  type="text"
+                  value={settings.phone || ""}
+                  onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Contact Email
+                </label>
+                <input
+                  type="email"
+                  value={settings.email || ""}
+                  onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">
+                Store Location / Physical Address
+              </label>
+              <input
+                type="text"
+                value={settings.address || ""}
+                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Financial & Invoicing Terms */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <Receipt className="w-4 h-4 text-blue-600" />
+              <h3 className="font-bold text-slate-800 text-sm">
+                Financials, Tax & Receipt Footers
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Tax Registration Number
+                </label>
+                <input
+                  type="text"
+                  value={settings.taxNumber || ""}
+                  onChange={(e) => setSettings({ ...settings, taxNumber: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Default Sales Tax Rate (%)
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  value={settings.defaultTaxRate ?? 8.875}
+                  onChange={(e) =>
+                    setSettings({ ...settings, defaultTaxRate: parseFloat(e.target.value) || 0 })
+                  }
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Currency Symbol
+                </label>
+                <input
+                  type="text"
+                  value={settings.currencySymbol || "$"}
+                  onChange={(e) => setSettings({ ...settings, currencySymbol: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-bold"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">
+                Receipt & Job Slip Warranty Notes
+              </label>
+              <textarea
+                rows={3}
+                value={settings.invoiceNotes || ""}
+                onChange={(e) => setSettings({ ...settings, invoiceNotes: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-md shadow-cyan-600/20 transition-all disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              <span>{saving ? "Saving Changes..." : "Save Store Configuration"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

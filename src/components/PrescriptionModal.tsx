@@ -17,61 +17,44 @@ export function PrescriptionModal({
   preselectedCustomerId,
 }: PrescriptionModalProps) {
   const [customers, setCustomers] = useState<any[]>([]);
-  const [optometrists, setOptometrists] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     customerId: preselectedCustomerId || "",
-    optometristId: "",
-    // Right Eye (OD)
-    sphOd: "",
-    cylOd: "",
-    axisOd: "",
-    addOd: "",
-    vaOd: "20/20",
-    pdOd: "",
-    // Left Eye (OS)
-    sphOs: "",
-    cylOs: "",
-    axisOs: "",
-    addOs: "",
-    vaOs: "20/20",
-    pdOs: "",
-    // General
-    pdTotal: "",
-    lensType: "Single Vision",
+    optometristName: "Dr. Priya Nair, M.Opt",
+    od_sph: "",
+    od_cyl: "",
+    od_axis: "",
+    od_add: "",
+    os_sph: "",
+    os_cyl: "",
+    os_axis: "",
+    os_add: "",
+    pd_distance: "63.0",
+    pd_near: "60.0",
+    lens_type: "BLUE_CUT",
     notes: "",
   });
 
   useEffect(() => {
     if (isOpen) {
-      fetchMeta();
+      fetchCustomers();
       if (preselectedCustomerId) {
         setFormData((prev) => ({ ...prev, customerId: preselectedCustomerId }));
       }
     }
   }, [isOpen, preselectedCustomerId]);
 
-  const fetchMeta = async () => {
-    setLoading(true);
+  const fetchCustomers = async () => {
     try {
-      const [custRes, optRes] = await Promise.all([
-        fetch("/api/customers").then((r) => r.json()),
-        fetch("/api/optometrists").then((r) => r.json()),
-      ]);
-      if (custRes.success) setCustomers(custRes.data);
-      if (optRes.success) {
-        setOptometrists(optRes.data);
-        if (optRes.data.length > 0 && !formData.optometristId) {
-          setFormData((prev) => ({ ...prev, optometristId: optRes.data[0].id }));
-        }
+      const res = await fetch("/api/customers");
+      const data = await res.json();
+      if (data.success) {
+        setCustomers(data.data);
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -122,7 +105,7 @@ export function PrescriptionModal({
                 New Optical Prescription (Rx)
               </h3>
               <p className="text-[11px] text-slate-500">
-                Record clinical refraction measurements and diopters
+                Record OD/OS diopter refraction and Pupillary Distance
               </p>
             </div>
           </div>
@@ -157,7 +140,7 @@ export function PrescriptionModal({
                 <option value="">-- Choose Patient --</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.phone || c.customerCode})
+                    {c.name} ({c.phone})
                   </option>
                 ))}
               </select>
@@ -167,25 +150,20 @@ export function PrescriptionModal({
               <label className="block text-slate-700 font-semibold mb-1">
                 Prescribing Optometrist / Doctor
               </label>
-              <select
-                value={formData.optometristId}
-                onChange={(e) => setFormData({ ...formData, optometristId: e.target.value })}
+              <input
+                type="text"
+                placeholder="Dr. Priya Nair, M.Opt"
+                value={formData.optometristName}
+                onChange={(e) => setFormData({ ...formData, optometristName: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
-              >
-                <option value="">-- Choose Optometrist --</option>
-                {optometrists.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name} {o.licenseNumber ? `(${o.licenseNumber})` : ""}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
           {/* Diopter Refraction Grid */}
           <div className="border border-cyan-200 bg-cyan-50/40 rounded-xl p-4 space-y-3">
             <h4 className="text-cyan-900 font-bold text-xs uppercase tracking-wide">
-              Refraction Measurements
+              Refraction Measurements (OD / OS)
             </h4>
 
             {/* Right Eye (OD) */}
@@ -194,73 +172,52 @@ export function PrescriptionModal({
                 <span className="font-bold text-cyan-950 text-xs">
                   OD — Oculus Dexter (Right Eye)
                 </span>
-                <span className="text-[10px] text-cyan-700 font-medium">Right</span>
+                <span className="text-[10px] text-cyan-700 font-semibold">Right Eye</span>
               </div>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">SPH</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Sphere (SPH)</label>
                   <input
                     type="number"
                     step="0.25"
                     placeholder="-2.50"
-                    value={formData.sphOd}
-                    onChange={(e) => setFormData({ ...formData, sphOd: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                    value={formData.od_sph}
+                    onChange={(e) => setFormData({ ...formData, od_sph: e.target.value })}
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono font-bold"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">CYL</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Cylinder (CYL)</label>
                   <input
                     type="number"
                     step="0.25"
                     placeholder="-0.75"
-                    value={formData.cylOd}
-                    onChange={(e) => setFormData({ ...formData, cylOd: e.target.value })}
+                    value={formData.od_cyl}
+                    onChange={(e) => setFormData({ ...formData, od_cyl: e.target.value })}
                     className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">AXIS (°)</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Axis (1-180°)</label>
                   <input
                     type="number"
                     min="1"
                     max="180"
                     placeholder="90"
-                    value={formData.axisOd}
-                    onChange={(e) => setFormData({ ...formData, axisOd: e.target.value })}
+                    value={formData.od_axis}
+                    onChange={(e) => setFormData({ ...formData, od_axis: e.target.value })}
                     className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">ADD</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Addition (ADD)</label>
                   <input
                     type="number"
                     step="0.25"
                     placeholder="+1.50"
-                    value={formData.addOd}
-                    onChange={(e) => setFormData({ ...formData, addOd: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">VA</label>
-                  <input
-                    type="text"
-                    placeholder="20/20"
-                    value={formData.vaOd}
-                    onChange={(e) => setFormData({ ...formData, vaOd: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">PD (mm)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    placeholder="31.5"
-                    value={formData.pdOd}
-                    onChange={(e) => setFormData({ ...formData, pdOd: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                    value={formData.od_add}
+                    onChange={(e) => setFormData({ ...formData, od_add: e.target.value })}
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono text-cyan-700 font-bold"
                   />
                 </div>
               </div>
@@ -272,111 +229,102 @@ export function PrescriptionModal({
                 <span className="font-bold text-cyan-950 text-xs">
                   OS — Oculus Sinister (Left Eye)
                 </span>
-                <span className="text-[10px] text-cyan-700 font-medium">Left</span>
+                <span className="text-[10px] text-cyan-700 font-semibold">Left Eye</span>
               </div>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">SPH</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Sphere (SPH)</label>
                   <input
                     type="number"
                     step="0.25"
                     placeholder="-2.25"
-                    value={formData.sphOs}
-                    onChange={(e) => setFormData({ ...formData, sphOs: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                    value={formData.os_sph}
+                    onChange={(e) => setFormData({ ...formData, os_sph: e.target.value })}
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono font-bold"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">CYL</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Cylinder (CYL)</label>
                   <input
                     type="number"
                     step="0.25"
                     placeholder="-0.50"
-                    value={formData.cylOs}
-                    onChange={(e) => setFormData({ ...formData, cylOs: e.target.value })}
+                    value={formData.os_cyl}
+                    onChange={(e) => setFormData({ ...formData, os_cyl: e.target.value })}
                     className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">AXIS (°)</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Axis (1-180°)</label>
                   <input
                     type="number"
                     min="1"
                     max="180"
                     placeholder="85"
-                    value={formData.axisOs}
-                    onChange={(e) => setFormData({ ...formData, axisOs: e.target.value })}
+                    value={formData.os_axis}
+                    onChange={(e) => setFormData({ ...formData, os_axis: e.target.value })}
                     className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">ADD</label>
+                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Addition (ADD)</label>
                   <input
                     type="number"
                     step="0.25"
                     placeholder="+1.50"
-                    value={formData.addOs}
-                    onChange={(e) => setFormData({ ...formData, addOs: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">VA</label>
-                  <input
-                    type="text"
-                    placeholder="20/20"
-                    value={formData.vaOs}
-                    onChange={(e) => setFormData({ ...formData, vaOs: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">PD (mm)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    placeholder="31.0"
-                    value={formData.pdOs}
-                    onChange={(e) => setFormData({ ...formData, pdOs: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
+                    value={formData.os_add}
+                    onChange={(e) => setFormData({ ...formData, os_add: e.target.value })}
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono text-cyan-700 font-bold"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Lens Recommendation & Binocular PD */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Pupillary Distance (Distance & Near) & Lens Type */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Total Binocular PD (mm)
+                PD Distance (mm)
               </label>
               <input
                 type="number"
                 step="0.5"
-                placeholder="62.5"
-                value={formData.pdTotal}
-                onChange={(e) => setFormData({ ...formData, pdTotal: e.target.value })}
+                placeholder="63.0"
+                value={formData.pd_distance}
+                onChange={(e) => setFormData({ ...formData, pd_distance: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
               />
             </div>
 
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Recommended Lens Category
+                PD Near (mm)
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                placeholder="60.0"
+                value={formData.pd_near}
+                onChange={(e) => setFormData({ ...formData, pd_near: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">
+                Lens Recommendation
               </label>
               <select
-                value={formData.lensType}
-                onChange={(e) => setFormData({ ...formData, lensType: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+                value={formData.lens_type}
+                onChange={(e) => setFormData({ ...formData, lens_type: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-semibold"
               >
-                <option value="Single Vision">Single Vision</option>
-                <option value="Single Vision Blue-Cut">Single Vision Blue-Cut</option>
-                <option value="Progressive High-Index">Progressive High-Index</option>
-                <option value="Progressive Freeform">Progressive Freeform</option>
-                <option value="Bifocal Flat-Top">Bifocal Flat-Top</option>
-                <option value="Office / Occupational">Office / Occupational</option>
-                <option value="Photochromic / Transitions">Photochromic / Transitions</option>
+                <option value="BLUE_CUT">Blue-Cut Anti-Glare</option>
+                <option value="SINGLE_VISION">Single Vision (Distance/Near)</option>
+                <option value="PROGRESSIVE">Progressive Freeform</option>
+                <option value="BIFOCAL">Bifocal (D-Segment/Kryptok)</option>
+                <option value="PHOTOCHROMIC">Photochromic / Transitions</option>
               </select>
             </div>
           </div>
@@ -384,11 +332,11 @@ export function PrescriptionModal({
           {/* Clinical Notes */}
           <div>
             <label className="block text-slate-700 font-semibold mb-1">
-              Optometrist Remarks / Fitting Instructions
+              Clinical Advice / Glazing Guidance
             </label>
             <textarea
               rows={2}
-              placeholder="e.g., Recommend anti-reflective coating for night driving. Pupil height 18mm."
+              placeholder="e.g., Patient has computer strain. Fit with 1.67 index blue-defense coating."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"

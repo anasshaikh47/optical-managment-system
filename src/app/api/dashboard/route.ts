@@ -6,51 +6,35 @@ export async function GET() {
     const [
       totalOrders,
       totalCustomers,
-      products,
+      inventoryItems,
       orders,
-      activeLabJobs,
-      todayAppointments,
       settings,
     ] = await Promise.all([
       prisma.order.count(),
       prisma.customer.count(),
-      prisma.product.findMany({ where: { isActive: true } }),
+      prisma.inventoryItem.findMany(),
       prisma.order.findMany({
         include: {
           customer: true,
           prescription: true,
-          items: true,
+          items: {
+            include: { item: true },
+          },
           payments: true,
-          labJob: true,
         },
         orderBy: { createdAt: "desc" },
-      }),
-      prisma.labJob.findMany({
-        where: {
-          status: { in: ["PENDING", "LENS_ORDERED", "IN_WORKSHOP", "FITTING"] },
-        },
-        include: {
-          order: {
-            include: { customer: true },
-          },
-        },
-      }),
-      prisma.appointment.findMany({
-        include: { customer: true, optometrist: true },
-        orderBy: [{ appointmentDate: "asc" }, { appointmentTime: "asc" }],
       }),
       prisma.storeSetting.findUnique({ where: { id: "default" } }),
     ]);
 
-    // Financial calculations
-    const totalRevenue = orders.reduce((acc, o) => acc + (o.paidAmount || 0), 0);
-    const totalReceivables = orders.reduce((acc, o) => acc + (o.balanceAmount || 0), 0);
+    const totalRevenue = orders.reduce((acc, o) => acc + (o.paid_amount || 0), 0);
+    const totalReceivables = orders.reduce((acc, o) => acc + (o.balance_amount || 0), 0);
     const readyForPickupCount = orders.filter((o) => o.status === "READY_FOR_PICKUP").length;
+    const inWorkshopCount = orders.filter((o) => o.status === "LENS_PROCESSING" || o.status === "FITTING").length;
 
-    // Low stock items
-    const lowStockItems = products.filter((p) => p.stockQuantity <= p.minStockAlert);
+    const lowStockItems = inventoryItems.filter((i) => i.stock_quantity <= i.min_alert_threshold);
 
-    // Sales by Category
+    // Sales by Type
     const categoryRevenue: Record<string, number> = {
       FRAME: 0,
       LENS: 0,
@@ -59,12 +43,12 @@ export async function GET() {
     };
 
     orders.forEach((order) => {
-      order.items.forEach((item) => {
-        const cat = item.category || "ACCESSORY";
-        if (categoryRevenue[cat] !== undefined) {
-          categoryRevenue[cat] += item.totalPrice;
+      order.items.forEach((oi) => {
+        const type = oi.item?.type || "ACCESSORY";
+        if (categoryRevenue[type] !== undefined) {
+          categoryRevenue[type] += oi.subtotal;
         } else {
-          categoryRevenue[cat] = (categoryRevenue[cat] || 0) + item.totalPrice;
+          categoryRevenue[type] = (categoryRevenue[type] || 0) + oi.subtotal;
         }
       });
     });
@@ -77,14 +61,13 @@ export async function GET() {
           totalReceivables,
           totalOrders,
           totalCustomers,
-          activeLabJobsCount: activeLabJobs.length,
+          inWorkshopCount,
           readyForPickupCount,
           lowStockCount: lowStockItems.length,
-          totalProducts: products.length,
+          totalProducts: inventoryItems.length,
         },
         recentOrders: orders.slice(0, 5),
-        activeLabJobs: activeLabJobs.slice(0, 5),
-        todayAppointments: todayAppointments.slice(0, 5),
+        activeWorkshopOrders: orders.filter((o) => ["PLACED", "LENS_PROCESSING", "FITTING"].includes(o.status)).slice(0, 5),
         lowStockAlerts: lowStockItems.slice(0, 6),
         categoryRevenue,
         storeSetting: settings,

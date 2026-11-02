@@ -12,7 +12,6 @@ export async function GET(request: Request) {
         { name: { contains: query } },
         { phone: { contains: query } },
         { email: { contains: query } },
-        { customerCode: { contains: query } },
       ];
     }
 
@@ -20,7 +19,7 @@ export async function GET(request: Request) {
       where,
       include: {
         prescriptions: {
-          orderBy: { examDate: "desc" },
+          orderBy: { createdAt: "desc" },
           take: 1,
         },
         orders: {
@@ -50,30 +49,32 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, phone, email, gender, dob, address, occupation, notes } = body;
+    const { name, phone, email, address, dob, loyalty_points = 0 } = body;
 
     if (!name || !phone) {
       return NextResponse.json(
-        { success: false, error: "Customer name and phone number are required" },
+        { success: false, error: "Customer name and unique phone number are required" },
         { status: 400 }
       );
     }
 
-    // Generate readable code: CUST-xxxx
-    const count = await prisma.customer.count();
-    const customerCode = `CUST-${1001 + count}`;
+    // Check phone uniqueness
+    const existing = await prisma.customer.findUnique({ where: { phone } });
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: `Customer with phone "${phone}" already registered.` },
+        { status: 409 }
+      );
+    }
 
     const customer = await prisma.customer.create({
       data: {
-        customerCode,
         name,
         phone,
         email: email || null,
-        gender: gender || null,
-        dob: dob ? new Date(dob) : null,
         address: address || null,
-        occupation: occupation || null,
-        notes: notes || null,
+        dob: dob ? new Date(dob) : null,
+        loyalty_points: parseInt(loyalty_points, 10) || 0,
       },
     });
 

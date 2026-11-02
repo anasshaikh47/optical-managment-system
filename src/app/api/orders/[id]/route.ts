@@ -11,20 +11,13 @@ export async function GET(
       where: { id },
       include: {
         customer: true,
-        prescription: {
-          include: {
-            optometrist: true,
-          },
-        },
+        prescription: true,
         items: {
-          include: {
-            product: true,
-          },
+          include: { item: true },
         },
         payments: {
           orderBy: { createdAt: "desc" },
         },
-        labJob: true,
       },
     });
 
@@ -51,22 +44,21 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, paymentStatus, notes, deliveryDate } = body;
+    const { status, delivery_due_date } = body;
 
     const updated = await prisma.order.update({
       where: { id },
       data: {
         status: status || undefined,
-        paymentStatus: paymentStatus || undefined,
-        notes: notes !== undefined ? notes : undefined,
-        deliveryDate: deliveryDate ? new Date(deliveryDate) : undefined,
+        delivery_due_date: delivery_due_date ? new Date(delivery_due_date) : undefined,
       },
       include: {
         customer: true,
         prescription: true,
-        items: true,
+        items: {
+          include: { item: true },
+        },
         payments: true,
-        labJob: true,
       },
     });
 

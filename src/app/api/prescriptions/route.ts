@@ -14,9 +14,10 @@ export async function GET(request: Request) {
 
     if (query) {
       where.OR = [
-        { prescriptionNo: { contains: query } },
         { customer: { name: { contains: query } } },
         { customer: { phone: { contains: query } } },
+        { optometristName: { contains: query } },
+        { lens_type: { contains: query } },
       ];
     }
 
@@ -24,12 +25,11 @@ export async function GET(request: Request) {
       where,
       include: {
         customer: true,
-        optometrist: true,
         _count: {
           select: { orders: true },
         },
       },
-      orderBy: { examDate: "desc" },
+      orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json({ success: true, data: prescriptions });
@@ -47,23 +47,18 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       customerId,
-      optometristId,
-      sphOd,
-      cylOd,
-      axisOd,
-      addOd,
-      vaOd,
-      pdOd,
-      sphOs,
-      cylOs,
-      axisOs,
-      addOs,
-      vaOs,
-      pdOs,
-      pdTotal,
-      lensType,
-      examDate,
-      expiryDate,
+      optometristName,
+      od_sph,
+      od_cyl,
+      od_axis,
+      od_add,
+      os_sph,
+      os_cyl,
+      os_axis,
+      os_add,
+      pd_distance,
+      pd_near,
+      lens_type,
       notes,
     } = body;
 
@@ -74,45 +69,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate unique prescription number
-    const count = await prisma.prescription.count();
-    const year = new Date().getFullYear();
-    const prescriptionNo = `RX-${year}-${String(count + 1).padStart(4, "0")}`;
-
-    // Auto-calculate expiry date to 2 years if not provided
-    const eDate = examDate ? new Date(examDate) : new Date();
-    const expDate = expiryDate
-      ? new Date(expiryDate)
-      : new Date(new Date(eDate).setFullYear(eDate.getFullYear() + 2));
-
     const prescription = await prisma.prescription.create({
       data: {
-        prescriptionNo,
         customerId,
-        optometristId: optometristId || null,
-        sphOd: sphOd !== "" && sphOd !== undefined ? parseFloat(sphOd) : null,
-        cylOd: cylOd !== "" && cylOd !== undefined ? parseFloat(cylOd) : null,
-        axisOd: axisOd !== "" && axisOd !== undefined ? parseInt(axisOd, 10) : null,
-        addOd: addOd !== "" && addOd !== undefined ? parseFloat(addOd) : null,
-        vaOd: vaOd || null,
-        pdOd: pdOd !== "" && pdOd !== undefined ? parseFloat(pdOd) : null,
+        optometristName: optometristName || "Dr. Staff Optometrist",
+        od_sph: od_sph !== "" && od_sph !== undefined ? parseFloat(od_sph) : null,
+        od_cyl: od_cyl !== "" && od_cyl !== undefined ? parseFloat(od_cyl) : null,
+        od_axis: od_axis !== "" && od_axis !== undefined ? parseInt(od_axis, 10) : null,
+        od_add: od_add !== "" && od_add !== undefined ? parseFloat(od_add) : null,
 
-        sphOs: sphOs !== "" && sphOs !== undefined ? parseFloat(sphOs) : null,
-        cylOs: cylOs !== "" && cylOs !== undefined ? parseFloat(cylOs) : null,
-        axisOs: axisOs !== "" && axisOs !== undefined ? parseInt(axisOs, 10) : null,
-        addOs: addOs !== "" && addOs !== undefined ? parseFloat(addOs) : null,
-        vaOs: vaOs || null,
-        pdOs: pdOs !== "" && pdOs !== undefined ? parseFloat(pdOs) : null,
+        os_sph: os_sph !== "" && os_sph !== undefined ? parseFloat(os_sph) : null,
+        os_cyl: os_cyl !== "" && os_cyl !== undefined ? parseFloat(os_cyl) : null,
+        os_axis: os_axis !== "" && os_axis !== undefined ? parseInt(os_axis, 10) : null,
+        os_add: os_add !== "" && os_add !== undefined ? parseFloat(os_add) : null,
 
-        pdTotal: pdTotal !== "" && pdTotal !== undefined ? parseFloat(pdTotal) : null,
-        lensType: lensType || null,
-        examDate: eDate,
-        expiryDate: expDate,
+        pd_distance: pd_distance !== "" && pd_distance !== undefined ? parseFloat(pd_distance) : null,
+        pd_near: pd_near !== "" && pd_near !== undefined ? parseFloat(pd_near) : null,
+        lens_type: lens_type || "SINGLE_VISION",
         notes: notes || null,
       },
       include: {
         customer: true,
-        optometrist: true,
       },
     });
 

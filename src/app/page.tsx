@@ -8,7 +8,7 @@ import {
   Wrench,
   Package,
   Users,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   AlertTriangle,
   Clock,
@@ -50,22 +50,22 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       <Header
-        title="Optical ERP Overview"
+        title="VisionPulse Executive Dashboard"
         subtitle="Clinical Operations, Eyewear Lab & Retail Performance"
       />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* KPI Metrics Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Revenue Metric */}
+          {/* Revenue */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group">
             <div className="absolute right-0 top-0 translate-x-3 -translate-y-3 w-20 h-20 rounded-full bg-cyan-500/10 transition-transform group-hover:scale-125" />
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                Total Revenue
+                Total Revenue Collected
               </span>
-              <div className="w-8 h-8 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center">
-                <DollarSign className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold">
+                <IndianRupee className="w-4 h-4" />
               </div>
             </div>
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -75,23 +75,23 @@ export default function DashboardPage() {
               <span className="text-amber-600 font-bold">
                 {formatCurrency(metrics.totalReceivables || 0)}
               </span>{" "}
-              pending balance receivables
+              balance receivables pending
             </p>
           </div>
 
-          {/* Active Lab Jobs Metric */}
+          {/* Glazing Workshop */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group">
             <div className="absolute right-0 top-0 translate-x-3 -translate-y-3 w-20 h-20 rounded-full bg-amber-500/10 transition-transform group-hover:scale-125" />
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                Lab & Workshop
+                Lab & Workshop Pipeline
               </span>
               <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
                 <Wrench className="w-4 h-4" />
               </div>
             </div>
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-              {metrics.activeLabJobsCount || 0}
+              {metrics.inWorkshopCount || 0}
             </h3>
             <p className="text-[11px] text-slate-500 mt-1 font-medium flex items-center gap-1">
               <span className="text-cyan-600 font-bold">
@@ -101,12 +101,12 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Total Orders Metric */}
+          {/* Orders Count */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group">
             <div className="absolute right-0 top-0 translate-x-3 -translate-y-3 w-20 h-20 rounded-full bg-blue-500/10 transition-transform group-hover:scale-125" />
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                Total Orders
+                Total Orders Placed
               </span>
               <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
                 <ShoppingCart className="w-4 h-4" />
@@ -116,16 +116,16 @@ export default function DashboardPage() {
               {metrics.totalOrders || 0}
             </h3>
             <p className="text-[11px] text-slate-500 mt-1 font-medium">
-              Across clinical & retail POS transactions
+              Registered Patients: <strong className="text-slate-800">{metrics.totalCustomers || 0}</strong>
             </p>
           </div>
 
-          {/* Low Stock Warning Metric */}
+          {/* Low Stock Alerts */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden group">
             <div className="absolute right-0 top-0 translate-x-3 -translate-y-3 w-20 h-20 rounded-full bg-rose-500/10 transition-transform group-hover:scale-125" />
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                Inventory Alerts
+                Low Stock Warning
               </span>
               <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
                 <AlertTriangle className="w-4 h-4" />
@@ -135,19 +135,19 @@ export default function DashboardPage() {
               {metrics.lowStockCount || 0}
             </h3>
             <p className="text-[11px] text-slate-500 mt-1 font-medium">
-              Items at or below minimum threshold
+              Total Catalog SKUs: <strong className="text-slate-800">{metrics.totalProducts || 0}</strong>
             </p>
           </div>
         </div>
 
-        {/* Quick Operational Actions Bar */}
+        {/* Quick Operations Bar */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-950 p-4 rounded-2xl shadow-md text-white flex flex-wrap items-center justify-between gap-4">
           <div>
             <h4 className="font-bold text-sm flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" /> Optical Fast-Actions
+              <Sparkles className="w-4 h-4 text-cyan-400" /> VisionPulse Fast-Actions
             </h4>
             <p className="text-xs text-slate-300">
-              Immediate shortcuts to daily clinic and counter workflows
+              Instant shortcuts to daily clinic and counter workflows
             </p>
           </div>
 
@@ -181,73 +181,70 @@ export default function DashboardPage() {
               className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-white border border-slate-700 transition-colors inline-flex items-center gap-1.5"
             >
               <Package className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Manage Inventory</span>
+              <span>Inventory Catalog</span>
             </Link>
           </div>
         </div>
 
         {/* Dual Column: Workshop Glazing Tracker & Recent Orders */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Active Workshop Glazing Jobs */}
+          {/* Active Workshop Orders */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div className="flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-amber-600" />
                 <h3 className="font-bold text-slate-800 text-sm">
-                  Active Glazing & Workshop Pipeline
+                  Active Workshop Jobs (Processing & Fitting)
                 </h3>
               </div>
               <Link
                 href="/lab-jobs"
                 className="text-xs font-semibold text-cyan-600 hover:text-cyan-800 inline-flex items-center gap-1"
               >
-                <span>View All Jobs</span>
+                <span>View Glazing Board</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             {loading ? (
               <div className="h-40 flex items-center justify-center text-slate-400 text-xs">
-                Loading workshop queue...
+                Loading workshop orders...
               </div>
-            ) : data?.activeLabJobs?.length === 0 ? (
+            ) : data?.activeWorkshopOrders?.length === 0 ? (
               <div className="h-40 flex flex-col items-center justify-center text-slate-400 text-xs">
                 <CheckCircle2 className="w-6 h-6 mb-1 text-emerald-500 opacity-60" />
-                <p>Workshop is clear. All prescription jobs are completed!</p>
+                <p>All prescription spectacle jobs have completed fitting!</p>
               </div>
             ) : (
               <div className="space-y-3 flex-1">
-                {data?.activeLabJobs?.map((job: any) => (
+                {data?.activeWorkshopOrders?.map((ord: any) => (
                   <div
-                    key={job.id}
+                    key={ord.id}
                     className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-1.5"
                   >
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-900 font-mono">
-                        {job.jobNo}
+                        {ord.bill_no}
                       </span>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800">
-                        {job.status.replace("_", " ")}
+                        {ord.status.replace("_", " ")}
                       </span>
                     </div>
 
                     <div className="text-xs">
                       <p className="font-semibold text-slate-800">
-                        Patient: {job.order?.customer?.name || "Customer Job"}
+                        Patient: {ord.customer?.name} ({ord.customer?.phone})
                       </p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        Frame: {job.frameDetails || "Customer Frame"}
-                      </p>
-                      <p className="text-[10px] text-slate-600 font-mono bg-white p-1 rounded border border-slate-200 mt-1 truncate">
-                        {job.lensDetails || "Glazing specifications"}
+                      <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                        Items: {ord.items?.map((i: any) => `${i.item?.brand} ${i.item?.model || i.item?.type}`).join(", ")}
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
-                      <span>Tech: {job.technicianName || "Lab Glazier"}</span>
-                      {job.dueDate && (
+                      <span>Paid: {formatCurrency(ord.paid_amount)}</span>
+                      {ord.delivery_due_date && (
                         <span className="font-semibold text-cyan-700">
-                          Due: {formatDate(job.dueDate)}
+                          Due: {formatDate(ord.delivery_due_date)}
                         </span>
                       )}
                     </div>
@@ -263,7 +260,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4 text-cyan-600" />
                 <h3 className="font-bold text-slate-800 text-sm">
-                  Recent Sales & Invoices
+                  Recent Sales & GST Invoices
                 </h3>
               </div>
               <Link
@@ -293,18 +290,18 @@ export default function DashboardPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-900 font-mono">
-                          {order.orderNumber}
+                          {order.bill_no}
                         </span>
                         <span
                           className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            order.paymentStatus === "PAID"
+                            order.status === "DELIVERED"
                               ? "bg-emerald-100 text-emerald-800"
-                              : order.paymentStatus === "PARTIAL"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-rose-100 text-rose-800"
+                              : order.status === "READY_FOR_PICKUP"
+                              ? "bg-cyan-100 text-cyan-800"
+                              : "bg-amber-100 text-amber-800"
                           }`}
                         >
-                          {order.paymentStatus}
+                          {order.status.replace("_", " ")}
                         </span>
                       </div>
                       <p className="text-slate-600 text-xs truncate mt-0.5">
@@ -315,13 +312,13 @@ export default function DashboardPage() {
 
                     <div className="text-right flex-shrink-0">
                       <p className="font-bold text-slate-900 text-xs">
-                        {formatCurrency(order.totalAmount)}
+                        {formatCurrency(order.final_payable)}
                       </p>
                       <button
                         onClick={() => setSelectedOrder(order)}
                         className="text-[10px] text-cyan-600 hover:text-cyan-800 font-semibold underline mt-0.5"
                       >
-                        Receipt
+                        Print Slip
                       </button>
                     </div>
                   </div>
@@ -331,19 +328,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Lower Row: Category Sales Distribution & Today's Appointments */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Lower Row: Category Sales Distribution & Low Stock Alerts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sales Breakdown by Category */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
             <h3 className="font-bold text-slate-800 text-sm mb-4">
-              Sales by Eyewear Category
+              Sales Distribution by Product Type
             </h3>
             <div className="space-y-3 text-xs">
               {[
-                { label: "Designer Frames", key: "FRAME", color: "bg-cyan-500" },
-                { label: "Ophthalmic Lenses", key: "LENS", color: "bg-blue-600" },
-                { label: "Contact Lenses", key: "CONTACT_LENS", color: "bg-indigo-500" },
-                { label: "Accessories & Solution", key: "ACCESSORY", color: "bg-slate-500" },
+                { label: "Spectacle Frames (Ray-Ban, Titan, Fastrack)", key: "FRAME", color: "bg-cyan-500" },
+                { label: "Power Lenses (Essilor, Zeiss, Hoya)", key: "LENS", color: "bg-blue-600" },
+                { label: "Contact Lenses (Bausch & Lomb, Alcon)", key: "CONTACT_LENS", color: "bg-indigo-500" },
+                { label: "Optical Accessories & Solutions", key: "ACCESSORY", color: "bg-slate-500" },
               ].map((cat) => {
                 const amount = data?.categoryRevenue?.[cat.key] || 0;
                 return (
@@ -373,55 +370,47 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Today's Clinical Schedule */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs lg:col-span-2 flex flex-col">
+          {/* Low Stock Warning Cards */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
+                <AlertTriangle className="w-4 h-4 text-rose-500" />
                 <h3 className="font-bold text-slate-800 text-sm">
-                  Optometry Clinical Appointments
+                  Low Stock Re-order Alerts
                 </h3>
               </div>
               <Link
-                href="/appointments"
+                href="/inventory"
                 className="text-xs font-semibold text-cyan-600 hover:text-cyan-800 inline-flex items-center gap-1"
               >
-                <span>View Schedule</span>
+                <span>Inventory</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             <div className="space-y-2 flex-1">
-              {data?.todayAppointments?.length === 0 ? (
+              {data?.lowStockAlerts?.length === 0 ? (
                 <p className="text-slate-400 text-xs py-6 text-center">
-                  No appointments scheduled.
+                  All inventory items are well-stocked above minimum thresholds!
                 </p>
               ) : (
-                data?.todayAppointments?.map((apt: any) => (
+                data?.lowStockAlerts?.map((item: any) => (
                   <div
-                    key={apt.id}
-                    className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between gap-3 text-xs"
+                    key={item.id}
+                    className="p-2.5 rounded-xl border border-rose-100 bg-rose-50/40 flex items-center justify-between gap-3 text-xs"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900">
-                          {apt.customer?.name}
-                        </span>
-                        <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                          {apt.type.replace("_", " ")}
-                        </span>
-                      </div>
-                      <p className="text-slate-500 text-[11px] mt-0.5">
-                        Optometrist: {apt.optometrist?.name || "General Eye Care"} •{" "}
-                        {apt.notes || "Checkup"}
+                      <p className="font-bold text-slate-900">
+                        {item.brand} - {item.model || item.type}
+                      </p>
+                      <p className="text-slate-500 text-[10px] font-mono">
+                        SKU: {item.sku} • Threshold: {item.min_alert_threshold}
                       </p>
                     </div>
 
-                    <div className="text-right">
-                      <span className="px-2 py-1 rounded bg-white border border-slate-200 font-bold text-slate-800 text-[11px]">
-                        {apt.appointmentTime}
-                      </span>
-                    </div>
+                    <span className="px-2 py-1 rounded bg-rose-100 text-rose-800 font-bold text-xs">
+                      {item.stock_quantity} left
+                    </span>
                   </div>
                 ))
               )}
@@ -430,7 +419,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Printable Receipt Modal if an order is clicked */}
       {selectedOrder && (
         <ReceiptModal
           order={selectedOrder}

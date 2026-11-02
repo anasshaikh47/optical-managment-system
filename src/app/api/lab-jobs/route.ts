@@ -14,31 +14,30 @@ export async function GET(request: Request) {
 
     if (query) {
       where.OR = [
-        { jobNo: { contains: query } },
-        { order: { orderNumber: { contains: query } } },
-        { order: { customer: { name: { contains: query } } } },
-        { technicianName: { contains: query } },
+        { bill_no: { contains: query } },
+        { customer: { name: { contains: query } } },
+        { customer: { phone: { contains: query } } },
       ];
     }
 
-    const labJobs = await prisma.labJob.findMany({
+    const orders = await prisma.order.findMany({
       where,
       include: {
-        order: {
-          include: {
-            customer: true,
-            prescription: true,
-          },
+        customer: true,
+        prescription: true,
+        items: {
+          include: { item: true },
         },
+        payments: true,
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ success: true, data: labJobs });
+    return NextResponse.json({ success: true, data: orders });
   } catch (error: any) {
-    console.error("Error fetching lab jobs:", error);
+    console.error("Error fetching workshop orders:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch lab jobs" },
+      { success: false, error: error.message || "Failed to fetch workshop orders" },
       { status: 500 }
     );
   }

@@ -1,21 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Save, Check, ShieldCheck, Store, Receipt } from "lucide-react";
+import { Settings, Save, Check, Store, Receipt } from "lucide-react";
 import { Header } from "@/components/Header";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<any>({
-    storeName: "",
-    tagline: "",
-    phone: "",
-    email: "",
-    address: "",
-    taxNumber: "",
-    currencySymbol: "$",
-    currencyCode: "USD",
-    defaultTaxRate: 8.875,
-    invoiceNotes: "",
+    storeName: "VisionPulse Eyewear Studio",
+    tagline: "Precision Clinical Optometry & Premium Eyewear",
+    phone: "+91 98201 12345",
+    email: "care@visionpulse.in",
+    address: "Shop 4 & 5, Galleria Arcade, Hiranandani Gardens, Powai, Mumbai - 400076",
+    gstin: "27AABCV1234F1Z8",
+    currencySymbol: "₹",
+    currencyCode: "INR",
+    defaultGstRate: 12.0,
+    receiptFooter:
+      "1-Year warranty against frame manufacturing defects. Spectacle power adaptation guarantee for 14 days. Thank you for choosing VisionPulse!",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,7 +67,7 @@ export default function SettingsPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       <Header
         title="Store & Clinic Settings"
-        subtitle="Branding, Sales Tax, Optical Warranty & Receipt Configuration"
+        subtitle="Branding, GST Rates, Optical Warranty & Receipt Configuration"
       />
 
       <div className="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto">
@@ -74,7 +75,7 @@ export default function SettingsPage() {
           {savedSuccess && (
             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600" />
-              <span>Optical studio settings successfully updated!</span>
+              <span>VisionPulse studio configuration successfully saved!</span>
             </div>
           )}
 
@@ -83,7 +84,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <Store className="w-4 h-4 text-cyan-600" />
               <h3 className="font-bold text-slate-800 text-sm">
-                Studio Identity & Clinic Branding
+                Optical Studio Identity & GST Profile
               </h3>
             </div>
 
@@ -103,7 +104,7 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Tagline / Subheading
+                  Tagline / Brand Subtitle
                 </label>
                 <input
                   type="text"
@@ -117,7 +118,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Contact Phone
+                  Phone (WhatsApp / Call)
                 </label>
                 <input
                   type="text"
@@ -129,7 +130,7 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Contact Email
+                  Email Address
                 </label>
                 <input
                   type="email"
@@ -142,7 +143,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Store Location / Physical Address
+                Store Location / Physical Studio Address
               </label>
               <input
                 type="text"
@@ -153,38 +154,38 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Financial & Invoicing Terms */}
+          {/* Tax & GST Settings */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <Receipt className="w-4 h-4 text-blue-600" />
               <h3 className="font-bold text-slate-800 text-sm">
-                Financials, Tax & Receipt Footers
+                Financials, GST Rates & Invoice Terms
               </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Tax Registration Number
+                  GSTIN / Tax ID
                 </label>
                 <input
                   type="text"
-                  value={settings.taxNumber || ""}
-                  onChange={(e) => setSettings({ ...settings, taxNumber: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-mono"
+                  value={settings.gstin || ""}
+                  onChange={(e) => setSettings({ ...settings, gstin: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-mono font-bold"
                 />
               </div>
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Default Sales Tax Rate (%)
+                  Default Optical GST Rate (%)
                 </label>
                 <input
                   type="number"
-                  step="0.001"
-                  value={settings.defaultTaxRate ?? 8.875}
+                  step="0.5"
+                  value={settings.defaultGstRate ?? 12.0}
                   onChange={(e) =>
-                    setSettings({ ...settings, defaultTaxRate: parseFloat(e.target.value) || 0 })
+                    setSettings({ ...settings, defaultGstRate: parseFloat(e.target.value) || 0 })
                   }
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-semibold"
                 />
@@ -196,7 +197,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  value={settings.currencySymbol || "$"}
+                  value={settings.currencySymbol || "₹"}
                   onChange={(e) => setSettings({ ...settings, currencySymbol: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-bold"
                 />
@@ -209,8 +210,8 @@ export default function SettingsPage() {
               </label>
               <textarea
                 rows={3}
-                value={settings.invoiceNotes || ""}
-                onChange={(e) => setSettings({ ...settings, invoiceNotes: e.target.value })}
+                value={settings.receiptFooter || ""}
+                onChange={(e) => setSettings({ ...settings, receiptFooter: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
               />
             </div>

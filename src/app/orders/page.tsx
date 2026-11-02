@@ -5,7 +5,7 @@ import {
   FileText,
   Search,
   Printer,
-  DollarSign,
+  IndianRupee,
   CheckCircle2,
   AlertCircle,
   Eye,
@@ -23,14 +23,14 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [paymentFilter, setPaymentFilter] = useState("ALL");
 
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
 
   // Balance Payment Modal
   const [balanceModalOrder, setBalanceModalOrder] = useState<any | null>(null);
   const [payAmount, setPayAmount] = useState<string>("");
-  const [payMethod, setPayMethod] = useState("CASH");
+  const [payMethod, setPayMethod] = useState("UPI");
+  const [transactionRef, setTransactionRef] = useState("");
   const [paySubmitting, setPaySubmitting] = useState(false);
 
   useEffect(() => {
@@ -63,7 +63,8 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: parseFloat(payAmount),
-          paymentMethod: payMethod,
+          method: payMethod,
+          transaction_ref: transactionRef,
         }),
       });
 
@@ -82,21 +83,19 @@ export default function OrdersPage() {
   const filtered = orders.filter((o) => {
     const matchesStatus =
       statusFilter === "ALL" || o.status === statusFilter;
-    const matchesPayment =
-      paymentFilter === "ALL" || o.paymentStatus === paymentFilter;
     const q = searchQuery.toLowerCase();
     const matchesSearch =
-      o.orderNumber.toLowerCase().includes(q) ||
+      o.bill_no.toLowerCase().includes(q) ||
       (o.customer?.name && o.customer.name.toLowerCase().includes(q)) ||
       (o.customer?.phone && o.customer.phone.includes(q));
-    return matchesStatus && matchesPayment && matchesSearch;
+    return matchesStatus && matchesSearch;
   });
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       <Header
-        title="Orders & Invoices"
-        subtitle="Spectacle Job Orders, Retail Invoices & Payment Ledger"
+        title="Orders & GST Tax Invoices"
+        subtitle="Spectacle Job Orders, Lens Processing & Payment Ledger"
       />
 
       <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
@@ -106,7 +105,7 @@ export default function OrdersPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by Order #, patient name, phone..."
+              placeholder="Search by Bill No (VP-), patient name, phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -114,29 +113,18 @@ export default function OrdersPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            {/* Status Selector */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-medium"
+              className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-semibold"
             >
               <option value="ALL">All Order Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="IN_LAB">In Workshop / Lab</option>
+              <option value="PLACED">Placed</option>
+              <option value="LENS_PROCESSING">Lens Processing</option>
+              <option value="FITTING">Fitting</option>
               <option value="READY_FOR_PICKUP">Ready for Pickup</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
-
-            {/* Payment Filter */}
-            <select
-              value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-medium"
-            >
-              <option value="ALL">All Payment Statuses</option>
-              <option value="PAID">Paid in Full</option>
-              <option value="PARTIAL">Partially Paid (Advance)</option>
-              <option value="UNPAID">Unpaid</option>
+              <option value="DELIVERED">Delivered</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
         </div>
@@ -147,14 +135,14 @@ export default function OrdersPage() {
             <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold sticky top-0 z-10">
                 <tr>
-                  <th className="p-3.5">Invoice / Order #</th>
-                  <th className="p-3.5">Patient / Customer</th>
-                  <th className="p-3.5">Type & Items</th>
+                  <th className="p-3.5">Bill / Order #</th>
+                  <th className="p-3.5">Patient Details</th>
+                  <th className="p-3.5">Items Ordered</th>
                   <th className="p-3.5">Date</th>
-                  <th className="p-3.5 text-right">Total</th>
+                  <th className="p-3.5 text-right">Net Payable</th>
                   <th className="p-3.5 text-right">Paid</th>
-                  <th className="p-3.5 text-right">Balance</th>
-                  <th className="p-3.5 text-center">Status</th>
+                  <th className="p-3.5 text-right">Balance Due</th>
+                  <th className="p-3.5 text-center">Tracking Status</th>
                   <th className="p-3.5 text-center">Actions</th>
                 </tr>
               </thead>
@@ -175,25 +163,25 @@ export default function OrdersPage() {
                   filtered.map((ord) => (
                     <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-3.5 font-bold font-mono text-slate-900 text-xs">
-                        {ord.orderNumber}
+                        {ord.bill_no}
                       </td>
 
                       <td className="p-3.5">
                         <p className="font-semibold text-slate-800">
-                          {ord.customer?.name || "Walk-in Guest"}
+                          {ord.customer?.name}
                         </p>
-                        {ord.customer?.phone && (
-                          <p className="text-[10px] text-slate-400">{ord.customer.phone}</p>
-                        )}
+                        <p className="text-[10px] text-slate-500 font-mono">{ord.customer?.phone}</p>
                       </td>
 
                       <td className="p-3.5 text-slate-600">
-                        <span className="font-bold text-[10px] uppercase tracking-wider text-cyan-800 bg-cyan-50 px-1.5 py-0.5 rounded">
-                          {ord.orderType.replace("_", " ")}
-                        </span>
-                        <p className="text-[10px] text-slate-500 mt-1 truncate max-w-xs">
-                          {ord.items?.map((i: any) => `${i.quantity}x ${i.itemName}`).join(", ")}
+                        <p className="text-xs truncate max-w-xs font-medium text-slate-800">
+                          {ord.items?.map((i: any) => `${i.quantity}x ${i.item?.brand} ${i.item?.model || i.item?.type}`).join(", ")}
                         </p>
+                        {ord.prescription && (
+                          <span className="text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.2 rounded font-semibold mt-0.5 inline-block">
+                            Rx specs attached
+                          </span>
+                        )}
                       </td>
 
                       <td className="p-3.5 text-slate-500">
@@ -201,25 +189,25 @@ export default function OrdersPage() {
                       </td>
 
                       <td className="p-3.5 text-right font-bold text-slate-900">
-                        {formatCurrency(ord.totalAmount)}
+                        {formatCurrency(ord.final_payable)}
                       </td>
 
                       <td className="p-3.5 text-right font-semibold text-emerald-600">
-                        {formatCurrency(ord.paidAmount)}
+                        {formatCurrency(ord.paid_amount)}
                       </td>
 
                       <td className="p-3.5 text-right font-bold text-rose-600">
-                        {ord.balanceAmount > 0 ? formatCurrency(ord.balanceAmount) : "—"}
+                        {ord.balance_amount > 0 ? formatCurrency(ord.balance_amount) : "—"}
                       </td>
 
                       <td className="p-3.5 text-center">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            ord.status === "COMPLETED"
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            ord.status === "DELIVERED"
                               ? "bg-emerald-100 text-emerald-800"
                               : ord.status === "READY_FOR_PICKUP"
                               ? "bg-cyan-100 text-cyan-800"
-                              : ord.status === "IN_LAB"
+                              : ord.status === "FITTING" || ord.status === "LENS_PROCESSING"
                               ? "bg-amber-100 text-amber-800"
                               : "bg-slate-100 text-slate-700"
                           }`}
@@ -238,11 +226,11 @@ export default function OrdersPage() {
                             <Printer className="w-4 h-4" />
                           </button>
 
-                          {ord.balanceAmount > 0 && (
+                          {ord.balance_amount > 0 && (
                             <button
                               onClick={() => {
                                 setBalanceModalOrder(ord);
-                                setPayAmount(ord.balanceAmount.toString());
+                                setPayAmount(ord.balance_amount.toString());
                               }}
                               className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] transition-colors"
                             >
@@ -275,33 +263,33 @@ export default function OrdersPage() {
             </div>
 
             <p className="text-xs text-slate-600">
-              Order #{balanceModalOrder.orderNumber} for{" "}
+              Invoice #{balanceModalOrder.bill_no} for{" "}
               <strong>{balanceModalOrder.customer?.name}</strong>.
             </p>
 
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
               <div className="flex justify-between">
-                <span>Total Amount:</span>
-                <span className="font-semibold">{formatCurrency(balanceModalOrder.totalAmount)}</span>
+                <span>Net Payable:</span>
+                <span className="font-semibold">{formatCurrency(balanceModalOrder.final_payable)}</span>
               </div>
               <div className="flex justify-between text-emerald-700">
-                <span>Already Paid:</span>
-                <span className="font-semibold">{formatCurrency(balanceModalOrder.paidAmount)}</span>
+                <span>Advance Paid:</span>
+                <span className="font-semibold">{formatCurrency(balanceModalOrder.paid_amount)}</span>
               </div>
               <div className="flex justify-between text-rose-700 font-bold text-sm pt-1 border-t border-slate-200">
                 <span>Balance Due:</span>
-                <span>{formatCurrency(balanceModalOrder.balanceAmount)}</span>
+                <span>{formatCurrency(balanceModalOrder.balance_amount)}</span>
               </div>
             </div>
 
             <form onSubmit={handleCollectPayment} className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Payment Amount ($)
+                  Payment Amount (₹)
                 </label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="1"
                   required
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
@@ -316,13 +304,25 @@ export default function OrdersPage() {
                 <select
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold"
                 >
-                  <option value="CASH">Cash</option>
+                  <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
                   <option value="CARD">Credit / Debit Card</option>
-                  <option value="UPI">UPI / Digital</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="CASH">Cash Counter</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Transaction Reference
+                </label>
+                <input
+                  type="text"
+                  placeholder="UPI Ref ID / Card Txn Code"
+                  value={transactionRef}
+                  onChange={(e) => setTransactionRef(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs"
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">

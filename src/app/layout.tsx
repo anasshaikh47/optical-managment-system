@@ -6,9 +6,9 @@ import { Sidebar } from "@/components/Sidebar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "VisionCraft Optical ERP & POS System",
+  title: "VisionPulse | Optical Store ERP & POS Management System",
   description:
-    "Comprehensive Optical Clinic, Eyewear Inventory, Prescription Management & POS System",
+    "Comprehensive Optical Clinic, Eyewear Inventory, Refraction Prescription Management & POS System for VisionPulse",
 };
 
 export default function RootLayout({

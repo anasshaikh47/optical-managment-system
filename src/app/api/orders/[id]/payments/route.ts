@@ -8,7 +8,7 @@ export async function POST(
   try {
     const { id: orderId } = await params;
     const body = await request.json();
-    const { amount, paymentMethod = "CASH", referenceNo, notes } = body;
+    const { amount, method = "UPI", transaction_ref } = body;
 
     const paymentAmount = parseFloat(amount);
     if (isNaN(paymentAmount) || paymentAmount <= 0) {
@@ -29,39 +29,42 @@ export async function POST(
       );
     }
 
-    const newPaidAmount = order.paidAmount + paymentAmount;
-    const newBalance = Math.max(0, order.totalAmount - newPaidAmount);
-    const newPaymentStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
-
-    const year = new Date().getFullYear();
-    const payCount = await prisma.payment.count();
-    const paymentNo = `PAY-${year}-${String(payCount + 1).padStart(4, "0")}`;
+    const newPaidAmount = order.paid_amount + paymentAmount;
+    const newBalance = Math.max(0, order.final_payable - newPaidAmount);
+    const newStatus = newBalance <= 0 && order.status === "READY_FOR_PICKUP" ? "DELIVERED" : order.status;
 
     const [payment, updatedOrder] = await prisma.$transaction([
       prisma.payment.create({
         data: {
-          paymentNo,
           orderId,
           amount: paymentAmount,
-          paymentMethod,
-          referenceNo: referenceNo || null,
-          notes: notes || "Balance payment received",
+          method,
+          payment_type: "BALANCE",
+          transaction_ref: transaction_ref || null,
         },
       }),
       prisma.order.update({
         where: { id: orderId },
         data: {
-          paidAmount: parseFloat(newPaidAmount.toFixed(2)),
-          balanceAmount: parseFloat(newBalance.toFixed(2)),
-          paymentStatus: newPaymentStatus,
-          // If status was Ready For Pickup and paid, can transition or keep as ready
-          status: newPaymentStatus === "PAID" && order.status === "READY_FOR_PICKUP" ? "COMPLETED" : order.status,
+          paid_amount: parseFloat(newPaidAmount.toFixed(2)),
+          balance_amount: parseFloat(newBalance.toFixed(2)),
+          status: newStatus,
         },
         include: {
           customer: true,
-          items: true,
+          prescription: true,
+          items: {
+            include: { item: true },
+          },
           payments: true,
-          labJob: true,
+        },
+      }),
+      prisma.customer.update({
+        where: { id: order.customerId },
+        data: {
+          loyalty_points: {
+            increment: Math.floor(paymentAmount / 100),
+          },
         },
       }),
     ]);
@@ -71,7 +74,7 @@ export async function POST(
       data: { payment, order: updatedOrder },
     });
   } catch (error: any) {
-    console.error("Error adding payment:", error);
+    console.error("Error adding balance payment:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Failed to record payment" },
       { status: 500 }

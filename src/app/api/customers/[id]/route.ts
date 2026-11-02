@@ -11,24 +11,16 @@ export async function GET(
       where: { id },
       include: {
         prescriptions: {
-          include: {
-            optometrist: true,
-          },
-          orderBy: { examDate: "desc" },
+          orderBy: { createdAt: "desc" },
         },
         orders: {
           include: {
-            items: true,
+            items: {
+              include: { item: true },
+            },
             payments: true,
-            labJob: true,
           },
           orderBy: { createdAt: "desc" },
-        },
-        appointments: {
-          include: {
-            optometrist: true,
-          },
-          orderBy: { appointmentDate: "desc" },
         },
       },
     });
@@ -62,6 +54,7 @@ export async function PATCH(
       data: {
         ...body,
         dob: body.dob ? new Date(body.dob) : undefined,
+        loyalty_points: body.loyalty_points !== undefined ? parseInt(body.loyalty_points, 10) : undefined,
       },
     });
 

@@ -7,18 +7,18 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const product = await prisma.product.findUnique({
+    const item = await prisma.inventoryItem.findUnique({
       where: { id },
     });
 
-    if (!product) {
+    if (!item) {
       return NextResponse.json(
-        { success: false, error: "Product not found" },
+        { success: false, error: "Inventory item not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: product });
+    return NextResponse.json({ success: true, data: item });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },
@@ -35,14 +35,15 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const updated = await prisma.product.update({
+    const updated = await prisma.inventoryItem.update({
       where: { id },
       data: {
         ...body,
-        costPrice: body.costPrice !== undefined ? parseFloat(body.costPrice) : undefined,
-        sellingPrice: body.sellingPrice !== undefined ? parseFloat(body.sellingPrice) : undefined,
-        stockQuantity: body.stockQuantity !== undefined ? parseInt(body.stockQuantity, 10) : undefined,
-        minStockAlert: body.minStockAlert !== undefined ? parseInt(body.minStockAlert, 10) : undefined,
+        cost_price: body.cost_price !== undefined ? parseFloat(body.cost_price) : undefined,
+        selling_price: body.selling_price !== undefined ? parseFloat(body.selling_price) : undefined,
+        stock_quantity: body.stock_quantity !== undefined ? parseInt(body.stock_quantity, 10) : undefined,
+        min_alert_threshold: body.min_alert_threshold !== undefined ? parseInt(body.min_alert_threshold, 10) : undefined,
+        gst_rate: body.gst_rate !== undefined ? parseFloat(body.gst_rate) : undefined,
       },
     });
 
@@ -61,12 +62,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await prisma.product.update({
-      where: { id },
-      data: { isActive: false },
-    });
-
-    return NextResponse.json({ success: true, message: "Product deactivated" });
+    await prisma.inventoryItem.delete({ where: { id } });
+    return NextResponse.json({ success: true, message: "Item deleted" });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },

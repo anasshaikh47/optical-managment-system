@@ -3,724 +3,966 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting Optical POS & ERP Database Seeding...");
+  console.log("🌱 Starting VisionPulse Optical ERP & POS Database Seeding...");
 
-  // Clean existing data
+  // Clear existing records in correct order
   await prisma.payment.deleteMany();
-  await prisma.labJob.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
-  await prisma.appointment.deleteMany();
   await prisma.prescription.deleteMany();
-  await prisma.optometrist.deleteMany();
+  await prisma.inventoryItem.deleteMany();
   await prisma.customer.deleteMany();
-  await prisma.product.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.storeSetting.deleteMany();
 
-  // 1. Store Settings
-  const store = await prisma.storeSetting.create({
+  // 1. Store Setting
+  await prisma.storeSetting.create({
     data: {
       id: "default",
-      storeName: "Lumina Vision & Optical Studio",
-      tagline: "Clinical Precision • Bespoke Eyewear Craftsmanship",
-      phone: "+1 (555) 382-7740",
-      email: "hello@luminavisionstudio.com",
-      address: "428 Park Avenue, Suite 12B, New York, NY 10022",
-      taxNumber: "NY-OPT-948201",
-      currencySymbol: "$",
-      currencyCode: "USD",
-      defaultTaxRate: 8.875,
-      invoiceNotes:
-        "Prescription lenses are tailored to your optical measurement. 12-month frame warranty covers manufacturing defects. Thank you for choosing Lumina Vision Studio!",
+      storeName: "VisionPulse Eyewear Studio",
+      tagline: "Precision Clinical Optometry & Premium Eyewear",
+      gstin: "27AABCV1234F1Z8",
+      phone: "+91 98201 12345",
+      email: "care@visionpulse.in",
+      address: "Shop 4 & 5, Galleria Arcade, Hiranandani Gardens, Powai, Mumbai - 400076",
+      currencySymbol: "₹",
+      currencyCode: "INR",
+      defaultGstRate: 12.0,
+      receiptFooter:
+        "1-Year warranty against frame manufacturing defects. Spectacle power adaptation guarantee for 14 days. Thank you for choosing VisionPulse!",
     },
   });
 
-  // 2. Optometrists
-  const opt1 = await prisma.optometrist.create({
+  // 2. Users (Owner & Staff)
+  const userOwner = await prisma.user.create({
     data: {
-      name: "Dr. Elena Vance, OD",
-      licenseNumber: "OD-94021-NY",
-      phone: "+1 (555) 234-8899",
-      email: "dr.vance@luminavisionstudio.com",
-      active: true,
+      name: "Rajesh Sharma",
+      email: "rajesh@visionpulse.in",
+      role: "OWNER",
+      pin_hash: "1234", // Simple quick PIN for POS register login
     },
   });
 
-  const opt2 = await prisma.optometrist.create({
+  const userStaff = await prisma.user.create({
     data: {
-      name: "Dr. Julian Thorne, OD, FAAO",
-      licenseNumber: "OD-88123-NY",
-      phone: "+1 (555) 441-9922",
-      email: "dr.thorne@luminavisionstudio.com",
-      active: true,
+      name: "Priya Nair, M.Opt",
+      email: "priya@visionpulse.in",
+      role: "STAFF",
+      pin_hash: "5678",
     },
   });
 
-  // 3. Customers
-  const customer1 = await prisma.customer.create({
+  const userTech = await prisma.user.create({
     data: {
-      customerCode: "CUST-1001",
-      name: "Olivia Sterling",
-      phone: "+1 (555) 912-3401",
-      email: "olivia.sterling@example.com",
-      gender: "Female",
-      dob: new Date("1988-06-14"),
-      address: "740 Lexington Ave, Apt 4B, New York, NY",
-      occupation: "Architect & Creative Director",
-      notes: "High prescription sensitivity; prefers ultra-light titanium frames and high-index 1.67 lenses.",
+      name: "Amit Verma",
+      email: "amit.workshop@visionpulse.in",
+      role: "STAFF",
+      pin_hash: "4321",
     },
   });
 
-  const customer2 = await prisma.customer.create({
-    data: {
-      customerCode: "CUST-1002",
-      name: "Marcus Chen",
-      phone: "+1 (555) 831-4502",
-      email: "marcus.chen@techstartup.io",
-      gender: "Male",
-      dob: new Date("1994-11-22"),
-      address: "120 Broadway, Fl 18, New York, NY",
-      occupation: "Software Engineer",
-      notes: "Severe digital eye fatigue from multiple screen setups. Strongly requires blue-light filtering.",
-    },
-  });
+  console.log("👤 Created 3 Users (Owner, Optometrist, Workshop Glazier)");
 
-  const customer3 = await prisma.customer.create({
-    data: {
-      customerCode: "CUST-1003",
-      name: "Sophia Martinez-Roy",
-      phone: "+1 (555) 762-5603",
-      email: "sophia.martinez@fashionagency.com",
-      gender: "Female",
-      dob: new Date("1996-03-30"),
-      address: "550 Hudson St, New York, NY",
-      occupation: "Brand Strategist",
-      notes: "Wears daily contact lenses on weekdays and bold statement frames on weekends.",
+  // 3. Ten Indian Customers with phone numbers
+  const customersData = [
+    {
+      name: "Aarav Patel",
+      phone: "+91 98201 23456",
+      email: "aarav.patel@gmail.com",
+      address: "A-402, Sea Green Apts, Juhu Tara Road, Andheri West, Mumbai - 400049",
+      dob: new Date("1991-04-12"),
+      loyalty_points: 120,
     },
-  });
-
-  const customer4 = await prisma.customer.create({
-    data: {
-      customerCode: "CUST-1004",
-      name: "Arthur Pendelton",
-      phone: "+1 (555) 673-6704",
-      email: "arthur.pendelton@lawcorp.com",
-      gender: "Male",
-      dob: new Date("1964-08-09"),
-      address: "330 Riverside Dr, New York, NY",
-      occupation: "Senior Legal Partner",
-      notes: "First time progressive lens user. Requires wide reading corridor for document reviews.",
+    {
+      name: "Diya Sundaram",
+      phone: "+91 98450 34567",
+      email: "diya.sundaram@yahoo.co.in",
+      address: "14/2, 100 Feet Road, HAL 2nd Stage, Indiranagar, Bengaluru - 560038",
+      dob: new Date("1996-08-25"),
+      loyalty_points: 250,
     },
-  });
-
-  const customer5 = await prisma.customer.create({
-    data: {
-      customerCode: "CUST-1005",
-      name: "Chloe Bennett",
-      phone: "+1 (555) 584-7805",
-      email: "chloe.b@creativearts.edu",
-      gender: "Female",
-      dob: new Date("2002-01-18"),
-      address: "22 8th Ave, Brooklyn, NY",
-      occupation: "Graphic Designer",
-      notes: "Prefers round vintage acetate frames.",
+    {
+      name: "Rohan Mukherjee",
+      phone: "+91 98300 45678",
+      email: "rohan.m@techcorp.in",
+      address: "Block CF-18, Sector 1, Salt Lake City, Kolkata - 700064",
+      dob: new Date("1968-11-03"),
+      loyalty_points: 80,
     },
-  });
+    {
+      name: "Ananya Deshmukh",
+      phone: "+91 98220 56789",
+      email: "ananya.deshmukh@outlook.com",
+      address: "Flat 301, Mayur Nagari, Paud Road, Kothrud, Pune - 411038",
+      dob: new Date("1994-02-17"),
+      loyalty_points: 310,
+    },
+    {
+      name: "Vikramaditya Singh",
+      phone: "+91 98110 67890",
+      email: "vikram.singh@delhicorp.com",
+      address: "C-8, Poorvi Marg, Vasant Vihar, New Delhi - 110057",
+      dob: new Date("1975-06-30"),
+      loyalty_points: 190,
+    },
+    {
+      name: "Meera Krishnan",
+      phone: "+91 94440 78901",
+      email: "meera.k@chennaimail.com",
+      address: "24, North Boag Road, T. Nagar, Chennai - 600017",
+      dob: new Date("2000-09-14"),
+      loyalty_points: 150,
+    },
+    {
+      name: "Kabir Malhotra",
+      phone: "+91 98140 89012",
+      email: "kabir.m@chandigarh.org",
+      address: "House 512, Sector 18-B, Chandigarh - 160018",
+      dob: new Date("1998-12-05"),
+      loyalty_points: 50,
+    },
+    {
+      name: "Neha Reddy",
+      phone: "+91 98490 90123",
+      email: "neha.reddy@hyderabadit.com",
+      address: "Road No. 12, MLA Colony, Banjara Hills, Hyderabad - 500034",
+      dob: new Date("1993-07-22"),
+      loyalty_points: 220,
+    },
+    {
+      name: "Siddharth Joshi",
+      phone: "+91 98250 01234",
+      email: "siddharth.j@gujaratbiz.com",
+      address: "7, Swastik Society, CG Road, Navrangpura, Ahmedabad - 380009",
+      dob: new Date("1989-01-19"),
+      loyalty_points: 95,
+    },
+    {
+      name: "Pooja Iyer",
+      phone: "+91 98950 12345",
+      email: "pooja.iyer@keralaoptics.in",
+      address: "Green Valley Villa, Main Avenue, Panampilly Nagar, Kochi - 682036",
+      dob: new Date("1995-10-10"),
+      loyalty_points: 180,
+    },
+  ];
 
-  // 4. Prescriptions
+  const createdCustomers: any[] = [];
+  for (const c of customersData) {
+    const cust = await prisma.customer.create({ data: c });
+    createdCustomers.push(cust);
+  }
+  console.log(`👥 Created ${createdCustomers.length} Indian Customers with unique verified phones`);
+
+  // 4. Optical Prescriptions with OD/OS values (SPH, CYL, AXIS, ADD, PD)
   const rx1 = await prisma.prescription.create({
     data: {
-      prescriptionNo: "RX-2026-001",
-      customerId: customer1.id,
-      optometristId: opt1.id,
-      // OD
-      sphOd: -4.25,
-      cylOd: -1.0,
-      axisOd: 175,
-      addOd: 1.5,
-      vaOd: "20/20",
-      pdOd: 31.0,
-      // OS
-      sphOs: -4.75,
-      cylOs: -1.25,
-      axisOs: 5,
-      addOs: 1.5,
-      vaOs: "20/20",
-      pdOs: 31.5,
-      pdTotal: 62.5,
-      lensType: "Progressive High-Index",
-      examDate: new Date("2026-10-15"),
-      expiryDate: new Date("2028-10-15"),
-      notes: "Recommended Essilor Crizal 1.67 with anti-reflective coating for night driving glare.",
+      customerId: createdCustomers[0].id, // Aarav Patel
+      optometristName: "Dr. Priya Nair, M.Opt",
+      od_sph: -3.75,
+      od_cyl: -1.0,
+      od_axis: 175,
+      od_add: null,
+      os_sph: -4.25,
+      os_cyl: -1.25,
+      os_axis: 5,
+      os_add: null,
+      pd_distance: 63.0,
+      pd_near: 60.0,
+      lens_type: "BLUE_CUT",
+      notes: "High myopia with astigmatism. Recommend 1.67 high-index lens with hydrophobic anti-glare.",
     },
   });
 
   const rx2 = await prisma.prescription.create({
     data: {
-      prescriptionNo: "RX-2026-002",
-      customerId: customer2.id,
-      optometristId: opt2.id,
-      // OD
-      sphOd: -1.5,
-      cylOd: -0.5,
-      axisOd: 90,
-      addOd: 0.0,
-      vaOd: "20/15",
-      pdOd: 32.0,
-      // OS
-      sphOs: -1.75,
-      cylOs: -0.5,
-      axisOs: 95,
-      addOs: 0.0,
-      vaOs: "20/15",
-      pdOs: 32.0,
-      pdTotal: 64.0,
-      lensType: "Single Vision Blue-Cut",
-      examDate: new Date("2026-10-28"),
-      expiryDate: new Date("2028-10-28"),
-      notes: "Patient spends 10+ hours on OLED screens daily. Recommended Blue-Violet filter.",
+      customerId: createdCustomers[1].id, // Diya Sundaram
+      optometristName: "Dr. Priya Nair, M.Opt",
+      od_sph: -1.5,
+      od_cyl: -0.5,
+      od_axis: 90,
+      od_add: null,
+      os_sph: -1.75,
+      os_cyl: -0.5,
+      os_axis: 95,
+      os_add: null,
+      pd_distance: 62.0,
+      pd_near: 59.5,
+      lens_type: "BLUE_CUT",
+      notes: "Severe computer vision syndrome complaints. Blue-cut filter with anti-reflective coating.",
     },
   });
 
   const rx3 = await prisma.prescription.create({
     data: {
-      prescriptionNo: "RX-2026-003",
-      customerId: customer4.id,
-      optometristId: opt1.id,
-      // OD
-      sphOd: 1.25,
-      cylOd: -0.75,
-      axisOd: 80,
-      addOd: 2.25,
-      vaOd: "20/25",
-      pdOd: 32.5,
-      // OS
-      sphOs: 1.5,
-      cylOs: -0.5,
-      axisOs: 100,
-      addOs: 2.25,
-      vaOs: "20/25",
-      pdOs: 32.5,
-      pdTotal: 65.0,
-      lensType: "Progressive Freeform",
-      examDate: new Date("2026-10-20"),
-      expiryDate: new Date("2028-10-20"),
-      notes: "Presbyopic correction with wide corridor progression. Avoid narrow frames.",
+      customerId: createdCustomers[2].id, // Rohan Mukherjee
+      optometristName: "Dr. S. K. Bose, MS (Ophth)",
+      od_sph: 1.25,
+      od_cyl: -0.5,
+      od_axis: 80,
+      od_add: 2.0,
+      os_sph: 1.5,
+      os_cyl: -0.75,
+      os_axis: 100,
+      os_add: 2.0,
+      pd_distance: 65.0,
+      pd_near: 61.5,
+      lens_type: "PROGRESSIVE",
+      notes: "Presbyopic digital progressive. Wide intermediate channel for reading and laptop work.",
     },
   });
 
-  // 5. Products Catalog
-  const pFrames = [
+  const rx4 = await prisma.prescription.create({
+    data: {
+      customerId: createdCustomers[3].id, // Ananya Deshmukh
+      optometristName: "Dr. Priya Nair, M.Opt",
+      od_sph: -0.75,
+      od_cyl: -0.5,
+      od_axis: 180,
+      od_add: null,
+      os_sph: -1.0,
+      os_cyl: -0.5,
+      os_axis: 170,
+      os_add: null,
+      pd_distance: 61.5,
+      pd_near: 58.0,
+      lens_type: "SINGLE_VISION",
+      notes: "Mild distance correction. Standard hard-coat anti-reflective.",
+    },
+  });
+
+  const rx5 = await prisma.prescription.create({
+    data: {
+      customerId: createdCustomers[4].id, // Vikramaditya Singh
+      optometristName: "Dr. Priya Nair, M.Opt",
+      od_sph: -4.5,
+      od_cyl: -1.5,
+      od_axis: 90,
+      od_add: 2.25,
+      os_sph: -4.0,
+      os_cyl: -1.25,
+      os_axis: 85,
+      os_add: 2.25,
+      pd_distance: 66.0,
+      pd_near: 62.5,
+      lens_type: "PHOTOCHROMIC",
+      notes: "Outdoor sunlight sensitivity. High index 1.67 Transitions Gen-S recommended.",
+    },
+  });
+
+  const rx8 = await prisma.prescription.create({
+    data: {
+      customerId: createdCustomers[7].id, // Neha Reddy
+      optometristName: "Dr. Priya Nair, M.Opt",
+      od_sph: -2.25,
+      od_cyl: 0.0,
+      od_axis: null,
+      od_add: null,
+      os_sph: -2.5,
+      os_cyl: -0.25,
+      os_axis: 180,
+      os_add: null,
+      pd_distance: 62.5,
+      pd_near: 59.5,
+      lens_type: "SINGLE_VISION",
+      notes: "Distance driving specs.",
+    },
+  });
+
+  console.log("👓 Created Prescriptions with exact clinical OD/OS Diopters and PD values");
+
+  // 5. Fifteen Inventory Items (Frames, Lenses, Contact Lens, Accessories)
+  const inventoryItemsData = [
+    // Frames (Ray-Ban, Titan Eye+, Fastrack, Vogue, Oakley)
     {
       sku: "FRM-RB-2140",
       barcode: "805289126577",
-      name: "Ray-Ban Original Wayfarer Classic",
-      category: "FRAME",
+      type: "FRAME",
       brand: "Ray-Ban",
-      modelNumber: "RB2140",
+      model: "RB2140 Original Wayfarer",
       color: "Polished Black",
       size: "50-22-150",
-      material: "Acetate",
-      shape: "Wayfarer",
-      costPrice: 85.0,
-      sellingPrice: 185.0,
-      stockQuantity: 14,
-      minStockAlert: 4,
-      supplier: "Luxottica Group",
-      description: "The timeless icon of eyewear with signature rivet hinges and ergonomic temple tips.",
+      lens_index: null,
+      cost_price: 4500.0,
+      selling_price: 8900.0,
+      gst_rate: 12.0,
+      stock_quantity: 12,
+      min_alert_threshold: 3,
+      image_url: "/images/rayban-wayfarer.png",
     },
     {
-      sku: "FRM-LIN-TITAN",
-      barcode: "739281004123",
-      name: "Lindberg Air Rimless Titanium",
-      category: "FRAME",
-      brand: "Lindberg",
-      modelNumber: "Spirit Basic 2000",
-      color: "Satin Gunmetal",
-      size: "49-20-145",
-      material: "Titanium",
-      shape: "Oval Rimless",
-      costPrice: 240.0,
-      sellingPrice: 520.0,
-      stockQuantity: 6,
-      minStockAlert: 2,
-      supplier: "Lindberg Denmark",
-      description: "Featherlight 2.7g screwless titanium frame hand-crafted in Denmark.",
+      sku: "FRM-RB-3025",
+      barcode: "805289600145",
+      type: "FRAME",
+      brand: "Ray-Ban",
+      model: "RB3025 Classic Aviator Optical",
+      color: "Arista Gold",
+      size: "55-14-135",
+      lens_index: null,
+      cost_price: 4800.0,
+      selling_price: 9500.0,
+      gst_rate: 12.0,
+      stock_quantity: 8,
+      min_alert_threshold: 2,
+      image_url: "/images/rayban-aviator.png",
     },
     {
-      sku: "FRM-TF-5401",
-      barcode: "889652194821",
-      name: "Tom Ford Classic Square Optical",
-      category: "FRAME",
-      brand: "Tom Ford",
-      modelNumber: "FT5401-B",
-      color: "Dark Havana / Gold 'T'",
-      size: "51-20-145",
-      material: "Acetate",
-      shape: "Square",
-      costPrice: 180.0,
-      sellingPrice: 420.0,
-      stockQuantity: 8,
-      minStockAlert: 3,
-      supplier: "Marcolin Eyewear",
-      description: "Sophisticated luxury frame with signature metal T logo detailing on temple.",
+      sku: "FRM-TITAN-EDGE",
+      barcode: "890512349011",
+      type: "FRAME",
+      brand: "Titan Eye+",
+      model: "Titan Edge Ultra-Slim Titanium",
+      color: "Matte Gunmetal",
+      size: "51-19-142",
+      lens_index: null,
+      cost_price: 2200.0,
+      selling_price: 4999.0,
+      gst_rate: 12.0,
+      stock_quantity: 15,
+      min_alert_threshold: 4,
+      image_url: "/images/titan-edge.png",
     },
     {
-      sku: "FRM-OK-8156",
-      barcode: "888392439102",
-      name: "Oakley Holbrook RX Optical",
-      category: "FRAME",
-      brand: "Oakley",
-      modelNumber: "OX8156-01",
-      color: "Matte Black",
-      size: "56-18-137",
-      material: "O-Matter",
-      shape: "Rectangle",
-      costPrice: 75.0,
-      sellingPrice: 170.0,
-      stockQuantity: 18,
-      minStockAlert: 5,
-      supplier: "Luxottica Group",
-      description: "Ultra-durable lightweight O-Matter frame designed for active lifestyles.",
+      sku: "FRM-TITAN-FLEX",
+      barcode: "890512349028",
+      type: "FRAME",
+      brand: "Titan Eye+",
+      model: "Titan PureFlex Shape-Memory Alloy",
+      color: "Midnight Blue",
+      size: "53-17-140",
+      lens_index: null,
+      cost_price: 1800.0,
+      selling_price: 3899.0,
+      gst_rate: 12.0,
+      stock_quantity: 18,
+      min_alert_threshold: 5,
+      image_url: "/images/titan-flex.png",
     },
     {
-      sku: "FRM-GUC-0061",
-      barcode: "805637628192",
-      name: "Gucci Signature Round Havana",
-      category: "FRAME",
-      brand: "Gucci",
-      modelNumber: "GG0061S",
-      color: "Tortoiseshell / Gold",
-      size: "52-20-140",
-      material: "Acetate & Metal",
-      shape: "Round",
-      costPrice: 195.0,
-      sellingPrice: 440.0,
-      stockQuantity: 5,
-      minStockAlert: 2,
-      supplier: "Kering Eyewear",
-      description: "Round vintage-inspired silhouette with interlocking G logo and web stripe temples.",
+      sku: "FRM-FST-CHROME",
+      barcode: "890712390123",
+      type: "FRAME",
+      brand: "Fastrack",
+      model: "Fastrack Sport Rimless Semi-Wrap",
+      color: "Silver Chrome",
+      size: "54-18-138",
+      lens_index: null,
+      cost_price: 950.0,
+      selling_price: 2199.0,
+      gst_rate: 12.0,
+      stock_quantity: 25,
+      min_alert_threshold: 6,
+      image_url: "/images/fastrack-chrome.png",
+    },
+    {
+      sku: "FRM-FST-ACETATE",
+      barcode: "890712390456",
+      type: "FRAME",
+      brand: "Fastrack",
+      model: "Fastrack Vintage Round Acetate",
+      color: "Amber Tortoise",
+      size: "49-21-140",
+      lens_index: null,
+      cost_price: 800.0,
+      selling_price: 1899.0,
+      gst_rate: 12.0,
+      stock_quantity: 20,
+      min_alert_threshold: 5,
+      image_url: "/images/fastrack-vintage.png",
     },
     {
       sku: "FRM-VOG-5333",
       barcode: "805659720391",
-      name: "Vogue Eyewear Chic Cat-Eye",
-      category: "FRAME",
-      brand: "Vogue",
-      modelNumber: "VO5333",
-      color: "Deep Burgundy Plum",
-      size: "53-16-140",
-      material: "Bio-Acetate",
-      shape: "Cat-Eye",
-      costPrice: 48.0,
-      sellingPrice: 125.0,
-      stockQuantity: 12,
-      minStockAlert: 3,
-      supplier: "Luxottica Group",
-      description: "Feminine cat-eye profile crafted from sustainable bio-acetate.",
+      type: "FRAME",
+      brand: "Vogue Eyewear",
+      model: "VO5333 Chic Cat-Eye Silhouette",
+      color: "Burgundy Plum",
+      size: "52-16-140",
+      lens_index: null,
+      cost_price: 2800.0,
+      selling_price: 5990.0,
+      gst_rate: 12.0,
+      stock_quantity: 10,
+      min_alert_threshold: 3,
+      image_url: "/images/vogue-cateye.png",
     },
-  ];
-
-  for (const item of pFrames) {
-    await prisma.product.create({ data: item });
-  }
-
-  const pLenses = [
     {
-      sku: "LNS-ESS-167-CRZ",
-      name: "Essilor Crizal Sapphire HR 1.67 High-Index",
-      category: "LENS",
+      sku: "FRM-OKL-PITCH",
+      barcode: "888392439102",
+      type: "FRAME",
+      brand: "Oakley",
+      model: "Crosslink Pitch O-Matter Active",
+      color: "Satin Black / Red Logo",
+      size: "56-18-140",
+      lens_index: null,
+      cost_price: 4200.0,
+      selling_price: 8290.0,
+      gst_rate: 12.0,
+      stock_quantity: 9,
+      min_alert_threshold: 2,
+      image_url: "/images/oakley-pitch.png",
+    },
+    {
+      sku: "FRM-LINDBERG-AIR",
+      barcode: "739281004123",
+      type: "FRAME",
+      brand: "Lindberg",
+      model: "Spirit Basic 2000 Screwless Titanium",
+      color: "Satin Graphite",
+      size: "50-20-145",
+      lens_index: null,
+      cost_price: 14000.0,
+      selling_price: 28500.0,
+      gst_rate: 12.0,
+      stock_quantity: 4,
+      min_alert_threshold: 1,
+      image_url: "/images/lindberg-titanium.png",
+    },
+
+    // Power Lenses (Essilor, Zeiss, Hoya, Transitions)
+    {
+      sku: "LNS-ESS-CRIZAL-167",
+      barcode: "389201948210",
+      type: "LENS",
       brand: "Essilor",
-      lensIndex: "1.67",
-      coating: "Crizal Sapphire HR (Anti-Glare + Blue-UV + Scratch Defense)",
-      costPrice: 110.0,
-      sellingPrice: 260.0,
-      stockQuantity: 50,
-      minStockAlert: 10,
-      supplier: "Essilor International",
-      description: "Ultra-thin high index lenses featuring 360-degree multi-angular anti-reflective tech.",
+      model: "Crizal Sapphire HR 1.67 Aspheric",
+      color: "Clear / 360 AR Blue-UV",
+      size: "Pair",
+      lens_index: "1.67",
+      cost_price: 2100.0,
+      selling_price: 4800.0,
+      gst_rate: 12.0,
+      stock_quantity: 40,
+      min_alert_threshold: 8,
+      image_url: "/images/essilor-crizal.png",
     },
     {
-      sku: "LNS-ZEISS-PROG-160",
-      name: "Zeiss DriveSafe Precision Progressive 1.60",
-      category: "LENS",
-      brand: "Zeiss",
-      lensIndex: "1.60",
-      coating: "DuraVision Platinum AR + DriveSafe Luminance",
-      costPrice: 190.0,
-      sellingPrice: 490.0,
-      stockQuantity: 25,
-      minStockAlert: 5,
-      supplier: "Carl Zeiss Vision",
-      description: "Freeform digital progressive lens optimized for night driving comfort and low light clarity.",
+      sku: "LNS-ZEISS-CLEARVIEW",
+      barcode: "404786529102",
+      type: "LENS",
+      brand: "Carl Zeiss",
+      model: "ClearView Freeform 1.60 BlueGuard DuraVision",
+      color: "Clear DuraVision Platinum",
+      size: "Pair",
+      lens_index: "1.60",
+      cost_price: 2600.0,
+      selling_price: 5900.0,
+      gst_rate: 12.0,
+      stock_quantity: 30,
+      min_alert_threshold: 6,
+      image_url: "/images/zeiss-clearview.png",
     },
     {
-      sku: "LNS-HOYA-156-BLU",
-      name: "Hoya BlueControl Single Vision 1.56",
-      category: "LENS",
+      sku: "LNS-HOYA-BLU-156",
+      barcode: "497584910293",
+      type: "LENS",
       brand: "Hoya",
-      lensIndex: "1.56",
-      coating: "Hi-Vision LongLife BlueControl",
-      costPrice: 45.0,
-      sellingPrice: 120.0,
-      stockQuantity: 40,
-      minStockAlert: 8,
-      supplier: "Hoya Vision Care",
-      description: "Neutralizes blue light emitted by digital screens to relieve eye fatigue.",
+      model: "Hi-Vision LongLife BlueControl 1.56",
+      color: "Screen Blue Protection",
+      size: "Pair",
+      lens_index: "1.56",
+      cost_price: 1100.0,
+      selling_price: 2600.0,
+      gst_rate: 12.0,
+      stock_quantity: 50,
+      min_alert_threshold: 10,
+      image_url: "/images/hoya-blue.png",
     },
     {
-      sku: "LNS-TRANS-GEN8-160",
-      name: "Transitions Gen S Signature 1.60 Photochromic",
-      category: "LENS",
-      brand: "Transitions",
-      lensIndex: "1.60",
-      coating: "Photochromic Graphite Green + Premium AR",
-      costPrice: 95.0,
-      sellingPrice: 230.0,
-      stockQuantity: 30,
-      minStockAlert: 6,
-      supplier: "Transitions Optical",
-      description: "Rapid activation under sunlight and returns to fully crystal clear indoors in seconds.",
-    },
-  ];
-
-  for (const item of pLenses) {
-    await prisma.product.create({ data: item });
-  }
-
-  const pContacts = [
-    {
-      sku: "CL-ACUVUE-OASYS-1D",
-      barcode: "073390558190",
-      name: "Acuvue Oasys 1-Day with HydraLuxe (30 pk)",
-      category: "CONTACT_LENS",
-      brand: "Johnson & Johnson",
-      baseCurve: 8.5,
-      diameter: 14.3,
-      powerRange: "-0.50 to -12.00",
-      costPrice: 22.0,
-      sellingPrice: 44.0,
-      stockQuantity: 45,
-      minStockAlert: 10,
-      supplier: "Johnson & Johnson Vision",
-      description: "Tear-infused silicone hydrogel contact lenses for long days in air-conditioned spaces.",
-    },
-    {
-      sku: "CL-AIR-OPTIX-HG",
+      sku: "LNS-TRANS-GENS-160",
       barcode: "084656608910",
-      name: "Air Optix Plus HydraGlyde Monthly (6 pk)",
-      category: "CONTACT_LENS",
-      brand: "Alcon",
-      baseCurve: 8.6,
-      diameter: 14.2,
-      powerRange: "+8.00 to -12.00",
-      costPrice: 28.0,
-      sellingPrice: 58.0,
-      stockQuantity: 35,
-      minStockAlert: 8,
-      supplier: "Alcon Laboratories",
-      description: "SmartShield Technology guards against irritating deposits all month long.",
+      type: "LENS",
+      brand: "Transitions",
+      model: "Transitions Gen-S Signature 1.60",
+      color: "Graphite Grey Photochromic",
+      size: "Pair",
+      lens_index: "1.60",
+      cost_price: 3200.0,
+      selling_price: 6800.0,
+      gst_rate: 12.0,
+      stock_quantity: 22,
+      min_alert_threshold: 5,
+      image_url: "/images/transitions-gens.png",
+    },
+    {
+      sku: "LNS-VP-STD-AR-150",
+      barcode: "890888999101",
+      type: "LENS",
+      brand: "VisionPulse",
+      model: "Standard CR-39 Anti-Glare Green AR",
+      color: "Clear Hard Coat",
+      size: "Pair",
+      lens_index: "1.50",
+      cost_price: 400.0,
+      selling_price: 1200.0,
+      gst_rate: 12.0,
+      stock_quantity: 75,
+      min_alert_threshold: 15,
+      image_url: "/images/visionpulse-standard.png",
+    },
+
+    // Contact Lenses & Accessories
+    {
+      sku: "CL-BAUSCH-BIOTRUE",
+      barcode: "078581029381",
+      type: "CONTACT_LENS",
+      brand: "Bausch & Lomb",
+      model: "Biotrue ONEday Disposable (Pack of 30)",
+      color: "Clear Handling Tint",
+      size: "BC 8.6 / Dia 14.2",
+      lens_index: null,
+      cost_price: 1100.0,
+      selling_price: 2100.0,
+      gst_rate: 12.0,
+      stock_quantity: 35,
+      min_alert_threshold: 8,
+      image_url: "/images/bausch-biotrue.png",
     },
   ];
 
-  for (const item of pContacts) {
-    await prisma.product.create({ data: item });
+  const itemsMap: Record<string, any> = {};
+  for (const item of inventoryItemsData) {
+    const created = await prisma.inventoryItem.create({ data: item });
+    itemsMap[item.sku] = created;
   }
+  console.log(`📦 Created ${Object.keys(itemsMap).length} Inventory Items (Frames, Lenses, Contact Lenses)`);
 
-  const pAccessories = [
-    {
-      sku: "ACC-LUMINA-KIT",
-      barcode: "890123847001",
-      name: "Lumina Deluxe Lens Care & Anti-Fog Kit",
-      category: "ACCESSORY",
-      brand: "Lumina Vision",
-      costPrice: 5.5,
-      sellingPrice: 18.0,
-      stockQuantity: 80,
-      minStockAlert: 15,
-      description: "Includes 60ml alcohol-free optical cleaner, microfiber cloth, and precision micro screwdriver.",
-    },
-    {
-      sku: "ACC-LEATHER-CASE",
-      barcode: "890123847002",
-      name: "Handcrafted Italian Leather Eyewear Case",
-      category: "ACCESSORY",
-      brand: "Artigiano",
-      color: "Vintage Cognac",
-      costPrice: 12.0,
-      sellingPrice: 35.0,
-      stockQuantity: 24,
-      minStockAlert: 5,
-      description: "Rigid magnetic closure case with velvet interior lining to protect luxury frames.",
-    },
-  ];
+  // 6. Eight Active Orders in Various Tracking Statuses
+  // Statuses: 'PLACED' | 'LENS_PROCESSING' | 'FITTING' | 'READY_FOR_PICKUP' | 'DELIVERED' | 'CANCELLED'
 
-  for (const item of pAccessories) {
-    await prisma.product.create({ data: item });
-  }
+  // Order 1: Aarav Patel - FITTING status (Ray-Ban Wayfarer + Essilor 1.67 lens)
+  const o1Total = itemsMap["FRM-RB-2140"].selling_price + itemsMap["LNS-ESS-CRIZAL-167"].selling_price; // 8900 + 4800 = 13700
+  const o1Discount = 700.0;
+  const o1Tax = ((o1Total - o1Discount) * 0.12); // 13000 * 0.12 = 1560
+  const o1Final = o1Total - o1Discount + o1Tax; // 14560
+  const o1Paid = 8000.0;
+  const o1Balance = o1Final - o1Paid;
 
-  // 6. Orders, Order Items, Payments & Lab Jobs
-  const frameLindberg = await prisma.product.findUnique({ where: { sku: "FRM-LIN-TITAN" } });
-  const lensEssilor = await prisma.product.findUnique({ where: { sku: "LNS-ESS-167-CRZ" } });
-  const careKit = await prisma.product.findUnique({ where: { sku: "ACC-LUMINA-KIT" } });
-  const frameRayban = await prisma.product.findUnique({ where: { sku: "FRM-RB-2140" } });
-  const lensHoya = await prisma.product.findUnique({ where: { sku: "LNS-HOYA-156-BLU" } });
-  const contactAcuvue = await prisma.product.findUnique({ where: { sku: "CL-ACUVUE-OASYS-1D" } });
-
-  // Order 1: Custom Prescription Eyeglasses for Olivia Sterling
   const order1 = await prisma.order.create({
     data: {
-      orderNumber: "ORD-2026-0001",
-      customerId: customer1.id,
+      bill_no: "VP-2026-0001",
+      customerId: createdCustomers[0].id,
       prescriptionId: rx1.id,
-      orderType: "PRESCRIPTION_SPECS",
-      status: "IN_LAB",
-      paymentStatus: "PARTIAL",
-      subtotal: 798.0,
-      discount: 40.0,
-      taxRate: 8.875,
-      taxAmount: 67.27,
-      totalAmount: 825.27,
-      paidAmount: 500.0,
-      balanceAmount: 325.27,
-      deliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days ahead
-      notes: "Custom bevel for rimless titanium mounting. Patient requested priority rush service.",
+      status: "FITTING",
+      total_amount: o1Total,
+      discount_amount: o1Discount,
+      tax_amount: o1Tax,
+      final_payable: o1Final,
+      paid_amount: o1Paid,
+      balance_amount: o1Balance,
+      delivery_due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       items: {
         create: [
           {
-            productId: frameLindberg?.id,
-            itemName: "Lindberg Air Rimless Titanium (Spirit Basic 2000)",
-            category: "FRAME",
-            unitPrice: 520.0,
+            itemId: itemsMap["FRM-RB-2140"].id,
             quantity: 1,
-            discount: 20.0,
-            totalPrice: 500.0,
-            customDetails: "Grooved rimless mount, 49 eye size, temple length 145mm.",
+            unit_price: itemsMap["FRM-RB-2140"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: itemsMap["FRM-RB-2140"].selling_price,
           },
           {
-            productId: lensEssilor?.id,
-            itemName: "Essilor Crizal Sapphire HR 1.67 (Pair)",
-            category: "LENS",
-            unitPrice: 260.0,
+            itemId: itemsMap["LNS-ESS-CRIZAL-167"].id,
             quantity: 1,
-            discount: 20.0,
-            totalPrice: 240.0,
-            customDetails: "High-index 1.67, polished edges for rimless aesthetic, Crizal AR.",
-          },
-          {
-            productId: careKit?.id,
-            itemName: "Lumina Deluxe Lens Care & Anti-Fog Kit",
-            category: "ACCESSORY",
-            unitPrice: 18.0,
-            quantity: 1,
-            discount: 0,
-            totalPrice: 18.0,
+            unit_price: itemsMap["LNS-ESS-CRIZAL-167"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 300,
+            subtotal: itemsMap["LNS-ESS-CRIZAL-167"].selling_price + 300,
           },
         ],
       },
       payments: {
         create: [
           {
-            paymentNo: "PAY-2026-0001",
-            amount: 500.0,
-            paymentMethod: "CARD",
-            referenceNo: "AUTH-VISA-9921",
-            notes: "Initial deposit paid at time of order placement.",
+            method: "UPI",
+            amount: o1Paid,
+            payment_type: "ADVANCE",
+            transaction_ref: "UPI/261011892044/GPay",
           },
         ],
-      },
-      labJob: {
-        create: {
-          jobNo: "LAB-2026-001",
-          labType: "IN_HOUSE",
-          labName: "Lumina Master Glazing Workshop",
-          technicianName: "Carlos Ramirez",
-          status: "IN_WORKSHOP",
-          cost: 45.0,
-          lensDetails: "OD: -4.25/-1.00x175 | OS: -4.75/-1.25x005 | Index: 1.67 | PD: 31/31.5",
-          frameDetails: "Lindberg Rimless Spirit 2000 (Satin Gunmetal)",
-          instructions: "Precision diamond drill for Lindberg clip pins. Edge polish grade A.",
-          sentDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        },
       },
     },
   });
 
-  // Order 2: Marcus Chen - Blue Light Spectacles (Ready for Pickup)
-  const order2 = await prisma.order.create({
-    data: {
-      orderNumber: "ORD-2026-0002",
-      customerId: customer2.id,
-      prescriptionId: rx2.id,
-      orderType: "PRESCRIPTION_SPECS",
-      status: "READY_FOR_PICKUP",
-      paymentStatus: "PAID",
-      subtotal: 305.0,
-      discount: 20.0,
-      taxRate: 8.875,
-      taxAmount: 25.29,
-      totalAmount: 310.29,
-      paidAmount: 310.29,
-      balanceAmount: 0.0,
-      deliveryDate: new Date(),
-      notes: "Fully fitted and verified against lensometer standards. Ready for customer pickup.",
-      items: {
-        create: [
-          {
-            productId: frameRayban?.id,
-            itemName: "Ray-Ban Original Wayfarer Classic (Polished Black)",
-            category: "FRAME",
-            unitPrice: 185.0,
-            quantity: 1,
-            discount: 10.0,
-            totalPrice: 175.0,
-          },
-          {
-            productId: lensHoya?.id,
-            itemName: "Hoya BlueControl Single Vision 1.56 (Pair)",
-            category: "LENS",
-            unitPrice: 120.0,
-            quantity: 1,
-            discount: 10.0,
-            totalPrice: 110.0,
-          },
-        ],
-      },
-      payments: {
-        create: [
-          {
-            paymentNo: "PAY-2026-0002",
-            amount: 310.29,
-            paymentMethod: "UPI",
-            referenceNo: "UPI-APPLE-98104",
-            notes: "Full payment completed online.",
-          },
-        ],
-      },
-      labJob: {
-        create: {
-          jobNo: "LAB-2026-002",
-          labType: "IN_HOUSE",
-          labName: "Lumina Master Glazing Workshop",
-          technicianName: "Sarah Connor",
-          status: "QA_PASSED",
-          cost: 25.0,
-          lensDetails: "OD: -1.50/-0.50x90 | OS: -1.75/-0.50x95 | Index 1.56 BlueControl",
-          frameDetails: "Ray-Ban RB2140 Wayfarer",
-          instructions: "Standard full-rim edging. Verify optical center aligns with PD 64.",
-          sentDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          dueDate: new Date(),
-          completedDate: new Date(),
-        },
-      },
-    },
-  });
+  // Order 2: Diya Sundaram - READY_FOR_PICKUP (Titan Edge + Hoya BlueControl)
+  const o2Total = itemsMap["FRM-TITAN-EDGE"].selling_price + itemsMap["LNS-HOYA-BLU-156"].selling_price; // 4999 + 2600 = 7599
+  const o2Discount = 599.0;
+  const o2Tax = ((o2Total - o2Discount) * 0.12); // 7000 * 0.12 = 840
+  const o2Final = o2Total - o2Discount + o2Tax; // 7840
+  const o2Paid = 4000.0;
+  const o2Balance = o2Final - o2Paid;
 
-  // Order 3: Sophia Martinez-Roy - Contact Lens Refill + Accessories (Completed)
   await prisma.order.create({
     data: {
-      orderNumber: "ORD-2026-0003",
-      customerId: customer3.id,
-      orderType: "CONTACT_LENS",
-      status: "COMPLETED",
-      paymentStatus: "PAID",
-      subtotal: 106.0,
-      discount: 10.0,
-      taxRate: 8.875,
-      taxAmount: 8.52,
-      totalAmount: 104.52,
-      paidAmount: 104.52,
-      balanceAmount: 0.0,
-      deliveryDate: new Date(),
-      notes: "Immediate counter sale.",
+      bill_no: "VP-2026-0002",
+      customerId: createdCustomers[1].id,
+      prescriptionId: rx2.id,
+      status: "READY_FOR_PICKUP",
+      total_amount: o2Total,
+      discount_amount: o2Discount,
+      tax_amount: o2Tax,
+      final_payable: o2Final,
+      paid_amount: o2Paid,
+      balance_amount: o2Balance,
+      delivery_due_date: new Date(),
       items: {
         create: [
           {
-            productId: contactAcuvue?.id,
-            itemName: "Acuvue Oasys 1-Day with HydraLuxe (30 pk)",
-            category: "CONTACT_LENS",
-            unitPrice: 44.0,
-            quantity: 2,
-            discount: 10.0,
-            totalPrice: 78.0,
+            itemId: itemsMap["FRM-TITAN-EDGE"].id,
+            quantity: 1,
+            unit_price: itemsMap["FRM-TITAN-EDGE"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: itemsMap["FRM-TITAN-EDGE"].selling_price,
           },
           {
-            productId: careKit?.id,
-            itemName: "Lumina Deluxe Lens Care & Anti-Fog Kit",
-            category: "ACCESSORY",
-            unitPrice: 18.0,
+            itemId: itemsMap["LNS-HOYA-BLU-156"].id,
             quantity: 1,
-            discount: 0,
-            totalPrice: 18.0,
+            unit_price: itemsMap["LNS-HOYA-BLU-156"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 200,
+            subtotal: itemsMap["LNS-HOYA-BLU-156"].selling_price + 200,
           },
         ],
       },
       payments: {
         create: [
           {
-            paymentNo: "PAY-2026-0003",
-            amount: 104.52,
-            paymentMethod: "CARD",
-            referenceNo: "AUTH-AMEX-4412",
-            notes: "Paid via Tap-to-Pay Amex.",
+            method: "CARD",
+            amount: o2Paid,
+            payment_type: "ADVANCE",
+            transaction_ref: "HDFC-POS-89102",
           },
         ],
       },
     },
   });
 
-  // 7. Appointments
-  const today = new Date();
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  // Order 3: Rohan Mukherjee - LENS_PROCESSING (Titan PureFlex + Zeiss ClearView Progressive)
+  const o3Total = itemsMap["FRM-TITAN-FLEX"].selling_price + itemsMap["LNS-ZEISS-CLEARVIEW"].selling_price; // 3899 + 5900 = 9799
+  const o3Discount = 799.0;
+  const o3Tax = (o3Total - o3Discount) * 0.12; // 9000 * 0.12 = 1080
+  const o3Final = o3Total - o3Discount + o3Tax; // 10080
+  const o3Paid = 5000.0;
+  const o3Balance = o3Final - o3Paid;
 
-  await prisma.appointment.createMany({
-    data: [
-      {
-        customerId: customer1.id,
-        optometristId: opt1.id,
-        appointmentDate: today,
-        appointmentTime: "10:30 AM",
-        type: "EYE_EXAM",
-        status: "CONFIRMED",
-        notes: "Annual retinal scan and progressive lens checkup.",
+  await prisma.order.create({
+    data: {
+      bill_no: "VP-2026-0003",
+      customerId: createdCustomers[2].id,
+      prescriptionId: rx3.id,
+      status: "LENS_PROCESSING",
+      total_amount: o3Total,
+      discount_amount: o3Discount,
+      tax_amount: o3Tax,
+      final_payable: o3Final,
+      paid_amount: o3Paid,
+      balance_amount: o3Balance,
+      delivery_due_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+      items: {
+        create: [
+          {
+            itemId: itemsMap["FRM-TITAN-FLEX"].id,
+            quantity: 1,
+            unit_price: itemsMap["FRM-TITAN-FLEX"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: itemsMap["FRM-TITAN-FLEX"].selling_price,
+          },
+          {
+            itemId: itemsMap["LNS-ZEISS-CLEARVIEW"].id,
+            quantity: 1,
+            unit_price: itemsMap["LNS-ZEISS-CLEARVIEW"].selling_price,
+            coating_charges: 500,
+            fitting_charges: 300,
+            subtotal: itemsMap["LNS-ZEISS-CLEARVIEW"].selling_price + 800,
+          },
+        ],
       },
-      {
-        customerId: customer2.id,
-        optometristId: opt2.id,
-        appointmentDate: today,
-        appointmentTime: "02:00 PM",
-        type: "FRAME_SELECTION",
-        status: "SCHEDULED",
-        notes: "Pickup ready glasses and personalized nosepad adjustment.",
+      payments: {
+        create: [
+          {
+            method: "CARD",
+            amount: o3Paid,
+            payment_type: "ADVANCE",
+            transaction_ref: "ICICI-VISA-3391",
+          },
+        ],
       },
-      {
-        customerId: customer3.id,
-        optometristId: opt1.id,
-        appointmentDate: tomorrow,
-        appointmentTime: "11:15 AM",
-        type: "CONTACT_LENS_FITTING",
-        status: "SCHEDULED",
-        notes: "Trialing new toric daily contact lenses.",
-      },
-      {
-        customerId: customer5.id,
-        optometristId: opt2.id,
-        appointmentDate: tomorrow,
-        appointmentTime: "03:45 PM",
-        type: "EYE_EXAM",
-        status: "SCHEDULED",
-        notes: "First time consultation for headache complaints.",
-      },
-    ],
+    },
   });
 
-  console.log("✅ Optical Store database successfully seeded with realistic clinical & retail records!");
+  // Order 4: Ananya Deshmukh - DELIVERED (Vogue Cat-Eye + Standard AR)
+  const o4Total = itemsMap["FRM-VOG-5333"].selling_price + itemsMap["LNS-VP-STD-AR-150"].selling_price; // 5990 + 1200 = 7190
+  const o4Discount = 490.0;
+  const o4Tax = (o4Total - o4Discount) * 0.12; // 6700 * 0.12 = 804
+  const o4Final = o4Total - o4Discount + o4Tax; // 7504
+
+  await prisma.order.create({
+    data: {
+      bill_no: "VP-2026-0004",
+      customerId: createdCustomers[3].id,
+      prescriptionId: rx4.id,
+      status: "DELIVERED",
+      total_amount: o4Total,
+      discount_amount: o4Discount,
+      tax_amount: o4Tax,
+      final_payable: o4Final,
+      paid_amount: o4Final,
+      balance_amount: 0,
+      delivery_due_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      items: {
+        create: [
+          {
+            itemId: itemsMap["FRM-VOG-5333"].id,
+            quantity: 1,
+            unit_price: itemsMap["FRM-VOG-5333"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: itemsMap["FRM-VOG-5333"].selling_price,
+          },
+          {
+            itemId: itemsMap["LNS-VP-STD-AR-150"].id,
+            quantity: 1,
+            unit_price: itemsMap["LNS-VP-STD-AR-150"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 200,
+            subtotal: itemsMap["LNS-VP-STD-AR-150"].selling_price + 200,
+          },
+        ],
+      },
+      payments: {
+        create: [
+          {
+            method: "UPI",
+            amount: 4000.0,
+            payment_type: "ADVANCE",
+            transaction_ref: "UPI/261005119022/PhonePe",
+          },
+          {
+            method: "UPI",
+            amount: o4Final - 4000.0,
+            payment_type: "BALANCE",
+            transaction_ref: "UPI/261008129033/PhonePe",
+          },
+        ],
+      },
+    },
+  });
+
+  // Order 5: Vikramaditya Singh - PLACED (Lindberg Titanium + Transitions Gen-S)
+  const o5Total = itemsMap["FRM-LINDBERG-AIR"].selling_price + itemsMap["LNS-TRANS-GENS-160"].selling_price; // 28500 + 6800 = 35300
+  const o5Discount = 2300.0;
+  const o5Tax = (o5Total - o5Discount) * 0.12; // 33000 * 0.12 = 3960
+  const o5Final = o5Total - o5Discount + o5Tax; // 36960
+  const o5Paid = 20000.0;
+  const o5Balance = o5Final - o5Paid;
+
+  await prisma.order.create({
+    data: {
+      bill_no: "VP-2026-0005",
+      customerId: createdCustomers[4].id,
+      prescriptionId: rx5.id,
+      status: "PLACED",
+      total_amount: o5Total,
+      discount_amount: o5Discount,
+      tax_amount: o5Tax,
+      final_payable: o5Final,
+      paid_amount: o5Paid,
+      balance_amount: o5Balance,
+      delivery_due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      items: {
+        create: [
+          {
+            itemId: itemsMap["FRM-LINDBERG-AIR"].id,
+            quantity: 1,
+            unit_price: itemsMap["FRM-LINDBERG-AIR"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: itemsMap["FRM-LINDBERG-AIR"].selling_price,
+          },
+          {
+            itemId: itemsMap["LNS-TRANS-GENS-160"].id,
+            quantity: 1,
+            unit_price: itemsMap["LNS-TRANS-GENS-160"].selling_price,
+            coating_charges: 600,
+            fitting_charges: 500,
+            subtotal: itemsMap["LNS-TRANS-GENS-160"].selling_price + 1100,
+          },
+        ],
+      },
+      payments: {
+        create: [
+          {
+            method: "CARD",
+            amount: o5Paid,
+            payment_type: "ADVANCE",
+            transaction_ref: "AMEX-PLAT-9901",
+          },
+        ],
+      },
+    },
+  });
+
+  // Order 6: Meera Krishnan - DELIVERED (Contact Lenses x2)
+  const o6Total = itemsMap["CL-BAUSCH-BIOTRUE"].selling_price * 2; // 2100 * 2 = 4200
+  const o6Discount = 200.0;
+  const o6Tax = (o6Total - o6Discount) * 0.12; // 4000 * 0.12 = 480
+  const o6Final = o6Total - o6Discount + o6Tax; // 4480
+
+  await prisma.order.create({
+    data: {
+      bill_no: "VP-2026-0006",
+      customerId: createdCustomers[5].id,
+      prescriptionId: null,
+      status: "DELIVERED",
+      total_amount: o6Total,
+      discount_amount: o6Discount,
+      tax_amount: o6Tax,
+      final_payable: o6Final,
+      paid_amount: o6Final,
+      balance_amount: 0,
+      delivery_due_date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      items: {
+        create: [
+          {
+            itemId: itemsMap["CL-BAUSCH-BIOTRUE"].id,
+            quantity: 2,
+            unit_price: itemsMap["CL-BAUSCH-BIOTRUE"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: o6Total,
+          },
+        ],
+      },
+      payments: {
+        create: [
+          {
+            method: "CASH",
+            amount: o6Final,
+            payment_type: "FULL",
+            transaction_ref: "CASH-COUNTER",
+          },
+        ],
+      },
+    },
+  });
+
+  // Order 7: Kabir Malhotra - FITTING (Fastrack Sport Frame + Standard AR Lens)
+  const o7Total = itemsMap["FRM-FST-CHROME"].selling_price + itemsMap["LNS-VP-STD-AR-150"].selling_price; // 2199 + 1200 = 3399
+  const o7Discount = 199.0;
+  const o7Tax = (o7Total - o7Discount) * 0.12; // 3200 * 0.12 = 384
+  const o7Final = o7Total - o7Discount + o7Tax; // 3584
+  const o7Paid = 2000.0;
+  const o7Balance = o7Final - o7Paid;
+
+  await prisma.order.create({
+    data: {
+      bill_no: "VP-2026-0007",
+      customerId: createdCustomers[6].id,
+      prescriptionId: null,
+      status: "FITTING",
+      total_amount: o7Total,
+      discount_amount: o7Discount,
+      tax_amount: o7Tax,
+      final_payable: o7Final,
+      paid_amount: o7Paid,
+      balance_amount: o7Balance,
+      delivery_due_date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+      items: {
+        create: [
+          {
+            itemId: itemsMap["FRM-FST-CHROME"].id,
+            quantity: 1,
+            unit_price: itemsMap["FRM-FST-CHROME"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: itemsMap["FRM-FST-CHROME"].selling_price,
+          },
+          {
+            itemId: itemsMap["LNS-VP-STD-AR-150"].id,
+            quantity: 1,
+            unit_price: itemsMap["LNS-VP-STD-AR-150"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 200,
+            subtotal: itemsMap["LNS-VP-STD-AR-150"].selling_price + 200,
+          },
+        ],
+      },
+      payments: {
+        create: [
+          {
+            method: "CASH",
+            amount: o7Paid,
+            payment_type: "ADVANCE",
+            transaction_ref: "CASH-REG-01",
+          },
+        ],
+      },
+    },
+  });
+
+  // Order 8: Neha Reddy - PLACED (Ray-Ban Aviator + Essilor Crizal)
+  const o8Total = itemsMap["FRM-RB-3025"].selling_price + itemsMap["LNS-ESS-CRIZAL-167"].selling_price; // 9500 + 4800 = 14300
+  const o8Discount = 800.0;
+  const o8Tax = (o8Total - o8Discount) * 0.12; // 13500 * 0.12 = 1620
+  const o8Final = o8Total - o8Discount + o8Tax; // 15120
+  const o8Paid = 7500.0;
+  const o8Balance = o8Final - o8Paid;
+
+  await prisma.order.create({
+    data: {
+      bill_no: "VP-2026-0008",
+      customerId: createdCustomers[7].id,
+      prescriptionId: rx8.id,
+      status: "PLACED",
+      total_amount: o8Total,
+      discount_amount: o8Discount,
+      tax_amount: o8Tax,
+      final_payable: o8Final,
+      paid_amount: o8Paid,
+      balance_amount: o8Balance,
+      delivery_due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      items: {
+        create: [
+          {
+            itemId: itemsMap["FRM-RB-3025"].id,
+            quantity: 1,
+            unit_price: itemsMap["FRM-RB-3025"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 0,
+            subtotal: itemsMap["FRM-RB-3025"].selling_price,
+          },
+          {
+            itemId: itemsMap["LNS-ESS-CRIZAL-167"].id,
+            quantity: 1,
+            unit_price: itemsMap["LNS-ESS-CRIZAL-167"].selling_price,
+            coating_charges: 0,
+            fitting_charges: 250,
+            subtotal: itemsMap["LNS-ESS-CRIZAL-167"].selling_price + 250,
+          },
+        ],
+      },
+      payments: {
+        create: [
+          {
+            method: "UPI",
+            amount: o8Paid,
+            payment_type: "ADVANCE",
+            transaction_ref: "UPI/261012998811/Paytm",
+          },
+        ],
+      },
+    },
+  });
+
+  console.log("🛒 Created 8 Active Orders across tracking statuses (Placed, Lens Processing, Fitting, Ready for Pickup, Delivered)");
+  console.log("✅ VisionPulse Optical ERP & POS Database seeding completed successfully!");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error seeding database:", e);
+    console.error("❌ Seeding Error:", e);
     process.exit(1);
   })
   .finally(async () => {

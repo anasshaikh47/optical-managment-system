@@ -14,6 +14,7 @@ import {
   Clock,
   MapPin,
   X,
+  Award,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
@@ -67,7 +68,6 @@ export default function CustomersPage() {
     const q = searchQuery.toLowerCase();
     return (
       c.name.toLowerCase().includes(q) ||
-      c.customerCode.toLowerCase().includes(q) ||
       (c.phone && c.phone.includes(q)) ||
       (c.email && c.email.toLowerCase().includes(q))
     );
@@ -76,12 +76,12 @@ export default function CustomersPage() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       <Header
-        title="Patients & Customer Accounts"
-        subtitle="Clinical History, Prescription Records & Eyewear Purchases"
+        title="Patients Directory & Clinical CRM"
+        subtitle="Customer Loyalty, Prescription History & Eyewear Purchases"
       >
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span>New Patient</span>
@@ -96,10 +96,10 @@ export default function CustomersPage() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by name, phone, code..."
+                placeholder="Search by name, phone (+91), or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
             </div>
             <div className="text-xs text-slate-500 font-medium">
@@ -126,12 +126,12 @@ export default function CustomersPage() {
                     onClick={() => handleSelectCustomer(c.id)}
                     className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 text-xs ${
                       isSelected
-                        ? "bg-blue-50/70 border-blue-400 shadow-xs"
+                        ? "bg-cyan-50/70 border-cyan-400 shadow-xs"
                         : "bg-white border-slate-200 hover:border-slate-300"
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold text-sm shrink-0">
                         {c.name[0]}
                       </div>
                       <div className="min-w-0">
@@ -139,12 +139,12 @@ export default function CustomersPage() {
                           <h4 className="font-bold text-slate-900 text-sm truncate">
                             {c.name}
                           </h4>
-                          <span className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded font-semibold">
-                            {c.customerCode}
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                            <Award className="w-3 h-3" /> {c.loyalty_points || 0} pts
                           </span>
                         </div>
                         <p className="text-slate-500 text-xs flex items-center gap-3 mt-1">
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 font-mono text-slate-700">
                             <Phone className="w-3 h-3 text-slate-400" /> {c.phone}
                           </span>
                           {c.email && (
@@ -159,7 +159,7 @@ export default function CustomersPage() {
                     <div className="flex items-center gap-4 text-slate-500 shrink-0">
                       <div className="text-right hidden sm:block">
                         <p className="font-semibold text-slate-800">
-                          {c._count?.prescriptions || 0} Rx on file
+                          {c._count?.prescriptions || 0} Rx records
                         </p>
                         <p className="text-[10px] text-slate-400">
                           {c._count?.orders || 0} optical purchases
@@ -200,9 +200,8 @@ export default function CustomersPage() {
                   <h3 className="text-base font-bold text-slate-900">
                     {customerDetail.name}
                   </h3>
-                  <p className="text-slate-500 text-xs mt-0.5">
-                    Code: {customerDetail.customerCode} • {customerDetail.gender || "Patient"} •{" "}
-                    {customerDetail.occupation || "General"}
+                  <p className="text-slate-600 font-mono text-xs mt-0.5">
+                    Phone: {customerDetail.phone}
                   </p>
                   {customerDetail.address && (
                     <p className="text-slate-500 text-xs flex items-center gap-1 mt-1">
@@ -210,11 +209,10 @@ export default function CustomersPage() {
                       {customerDetail.address}
                     </p>
                   )}
-                  {customerDetail.notes && (
-                    <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                      <strong>Clinical Remarks:</strong> {customerDetail.notes}
-                    </div>
-                  )}
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold text-xs border border-emerald-200">
+                    <Award className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Loyalty Balance: {customerDetail.loyalty_points || 0} Points</span>
+                  </div>
                 </div>
 
                 {/* Prescriptions History */}
@@ -234,26 +232,26 @@ export default function CustomersPage() {
                           className="p-3 rounded-xl border border-cyan-200 bg-cyan-50/30 space-y-1.5"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900 font-mono">
-                              {rx.prescriptionNo}
+                            <span className="font-bold text-slate-900">
+                              Optom: {rx.optometristName || "Dr."}
                             </span>
                             <span className="text-[10px] text-slate-500">
-                              {formatDate(rx.examDate)}
+                              {formatDate(rx.createdAt)}
                             </span>
                           </div>
 
                           <div className="font-mono text-[10px] text-slate-800 bg-white p-2 rounded border border-cyan-100 space-y-0.5">
                             <div>
-                              OD: {formatDiopter(rx.sphOd)} / {formatDiopter(rx.cylOd)} x {rx.axisOd || "—"}° • ADD: {rx.addOd ? `+${rx.addOd.toFixed(2)}` : "—"}
+                              OD: {formatDiopter(rx.od_sph)} / {formatDiopter(rx.od_cyl)} x {rx.od_axis || "—"}° • ADD: {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
                             </div>
                             <div>
-                              OS: {formatDiopter(rx.sphOs)} / {formatDiopter(rx.cylOs)} x {rx.axisOs || "—"}° • ADD: {rx.addOs ? `+${rx.addOs.toFixed(2)}` : "—"}
+                              OS: {formatDiopter(rx.os_sph)} / {formatDiopter(rx.os_cyl)} x {rx.os_axis || "—"}° • ADD: {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
                             </div>
                           </div>
 
                           <div className="flex justify-between text-[10px] text-slate-500 pt-0.5">
-                            <span>Lens: <strong>{rx.lensType || "Single Vision"}</strong></span>
-                            <span>PD: <strong>{rx.pdTotal || "—"} mm</strong></span>
+                            <span>Lens: <strong className="uppercase">{rx.lens_type || "Single Vision"}</strong></span>
+                            <span>PD: <strong>{rx.pd_distance || "—"} mm</strong></span>
                           </div>
                         </div>
                       ))
@@ -264,7 +262,7 @@ export default function CustomersPage() {
                 {/* Purchase Orders */}
                 <div>
                   <h4 className="font-bold text-slate-800 text-xs uppercase mb-2 flex items-center gap-1.5">
-                    <ShoppingCart className="w-3.5 h-3.5 text-blue-600" /> Eyewear Purchases & Invoices (
+                    <ShoppingCart className="w-3.5 h-3.5 text-blue-600" /> Purchases & Invoices (
                     {customerDetail.orders?.length || 0})
                   </h4>
 
@@ -279,24 +277,24 @@ export default function CustomersPage() {
                         >
                           <div>
                             <p className="font-bold text-slate-900 font-mono">
-                              {ord.orderNumber}
+                              {ord.bill_no}
                             </p>
                             <p className="text-[10px] text-slate-500">
-                              {formatDate(ord.createdAt)} • {ord.status}
+                              {formatDate(ord.createdAt)} • {ord.status.replace("_", " ")}
                             </p>
                           </div>
                           <div className="text-right">
                             <span className="font-bold text-slate-900">
-                              {formatCurrency(ord.totalAmount)}
+                              {formatCurrency(ord.final_payable)}
                             </span>
                             <p
                               className={`text-[10px] font-semibold ${
-                                ord.paymentStatus === "PAID"
+                                ord.balance_amount <= 0
                                   ? "text-emerald-600"
                                   : "text-amber-600"
                               }`}
                             >
-                              {ord.paymentStatus}
+                              {ord.balance_amount <= 0 ? "Paid in Full" : `Due: ${formatCurrency(ord.balance_amount)}`}
                             </p>
                           </div>
                         </div>

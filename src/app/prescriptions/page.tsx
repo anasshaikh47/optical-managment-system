@@ -31,11 +31,8 @@ function PrescriptionsContent() {
     if (shouldOpenCreate) {
       setIsModalOpen(true);
     }
-  }, [shouldOpenCreate]);
-
-  useEffect(() => {
     fetchPrescriptions();
-  }, []);
+  }, [shouldOpenCreate]);
 
   const fetchPrescriptions = async () => {
     setLoading(true);
@@ -55,10 +52,10 @@ function PrescriptionsContent() {
   const filtered = prescriptions.filter((rx) => {
     const q = searchQuery.toLowerCase();
     return (
-      rx.prescriptionNo.toLowerCase().includes(q) ||
       (rx.customer?.name && rx.customer.name.toLowerCase().includes(q)) ||
       (rx.customer?.phone && rx.customer.phone.includes(q)) ||
-      (rx.optometrist?.name && rx.optometrist.name.toLowerCase().includes(q))
+      (rx.optometristName && rx.optometristName.toLowerCase().includes(q)) ||
+      (rx.lens_type && rx.lens_type.toLowerCase().includes(q))
     );
   });
 
@@ -84,7 +81,7 @@ function PrescriptionsContent() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by Rx number, patient name, phone..."
+              placeholder="Search by patient name, phone, or optometrist..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -92,7 +89,7 @@ function PrescriptionsContent() {
           </div>
 
           <div className="text-xs text-slate-500 font-medium">
-            Showing <strong className="text-slate-800">{filtered.length}</strong> optical records
+            Showing <strong className="text-slate-800">{filtered.length}</strong> clinical prescriptions
           </div>
         </div>
 
@@ -121,19 +118,23 @@ function PrescriptionsContent() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-900 text-sm font-mono">
-                          {rx.prescriptionNo}
+                        <h4 className="font-bold text-slate-900 text-sm">
+                          {rx.customer?.name}
                         </h4>
-                        {rx.lensType && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">
-                            {rx.lensType}
+                        {rx.lens_type && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase">
+                            {rx.lens_type.replace("_", " ")}
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-0.5">
                         <User className="w-3.5 h-3.5 text-slate-400" />
-                        <strong className="text-slate-900">{rx.customer?.name}</strong>
-                        {rx.customer?.phone && `(${rx.customer.phone})`}
+                        <span>Phone: <strong className="text-slate-800">{rx.customer?.phone}</strong></span>
+                        {rx.customer?.loyalty_points > 0 && (
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">
+                            {rx.customer.loyalty_points} pts
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -142,13 +143,13 @@ function PrescriptionsContent() {
                     <div className="text-right">
                       <p className="text-slate-400 text-[10px]">Optometrist</p>
                       <p className="font-semibold text-slate-800">
-                        {rx.optometrist?.name || "Dr. Staff OD"}
+                        {rx.optometristName || "Dr. Priya Nair"}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-slate-400 text-[10px]">Exam Date</p>
                       <p className="font-semibold text-slate-800">
-                        {formatDate(rx.examDate)}
+                        {formatDate(rx.createdAt)}
                       </p>
                     </div>
 
@@ -172,8 +173,8 @@ function PrescriptionsContent() {
                         <th className="p-2 border border-slate-200">Cylinder (CYL)</th>
                         <th className="p-2 border border-slate-200">Axis (AXIS)</th>
                         <th className="p-2 border border-slate-200">Addition (ADD)</th>
-                        <th className="p-2 border border-slate-200">Visual Acuity (VA)</th>
-                        <th className="p-2 border border-slate-200">Mono PD (mm)</th>
+                        <th className="p-2 border border-slate-200">PD Dist (mm)</th>
+                        <th className="p-2 border border-slate-200">PD Near (mm)</th>
                       </tr>
                     </thead>
                     <tbody className="font-mono text-slate-800">
@@ -182,61 +183,49 @@ function PrescriptionsContent() {
                           OD (Right Eye)
                         </td>
                         <td className="p-2 border border-slate-200 font-bold">
-                          {formatDiopter(rx.sphOd)}
+                          {formatDiopter(rx.od_sph)}
                         </td>
                         <td className="p-2 border border-slate-200">
-                          {formatDiopter(rx.cylOd)}
+                          {formatDiopter(rx.od_cyl)}
                         </td>
                         <td className="p-2 border border-slate-200">
-                          {rx.axisOd !== null ? `${rx.axisOd}°` : "—"}
+                          {rx.od_axis !== null ? `${rx.od_axis}°` : "—"}
                         </td>
                         <td className="p-2 border border-slate-200 text-cyan-700 font-bold">
-                          {rx.addOd ? `+${rx.addOd.toFixed(2)}` : "—"}
+                          {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
                         </td>
-                        <td className="p-2 border border-slate-200">{rx.vaOd || "20/20"}</td>
-                        <td className="p-2 border border-slate-200">{rx.pdOd || "—"}</td>
+                        <td className="p-2 border border-slate-200">{rx.pd_distance || "—"}</td>
+                        <td className="p-2 border border-slate-200">{rx.pd_near || "—"}</td>
                       </tr>
                       <tr>
                         <td className="p-2 border border-slate-200 font-sans font-bold text-left text-cyan-950 bg-cyan-50/40">
                           OS (Left Eye)
                         </td>
                         <td className="p-2 border border-slate-200 font-bold">
-                          {formatDiopter(rx.sphOs)}
+                          {formatDiopter(rx.os_sph)}
                         </td>
                         <td className="p-2 border border-slate-200">
-                          {formatDiopter(rx.cylOs)}
+                          {formatDiopter(rx.os_cyl)}
                         </td>
                         <td className="p-2 border border-slate-200">
-                          {rx.axisOs !== null ? `${rx.axisOs}°` : "—"}
+                          {rx.os_axis !== null ? `${rx.os_axis}°` : "—"}
                         </td>
                         <td className="p-2 border border-slate-200 text-cyan-700 font-bold">
-                          {rx.addOs ? `+${rx.addOs.toFixed(2)}` : "—"}
+                          {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
                         </td>
-                        <td className="p-2 border border-slate-200">{rx.vaOs || "20/20"}</td>
-                        <td className="p-2 border border-slate-200">{rx.pdOs || "—"}</td>
+                        <td className="p-2 border border-slate-200">{rx.pd_distance || "—"}</td>
+                        <td className="p-2 border border-slate-200">{rx.pd_near || "—"}</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
 
                 {/* Additional Clinical Notes & Binocular PD */}
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1 text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    {rx.pdTotal && (
-                      <span className="font-semibold text-slate-800">
-                        Total Binocular PD: <strong className="text-cyan-700">{rx.pdTotal} mm</strong>
-                      </span>
-                    )}
-                    {rx.expiryDate && (
-                      <span>Expires: {formatDate(rx.expiryDate)}</span>
-                    )}
+                {rx.notes && (
+                  <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 italic">
+                    <strong>Optometrist Advice:</strong> {rx.notes}
                   </div>
-                  {rx.notes && (
-                    <p className="text-[11px] text-slate-600 italic">
-                      Note: {rx.notes}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
             ))
           )}

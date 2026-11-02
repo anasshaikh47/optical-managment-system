@@ -21,11 +21,9 @@ export function NewCustomerModal({
     name: "",
     phone: "",
     email: "",
-    gender: "Unspecified",
-    dob: "",
     address: "",
-    occupation: "",
-    notes: "",
+    dob: "",
+    loyalty_points: 50, // Welcome signup bonus loyalty points
   });
 
   if (!isOpen) return null;
@@ -33,7 +31,7 @@ export function NewCustomerModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) {
-      setError("Customer name and phone number are required.");
+      setError("Customer name and valid phone number are required.");
       return;
     }
 
@@ -52,7 +50,7 @@ export function NewCustomerModal({
         onSuccess(data.data);
         onClose();
       } else {
-        setError(data.error || "Failed to create patient");
+        setError(data.error || "Failed to create patient account");
       }
     } catch (err: any) {
       setError(err.message || "An error occurred");
@@ -66,15 +64,15 @@ export function NewCustomerModal({
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center">
               <UserPlus className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                Register New Patient / Customer
+                Register Patient / Customer
               </h3>
               <p className="text-[11px] text-slate-500">
-                Create profile for clinical records and optical billing
+                Create VisionPulse account with loyalty membership
               </p>
             </div>
           </div>
@@ -101,23 +99,23 @@ export function NewCustomerModal({
               <input
                 type="text"
                 required
-                placeholder="e.g. Eleanor Vance"
+                placeholder="e.g. Aarav Patel"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Phone Number *
+                Phone Number (WhatsApp) *
               </label>
               <input
                 type="tel"
                 required
-                placeholder="+1 (555) 000-0000"
+                placeholder="+91 98201 00000"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
               />
             </div>
           </div>
@@ -129,30 +127,12 @@ export function NewCustomerModal({
               </label>
               <input
                 type="email"
-                placeholder="patient@example.com"
+                placeholder="customer@example.in"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                Gender
-              </label>
-              <select
-                value={formData.gender}
-                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
-              >
-                <option value="Unspecified">Unspecified</option>
-                <option value="Female">Female</option>
-                <option value="Male">Male</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
                 Date of Birth
@@ -164,43 +144,18 @@ export function NewCustomerModal({
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
               />
             </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                Occupation
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Software Dev / Pilot"
-                value={formData.occupation}
-                onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
-              />
-            </div>
           </div>
 
           <div>
             <label className="block text-slate-700 font-semibold mb-1">
-              Address
+              Residential / Delivery Address
             </label>
             <input
               type="text"
-              placeholder="Street, City, State, ZIP"
+              placeholder="Flat/House, Street, Area, City, Pincode"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">
-              Clinical / Patient Notes
-            </label>
-            <textarea
-              rows={2}
-              placeholder="e.g., Sensitive to heavy frames, prefers titanium or acetate."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
 
@@ -215,10 +170,10 @@ export function NewCustomerModal({
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-semibold bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-semibold bg-cyan-600 hover:bg-cyan-700 shadow-sm transition-colors disabled:opacity-60"
             >
               <Check className="w-4 h-4" />
-              <span>{submitting ? "Saving..." : "Create Patient"}</span>
+              <span>{submitting ? "Registering..." : "Register Patient"}</span>
             </button>
           </div>
         </form>

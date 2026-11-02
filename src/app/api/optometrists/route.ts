@@ -3,11 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const optometrists = await prisma.optometrist.findMany({
-      where: { active: true },
+    const users = await prisma.user.findMany({
       orderBy: { name: "asc" },
     });
-    return NextResponse.json({ success: true, data: optometrists });
+    return NextResponse.json({ success: true, data: users });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },
@@ -19,17 +18,17 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, licenseNumber, phone, email } = body;
-    if (!name) {
+    const { name, email, role = "STAFF", pin_hash = "1234" } = body;
+    if (!name || !email) {
       return NextResponse.json(
-        { success: false, error: "Name is required" },
+        { success: false, error: "Name and email are required" },
         { status: 400 }
       );
     }
-    const doctor = await prisma.optometrist.create({
-      data: { name, licenseNumber, phone, email },
+    const user = await prisma.user.create({
+      data: { name, email, role, pin_hash },
     });
-    return NextResponse.json({ success: true, data: doctor }, { status: 201 });
+    return NextResponse.json({ success: true, data: user }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },

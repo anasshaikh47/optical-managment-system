@@ -5,7 +5,6 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const paymentStatus = searchParams.get("paymentStatus");
     const query = searchParams.get("query");
     const customerId = searchParams.get("customerId");
 
@@ -15,17 +14,13 @@ export async function GET(request: Request) {
       where.status = status;
     }
 
-    if (paymentStatus && paymentStatus !== "ALL") {
-      where.paymentStatus = paymentStatus;
-    }
-
     if (customerId) {
       where.customerId = customerId;
     }
 
     if (query) {
       where.OR = [
-        { orderNumber: { contains: query } },
+        { bill_no: { contains: query } },
         { customer: { name: { contains: query } } },
         { customer: { phone: { contains: query } } },
       ];
@@ -36,9 +31,10 @@ export async function GET(request: Request) {
       include: {
         customer: true,
         prescription: true,
-        items: true,
+        items: {
+          include: { item: true },
+        },
         payments: true,
-        labJob: true,
       },
       orderBy: { createdAt: "desc" },
     });

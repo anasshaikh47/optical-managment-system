@@ -218,6 +218,93 @@ export async function GET() {
           { type: "Single Vision Clear", count: 6, value: 14400 },
         ];
 
+    // Single Circular Graph: Sales Breakdown (Frames vs Lenses vs Services/Repairing)
+    let framesAmount = 0;
+    let framesCount = 0;
+    let lensesAmount = 0;
+    let lensesCount = 0;
+    let servicesAmount = 0;
+    let servicesCount = 0;
+
+    orders.forEach((order) => {
+      order.items.forEach((oi) => {
+        if (oi.item?.type === "FRAME") {
+          framesAmount += oi.subtotal;
+          framesCount += oi.quantity;
+        } else if (oi.item?.type === "LENS" || oi.item?.type === "CONTACT_LENS") {
+          lensesAmount += oi.subtotal;
+          lensesCount += oi.quantity;
+        } else {
+          framesAmount += oi.subtotal;
+          framesCount += oi.quantity;
+        }
+
+        if ((oi.coating_charges || 0) > 0 || (oi.fitting_charges || 0) > 0) {
+          servicesAmount += (oi.coating_charges || 0) + (oi.fitting_charges || 0);
+          servicesCount += 1;
+        }
+      });
+    });
+
+    const totalCalculatedBreakdown = framesAmount + lensesAmount + servicesAmount;
+    let salesBreakdown: any[];
+
+    if (totalCalculatedBreakdown > 0) {
+      salesBreakdown = [
+        {
+          name: "Frames",
+          label: "Spectacle Frames",
+          value: framesAmount,
+          count: framesCount,
+          percentage: Math.round((framesAmount / totalCalculatedBreakdown) * 100),
+          color: "#2563EB",
+        },
+        {
+          name: "Lenses",
+          label: "Prescription Lenses",
+          value: lensesAmount,
+          count: lensesCount,
+          percentage: Math.round((lensesAmount / totalCalculatedBreakdown) * 100),
+          color: "#10B981",
+        },
+        {
+          name: "Services/Repairing",
+          label: "Fitting, Lab & Repairs",
+          value: servicesAmount,
+          count: servicesCount,
+          percentage: Math.max(1, Math.round((servicesAmount / totalCalculatedBreakdown) * 100)),
+          color: "#F59E0B",
+        },
+      ];
+    } else {
+      salesBreakdown = [
+        {
+          name: "Frames",
+          label: "Spectacle Frames",
+          value: 18500,
+          count: 5,
+          percentage: 55,
+          color: "#2563EB",
+        },
+        {
+          name: "Lenses",
+          label: "Prescription Lenses",
+          value: 11800,
+          count: 4,
+          percentage: 35,
+          color: "#10B981",
+        },
+        {
+          name: "Services/Repairing",
+          label: "Fitting, Lab & Repairs",
+          value: 3400,
+          count: 3,
+          percentage: 10,
+          color: "#F59E0B",
+        },
+      ];
+    }
+
     // 6. Urgent Orders & Ready Glasses Table:
     // Filter orders that need immediate pickup or workshop action
     const urgentOrders = orders
@@ -245,6 +332,7 @@ export async function GET() {
           totalCustomers: customers.length,
         },
         analytics: {
+          salesBreakdown,
           dailyTrend,
           weeklyTrend,
           monthlyTrend,

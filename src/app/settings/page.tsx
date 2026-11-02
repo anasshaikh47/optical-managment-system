@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Settings, Save, Check, Store, Receipt } from "lucide-react";
-import { Header } from "@/components/Header";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<any>({
@@ -65,10 +64,6 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title="Store & Clinic Settings"
-        subtitle="Branding, GST Rates, Optical Warranty & Receipt Configuration"
-      />
 
       <div className="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">

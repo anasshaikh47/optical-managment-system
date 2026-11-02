@@ -21,7 +21,6 @@ import {
   Percent,
   X,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { AddProductModal } from "@/components/AddProductModal";
 import { BarcodeStickerModal } from "@/components/BarcodeStickerModal";
 import { formatCurrency } from "@/lib/utils";
@@ -200,10 +199,16 @@ export default function InventoryPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title="VisionPulse Inventory & Frame Barcode Management"
-        subtitle="Catalog, Stock Adjustments, Profit Margins, Barcode Label Generator & Item Deletion"
-      >
+      {/* Inventory Action Toolbar */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-2xs">
+        <div>
+          <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+            Inventory & Stock Catalog
+          </h2>
+          <p className="text-[11px] text-slate-500 font-medium">
+            Manage frames, lenses, stock levels, barcodes & pricing margins
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {/* Bulk Delete Action Button (Visible when 1 or more items selected) */}
           {selectedItemIds.length > 0 && (
@@ -230,13 +235,13 @@ export default function InventoryPage() {
           {/* Add Product Button */}
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Add Inventory Item</span>
           </button>
         </div>
-      </Header>
+      </div>
 
       {/* Stock Adjustment / Deletion Success Toast */}
       {adjustmentToast && (

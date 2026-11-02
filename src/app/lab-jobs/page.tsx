@@ -14,7 +14,6 @@ import {
   FileText,
   Glasses,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
 
@@ -101,10 +100,6 @@ export default function LabJobsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title="Glazing Workshop & Spectacle Lab Tracker"
-        subtitle="Lens Edging, Bevel Mounting, Power Verification & QC"
-      />
 
       <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
         {/* Controls & Filter Bar */}

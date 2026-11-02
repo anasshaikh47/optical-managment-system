@@ -28,7 +28,6 @@ import {
   Send,
   ChevronDown,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
 import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
@@ -270,10 +269,6 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title="Glasses Order Tracker & Lab Workflow Pipeline"
-        subtitle="Visual Workshop Kanban, Optical Refraction Tracking, Balance Settlement & WhatsApp Alerts"
-      />
 
       {/* Success Notification Banner */}
       {paymentSuccessNotice && (

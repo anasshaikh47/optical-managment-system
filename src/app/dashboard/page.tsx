@@ -3,19 +3,20 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ShoppingCart,
-  Glasses,
   IndianRupee,
   Clock,
+  Glasses,
+  AlertTriangle,
   ArrowRight,
   Phone,
   Printer,
-  ChevronRight,
-  Plus,
   Eye,
+  MessageCircle,
   CheckCircle2,
+  Package,
+  Layers,
+  Sparkles,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
+  const [whatsappToast, setWhatsappToast] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -47,168 +49,210 @@ export default function DashboardPage() {
   const kpis = data?.kpis || {};
   const recentOrders = data?.urgentOrders || [];
 
+  const handleSendWhatsAppAlert = (order: any) => {
+    const customer = order.customer;
+    if (!customer?.phone) {
+      alert("Customer phone number not available.");
+      return;
+    }
+
+    const cleanPhone = customer.phone.replace(/[^0-9]/g, "");
+    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    const customerName = customer.name || "Valued Customer";
+    const billNo = order.bill_no;
+    const balance = formatCurrency(order.balance_amount);
+
+    let message = "";
+    if (order.status === "READY_FOR_PICKUP") {
+      message = `Namaste ${customerName}, aapka chashma ready hai! (Bill: ${billNo}). Pending balance: ${balance}. Store timing: 10 AM - 9:30 PM. Visit My Optics Shop!`;
+    } else if (order.status === "LENS_PROCESSING" || order.status === "FITTING") {
+      message = `Namaste ${customerName}, aapka spectacle order (${billNo}) lab edging / frame fitting process mein hai. Ready hote hi hum update bhejenge. - My Optics Shop`;
+    } else if (order.status === "DELIVERED") {
+      message = `Namaste ${customerName}, My Optics Shop se spectacles collect karne ke liye shukriya! Kisi bhi adjustment ke liye free store service uplabdh hai.`;
+    } else {
+      message = `Namaste ${customerName}, aapka spectacle order (${billNo}) confirm ho chuka hai. Expected delivery: ${formatDate(order.delivery_due_date)}. - My Optics Shop`;
+    }
+
+    const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, "_blank");
+
+    setWhatsappToast(`WhatsApp alert prepared for ${customerName} (${billNo})`);
+    setTimeout(() => setWhatsappToast(null), 4000);
+  };
+
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title="VisionPulse Optical Dashboard"
-        subtitle="Live Store Register Overview & Daily Sales Summary"
-      >
-        {/* Big Clear Button: New Bill / POS */}
-        <Link
-          href="/pos"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-cyan-600 hover:bg-cyan-700 shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>New Bill / POS</span>
-        </Link>
-      </Header>
+    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50 p-4 lg:p-6 space-y-6">
+      {/* Toast Feedback */}
+      {whatsappToast && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xl animate-in slide-in-from-top-2">
+          <MessageCircle className="w-4 h-4 fill-white shrink-0" />
+          <span>{whatsappToast}</span>
+        </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
-        {/* ======================================================== */}
-        {/* 1. FOUR PRIMARY CLEAR METRIC CARDS                       */}
-        {/* ======================================================== */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Metric 1: Today's Sales */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Today&apos;s Sales
-              </p>
-              <h3 className="text-xl font-black text-slate-900 mt-1 font-mono">
-                {formatCurrency(kpis.todaySales || 0)}
-              </h3>
-              <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                Payments collected today
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <IndianRupee className="w-5 h-5" />
-            </div>
+      {/* ======================================================== */}
+      {/* 1. TOP 4 CLEAR METRIC CARDS                              */}
+      {/* ======================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Today's Sales */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between transition-all hover:border-slate-300">
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Today&apos;s Sales
+            </p>
+            <h3 className="text-2xl font-black text-slate-900 mt-1 font-mono tracking-tight">
+              {formatCurrency(kpis.todaySales || 0)}
+            </h3>
+            <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Payments collected today</span>
+            </p>
           </div>
-
-          {/* Metric 2: Pending Payment Balance */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Pending Balance
-              </p>
-              <h3 className="text-xl font-black text-rose-600 mt-1 font-mono">
-                {formatCurrency(kpis.totalBalanceDue || 0)}
-              </h3>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">
-                Due at customer pickup
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* Metric 3: Ready for Delivery */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Ready for Delivery
-              </p>
-              <h3 className="text-xl font-black text-purple-700 mt-1">
-                {kpis.readyForPickupCount || 0} Glasses
-              </h3>
-              <p className="text-[11px] text-purple-600 font-semibold mt-1">
-                Glazed & passed inspection
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <Glasses className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* Metric 4: Total Orders */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Total Orders
-              </p>
-              <h3 className="text-xl font-black text-slate-900 mt-1">
-                {kpis.totalOrders || 0} Orders
-              </h3>
-              <p className="text-[11px] text-cyan-700 font-semibold mt-1">
-                Lifetime customer orders
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">
-              <ShoppingCart className="w-5 h-5" />
-            </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+            <IndianRupee className="w-6 h-6 stroke-[2.2]" />
           </div>
         </div>
 
-        {/* ======================================================== */}
-        {/* 2. SALES SUMMARY BAR CHART                               */}
-        {/* ======================================================== */}
-        <DashboardCharts analytics={data?.analytics} />
+        {/* Metric 2: Pending Balance */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between transition-all hover:border-slate-300">
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Pending Balance
+            </p>
+            <h3 className="text-2xl font-black text-rose-600 mt-1 font-mono tracking-tight">
+              {formatCurrency(kpis.totalBalanceDue || 0)}
+            </h3>
+            <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>Due at counter pickup</span>
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+            <Clock className="w-6 h-6 stroke-[2.2]" />
+          </div>
+        </div>
 
-        {/* ======================================================== */}
-        {/* 3. NEAT SIMPLE TABLE: RECENT ORDERS                      */}
-        {/* ======================================================== */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          {/* Table Header */}
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        {/* Metric 3: Ready for Pickup */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between transition-all hover:border-slate-300">
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Ready for Pickup
+            </p>
+            <h3 className="text-2xl font-black text-purple-700 mt-1 tracking-tight">
+              {kpis.readyForPickupCount || 0} Glasses
+            </h3>
+            <p className="text-[11px] text-purple-600 font-semibold mt-1 flex items-center gap-1">
+              <Glasses className="w-3 h-3" />
+              <span>Glazed & passed inspection</span>
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+            <Glasses className="w-6 h-6 stroke-[2.2]" />
+          </div>
+        </div>
+
+        {/* Metric 4: Low Stock Items */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between transition-all hover:border-slate-300">
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Low Stock Items
+            </p>
+            <h3 className="text-2xl font-black text-amber-700 mt-1 tracking-tight">
+              {kpis.lowStockCount || 0} Items
+            </h3>
+            <p className="text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              <span>Below safety threshold</span>
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
+            <Package className="w-6 h-6 stroke-[2.2]" />
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 2. CENTER VISUAL: SINGLE CIRCULAR DONUT GRAPH           */}
+      {/* ======================================================== */}
+      <DashboardCharts analytics={data?.analytics} />
+
+      {/* ======================================================== */}
+      {/* 3. RECENT CUSTOMER ORDERS & GLASSES STATUS TABLE         */}
+      {/* ======================================================== */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        {/* Table Title Bar */}
+        <div className="p-4 lg:p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+              <Glasses className="w-4 h-4" />
+            </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-                Recent Store Orders
+              <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">
+                Recent Customer Orders & Glasses Status
               </h3>
               <p className="text-[11px] text-slate-500">
-                Latest customer spectacle jobs and counter balances
+                Track lens edging progress, counter dues & send instant WhatsApp notifications
               </p>
             </div>
-
-            <Link
-              href="/orders"
-              className="text-xs font-bold text-cyan-700 hover:text-cyan-900 flex items-center gap-1 transition-colors"
-            >
-              <span>View All Orders</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
 
-          {/* Simplified Table Content */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-100">
+          <Link
+            href="/orders"
+            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors group"
+          >
+            <span>View All Orders</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </div>
+
+        {/* Orders Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-100">
+              <tr>
+                <th className="p-3.5">Customer & Bill</th>
+                <th className="p-3.5">Phone</th>
+                <th className="p-3.5">Eyewear Spec</th>
+                <th className="p-3.5 text-center">Status</th>
+                <th className="p-3.5 text-right">Balance Due</th>
+                <th className="p-3.5 text-center">Quick WhatsApp</th>
+                <th className="p-3.5 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
                 <tr>
-                  <th className="p-3.5">Customer Name</th>
-                  <th className="p-3.5">Phone</th>
-                  <th className="p-3.5 text-center">Status</th>
-                  <th className="p-3.5 text-right">Balance Due</th>
-                  <th className="p-3.5 text-center">Action</th>
+                  <td colSpan={7} className="p-10 text-center text-slate-400">
+                    Loading recent orders...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-400">
-                      Loading orders...
-                    </td>
-                  </tr>
-                ) : recentOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-400">
-                      No active orders found. Click &ldquo;New Bill / POS&rdquo; to create your first bill.
-                    </td>
-                  </tr>
-                ) : (
-                  recentOrders.map((ord: any) => (
-                    <tr key={ord.id} className="hover:bg-slate-50 transition-colors">
+              ) : recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-slate-400">
+                    No active orders found in store register. Click &ldquo;POS Terminal / New Bill&rdquo; to create a sale.
+                  </td>
+                </tr>
+              ) : (
+                recentOrders.map((ord: any) => {
+                  const frameItem = ord.items?.find((i: any) => i.item?.type === "FRAME");
+                  const lensItem = ord.items?.find((i: any) => i.item?.type === "LENS");
+
+                  return (
+                    <tr
+                      key={ord.id}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
                       {/* Customer Name & Bill No */}
                       <td className="p-3.5">
                         <Link
                           href={`/orders/${ord.id}`}
-                          className="font-bold text-slate-900 hover:text-cyan-700 hover:underline text-xs flex items-center gap-1.5"
+                          className="font-bold text-slate-900 hover:text-blue-600 hover:underline flex items-center gap-1.5"
                         >
                           <span>{ord.customer?.name || "Walk-in Customer"}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            ({ord.bill_no})
-                          </span>
                         </Link>
+                        <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                          Bill: {ord.bill_no}
+                        </span>
                       </td>
 
                       {/* Phone */}
@@ -216,17 +260,33 @@ export default function DashboardPage() {
                         {ord.customer?.phone || "—"}
                       </td>
 
+                      {/* Eyewear Spec */}
+                      <td className="p-3.5 text-slate-600 max-w-xs truncate">
+                        {frameItem ? (
+                          <span className="font-semibold text-slate-800">
+                            {frameItem.item?.brand} {frameItem.item?.model}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">Custom Frame</span>
+                        )}
+                        {lensItem && (
+                          <span className="text-[10px] text-slate-500 block truncate">
+                            Lens: {lensItem.item?.brand} ({lensItem.item?.lens_index || "1.56"})
+                          </span>
+                        )}
+                      </td>
+
                       {/* Status */}
                       <td className="p-3.5 text-center">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                             ord.status === "READY_FOR_PICKUP"
-                              ? "bg-purple-100 text-purple-800"
+                              ? "bg-purple-50 text-purple-700 border-purple-200"
                               : ord.status === "DELIVERED"
-                              ? "bg-emerald-100 text-emerald-800"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : ord.status === "LENS_PROCESSING" || ord.status === "FITTING"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-slate-100 text-slate-700"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-slate-100 text-slate-700 border-slate-200"
                           }`}
                         >
                           {ord.status.replace("_", " ")}
@@ -246,31 +306,45 @@ export default function DashboardPage() {
                         )}
                       </td>
 
-                      {/* Action */}
+                      {/* Quick WhatsApp Alert Button */}
+                      <td className="p-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsAppAlert(ord)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-[#25D366] hover:bg-[#20ba59] shadow-xs shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                          title="Send instant WhatsApp order status update"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 fill-white stroke-[#25D366]" />
+                          <span>WhatsApp</span>
+                        </button>
+                      </td>
+
+                      {/* Actions */}
                       <td className="p-3.5 text-center">
                         <div className="inline-flex items-center gap-1">
                           <button
+                            type="button"
                             onClick={() => setSelectedReceiptOrder(ord)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-cyan-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                            title="Print GST Invoice / Receipt"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Print GST Tax Invoice / Counter Receipt"
                           >
                             <Printer className="w-3.5 h-3.5" />
                           </button>
                           <Link
                             href={`/orders/${ord.id}`}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-cyan-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                            title="View Order Details"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="View Full Order & Lab Prescription"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </Link>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

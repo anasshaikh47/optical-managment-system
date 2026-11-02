@@ -1,51 +1,81 @@
 "use client";
 
+import { useState } from "react";
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
 } from "recharts";
-import { BarChart3 } from "lucide-react";
+import { PieChart as PieChartIcon, Glasses, Layers, Wrench } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface DashboardChartsProps {
   analytics?: {
-    dailyTrend?: any[];
-    weeklyTrend?: any[];
+    salesBreakdown?: Array<{
+      name: string;
+      label?: string;
+      value: number;
+      percentage: number;
+      color: string;
+      count?: number;
+    }>;
   };
 }
 
 export function DashboardCharts({ analytics }: DashboardChartsProps) {
-  // Use daily/weekly data or fallback to clean 7-day default
-  const trendData =
-    analytics?.weeklyTrend && analytics.weeklyTrend.length > 0
-      ? analytics.weeklyTrend.map((d: any) => ({
-          label: d.day || d.label || d.date,
-          sales: d.sales || d.amount || 0,
-        }))
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  const breakdownData =
+    analytics?.salesBreakdown && analytics.salesBreakdown.length > 0
+      ? analytics.salesBreakdown
       : [
-          { label: "Mon", sales: 8400 },
-          { label: "Tue", sales: 12500 },
-          { label: "Wed", sales: 9800 },
-          { label: "Thu", sales: 14200 },
-          { label: "Fri", sales: 18600 },
-          { label: "Sat", sales: 24500 },
-          { label: "Today", sales: 6000 },
+          {
+            name: "Frames",
+            label: "Spectacle Frames",
+            value: 18500,
+            percentage: 55,
+            color: "#2563EB",
+            count: 5,
+          },
+          {
+            name: "Lenses",
+            label: "Prescription Lenses",
+            value: 11800,
+            percentage: 35,
+            color: "#10B981",
+            count: 4,
+          },
+          {
+            name: "Services/Repairing",
+            label: "Fitting, Lab & Repairs",
+            value: 3400,
+            percentage: 10,
+            color: "#F59E0B",
+            count: 3,
+          },
         ];
 
-  const totalWeekSales = trendData.reduce((acc, curr) => acc + curr.sales, 0);
+  const totalValue = breakdownData.reduce((acc, curr) => acc + curr.value, 0);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
-        <div className="bg-slate-900 text-white px-3 py-2 rounded-lg shadow-lg border border-slate-800 text-xs space-y-0.5">
-          <p className="font-semibold text-slate-400">{label}</p>
-          <p className="font-bold font-mono text-cyan-400">
-            {formatCurrency(payload[0].value)}
+        <div className="bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-xl border border-slate-800 text-xs space-y-1">
+          <div className="flex items-center gap-2">
+            <span
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: data.color }}
+            />
+            <p className="font-bold text-slate-100">{data.label || data.name}</p>
+          </div>
+          <p className="font-black text-sm font-mono text-cyan-400">
+            {formatCurrency(data.value)}
+          </p>
+          <p className="text-[10px] text-slate-400">
+            Share: <strong className="text-white">{data.percentage}%</strong> of total sales
           </p>
         </div>
       );
@@ -53,61 +83,162 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
     return null;
   };
 
+  const getCategoryIcon = (name: string) => {
+    if (name.toLowerCase().includes("frame")) {
+      return <Glasses className="w-4 h-4 text-blue-600" />;
+    }
+    if (name.toLowerCase().includes("lens")) {
+      return <Layers className="w-4 h-4 text-emerald-600" />;
+    }
+    return <Wrench className="w-4 h-4 text-amber-600" />;
+  };
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
-      {/* Chart Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-cyan-50 text-cyan-700 flex items-center justify-center">
-            <BarChart3 className="w-4 h-4" />
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+      {/* Chart Section Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+            <PieChartIcon className="w-5 h-5 stroke-[2.2]" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
-              Sales Revenue Summary
+            <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">
+              Sales Breakdown
             </h3>
-            <p className="text-[11px] text-slate-500">
-              Weekly optical store sales trend
+            <p className="text-[11px] text-slate-500 font-medium">
+              Revenue distribution across Frames vs Lenses vs Services & Repairing
             </p>
           </div>
         </div>
 
         <div className="text-right">
-          <span className="text-[10px] text-slate-400 block font-bold uppercase">
-            Total 7-Day Revenue
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+            Total Revenue Audited
           </span>
-          <span className="font-bold text-slate-900 text-sm font-mono">
-            {formatCurrency(totalWeekSales)}
+          <span className="font-black text-slate-900 text-base font-mono">
+            {formatCurrency(totalValue)}
           </span>
         </div>
       </div>
 
-      {/* Clean Single Recharts Bar Chart */}
-      <div className="h-64 w-full pt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={trendData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: "#64748b" }}
-              axisLine={{ stroke: "#e2e8f0" }}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 10, fill: "#64748b" }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar
-              dataKey="sales"
-              name="Sales"
-              fill="#0891b2"
-              radius={[6, 6, 0, 0]}
-              maxBarSize={48}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+      {/* Main Visual: Single Circular Donut Graph & Detailed Legend Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pt-5">
+        {/* The Circular Donut Visual (5 Cols on LG) */}
+        <div className="lg:col-span-5 relative flex items-center justify-center h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Tooltip content={<CustomTooltip />} />
+              <Pie
+                data={breakdownData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={72}
+                outerRadius={104}
+                paddingAngle={4}
+                cornerRadius={5}
+                onMouseEnter={(_, index) => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+              >
+                {breakdownData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    className="transition-all duration-200 cursor-pointer hover:opacity-90"
+                    style={{
+                      transform:
+                        activeIndex === index ? "scale(1.03)" : "scale(1)",
+                      transformOrigin: "center center",
+                    }}
+                  />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+
+          {/* Center Info in Donut */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              Total Sales
+            </span>
+            <span className="text-lg font-black text-slate-900 font-mono tracking-tight mt-0.5">
+              {formatCurrency(totalValue)}
+            </span>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.2 rounded-full mt-1 border border-emerald-200">
+              Active Counter
+            </span>
+          </div>
+        </div>
+
+        {/* Breakdown Legend Cards (7 Cols on LG) */}
+        <div className="lg:col-span-7 space-y-3">
+          {breakdownData.map((item, idx) => (
+            <div
+              key={item.name}
+              onMouseEnter={() => setActiveIndex(idx)}
+              onMouseLeave={() => setActiveIndex(null)}
+              className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                activeIndex === idx
+                  ? "bg-slate-50 border-slate-300 shadow-xs"
+                  : "bg-white border-slate-100 hover:border-slate-200"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: `${item.color}15`,
+                    }}
+                  >
+                    {getCategoryIcon(item.name)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                      <span>{item.label || item.name}</span>
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.2 rounded-full text-white"
+                        style={{ backgroundColor: item.color }}
+                      >
+                        {item.percentage}%
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      {item.name === "Frames"
+                        ? "Prescription frames, sunglasses & designer eyewear"
+                        : item.name === "Lenses"
+                        ? "Single vision, bifocal & digital progressive lenses"
+                        : "Workshop edging, ARC coatings & frame repairs"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <p className="font-black text-sm font-mono text-slate-900">
+                    {formatCurrency(item.value)}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-semibold">
+                    {item.count ? `${item.count} items recorded` : "Recorded in ledger"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress bar line */}
+              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${item.percentage}%`,
+                    backgroundColor: item.color,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

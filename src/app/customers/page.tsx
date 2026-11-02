@@ -22,7 +22,6 @@ import {
   MessageSquare,
   Sparkles,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
@@ -98,19 +97,6 @@ export default function CustomersPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title="Patients Directory & Clinical Optical CRM"
-        subtitle="Customer Lifetime Value, 1-Year Checkup Reminders, Refraction History & Dues"
-      >
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          <span>New Patient Registration</span>
-        </button>
-      </Header>
-
       <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 space-y-4">
         {/* Controls Bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -121,7 +107,7 @@ export default function CustomersPage() {
               placeholder="Search by name, phone (+91), or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -135,12 +121,16 @@ export default function CustomersPage() {
               }`}
             >
               <Clock className="w-3.5 h-3.5 text-amber-600" />
-              <span>Filter: Annual Eye Checkup Due</span>
+              <span>Annual Checkup Due</span>
             </button>
 
-            <span className="text-xs text-slate-500 font-medium">
-              Showing {filtered.length} of {customers.length} patients
-            </span>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ Add Customer</span>
+            </button>
           </div>
         </div>
 

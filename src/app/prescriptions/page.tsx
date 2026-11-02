@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
 import { formatDate, formatDiopter } from "@/lib/utils";
 
@@ -61,19 +60,6 @@ function PrescriptionsContent() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title="Optical Prescriptions (Rx)"
-        subtitle="Clinical Refraction Records, Diopter Measurements & Visual Acuity"
-      >
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Prescription</span>
-        </button>
-      </Header>
-
       <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
         {/* Search & Statistics Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -84,12 +70,21 @@ function PrescriptionsContent() {
               placeholder="Search by patient name, phone, or optometrist..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          <div className="text-xs text-slate-500 font-medium">
-            Showing <strong className="text-slate-800">{filtered.length}</strong> clinical prescriptions
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 font-medium">
+              Showing <strong className="text-slate-800">{filtered.length}</strong> clinical prescriptions
+            </span>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Prescription</span>
+            </button>
           </div>
         </div>
 

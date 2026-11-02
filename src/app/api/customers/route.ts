@@ -23,8 +23,16 @@ export async function GET(request: Request) {
           take: 1,
         },
         orders: {
+          select: {
+            id: true,
+            bill_no: true,
+            final_payable: true,
+            paid_amount: true,
+            balance_amount: true,
+            status: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: "desc" },
-          take: 1,
         },
         _count: {
           select: {

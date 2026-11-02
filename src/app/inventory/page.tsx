@@ -12,9 +12,18 @@ import {
   Check,
   Edit2,
   Trash2,
+  Printer,
+  Tag,
+  Glasses,
+  CheckSquare,
+  Square,
+  TrendingUp,
+  Percent,
+  X,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { AddProductModal } from "@/components/AddProductModal";
+import { BarcodeStickerModal } from "@/components/BarcodeStickerModal";
 import { formatCurrency } from "@/lib/utils";
 
 export default function InventoryPage() {
@@ -23,8 +32,20 @@ export default function InventoryPage() {
   const [activeType, setActiveType] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [onlyLowStock, setOnlyLowStock] = useState(false);
+
+  // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+
+  // Bulk Selection for Barcode Sticker Printing
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+
+  // Stock Adjustment with Reason Log Modal
+  const [adjustingItem, setAdjustingItem] = useState<any | null>(null);
+  const [adjustDelta, setAdjustDelta] = useState<number>(1);
+  const [adjustReason, setAdjustReason] = useState<string>("PURCHASE");
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+  const [adjustmentToast, setAdjustmentToast] = useState<string | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -45,11 +66,21 @@ export default function InventoryPage() {
     }
   };
 
-  const handleAdjustStock = async (itemId: string, currentStock: number, delta: number) => {
-    const newStock = Math.max(0, currentStock + delta);
-    setUpdatingStockId(itemId);
+  const handleOpenAdjustment = (item: any, delta: number) => {
+    setAdjustingItem(item);
+    setAdjustDelta(delta);
+    setAdjustReason(delta > 0 ? "PURCHASE" : "DAMAGE");
+  };
+
+  const handleSubmitAdjustment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustingItem) return;
+
+    const newStock = Math.max(0, adjustingItem.stock_quantity + adjustDelta);
+    setAdjustSubmitting(true);
+
     try {
-      const res = await fetch(`/api/products/${itemId}`, {
+      const res = await fetch(`/api/products/${adjustingItem.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stock_quantity: newStock }),
@@ -57,22 +88,42 @@ export default function InventoryPage() {
       const data = await res.json();
       if (data.success) {
         setItems((prev) =>
-          prev.map((p) => (p.id === itemId ? { ...p, stock_quantity: newStock } : p))
+          prev.map((p) => (p.id === adjustingItem.id ? { ...p, stock_quantity: newStock } : p))
         );
+        setAdjustmentToast(
+          `Stock adjusted (${adjustDelta > 0 ? `+${adjustDelta}` : adjustDelta}) for ${adjustingItem.brand} (${adjustReason})`
+        );
+        setTimeout(() => setAdjustmentToast(null), 4000);
+        setAdjustingItem(null);
       }
     } catch (e) {
       console.error(e);
     } finally {
-      setUpdatingStockId(null);
+      setAdjustSubmitting(false);
     }
   };
 
+  // Bulk selection toggles
+  const toggleSelectAll = () => {
+    if (selectedItemIds.length === filtered.length) {
+      setSelectedItemIds([]);
+    } else {
+      setSelectedItemIds(filtered.map((i) => i.id));
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
   const filtered = items.filter((p) => {
-    const matchesType =
-      activeType === "ALL" || p.type === activeType;
+    const matchesType = activeType === "ALL" || p.type === activeType;
     const matchesLowStock = !onlyLowStock || p.stock_quantity <= p.min_alert_threshold;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
+      q === "" ||
       p.brand.toLowerCase().includes(q) ||
       p.sku.toLowerCase().includes(q) ||
       (p.model && p.model.toLowerCase().includes(q)) ||
@@ -82,39 +133,70 @@ export default function InventoryPage() {
   });
 
   const lowStockCount = items.filter((p) => p.stock_quantity <= p.min_alert_threshold).length;
+  const itemsForBarcodePrint =
+    selectedItemIds.length > 0
+      ? items.filter((i) => selectedItemIds.includes(i.id))
+      : filtered;
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       <Header
-        title="VisionPulse Inventory Catalog"
-        subtitle="Frames (Ray-Ban, Titan, Fastrack), Power Lenses & Contact Lenses"
+        title="VisionPulse Inventory & Frame Barcode Management"
+        subtitle="Catalog, Stock Adjustments, Profit Margins & 50mm Optical Label Generator"
       >
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Inventory Item</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Print Barcode Stickers Action Button */}
+          <button
+            onClick={() => setIsBarcodeModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-colors cursor-pointer"
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>
+              Print Barcode Tags ({selectedItemIds.length > 0 ? selectedItemIds.length : "All"})
+            </span>
+          </button>
+
+          {/* Add Product Button */}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Inventory Item</span>
+          </button>
+        </div>
       </Header>
 
-      <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
+      {/* Stock Adjustment Success Toast */}
+      {adjustmentToast && (
+        <div className="bg-emerald-600 text-white px-6 py-2.5 text-xs font-bold flex items-center justify-between shadow-md animate-in slide-in-from-top">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{adjustmentToast}</span>
+          </div>
+          <button onClick={() => setAdjustmentToast(null)} className="text-white/80 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 space-y-4">
         {/* Controls Bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by SKU, brand, model, barcode..."
+              placeholder="Search by SKU, brand (Ray-Ban), model, color..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
 
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-            {/* Type Filter */}
-            <div className="flex gap-1 overflow-x-auto text-xs">
+            {/* Classification Filter Pills */}
+            <div className="flex gap-1 overflow-x-auto text-xs select-none">
               {[
                 { label: "All Items", key: "ALL" },
                 { label: "Frames", key: "FRAME" },
@@ -125,7 +207,7 @@ export default function InventoryPage() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveType(tab.key)}
-                  className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all ${
+                  className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     activeType === tab.key
                       ? "bg-slate-900 text-white shadow-xs"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -136,17 +218,17 @@ export default function InventoryPage() {
               ))}
             </div>
 
-            {/* Low stock toggle */}
+            {/* Low Stock Alert Toggle Button */}
             <button
               onClick={() => setOnlyLowStock(!onlyLowStock)}
-              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1.5 border ${
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5 border cursor-pointer ${
                 onlyLowStock
                   ? "bg-rose-50 border-rose-300 text-rose-700"
                   : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-              <span>Low Stock Alerts ({lowStockCount})</span>
+              <span>Low Stock Alert ({lowStockCount})</span>
             </button>
           </div>
         </div>
@@ -157,96 +239,165 @@ export default function InventoryPage() {
             <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold sticky top-0 z-10">
                 <tr>
-                  <th className="p-3.5">SKU / Item</th>
-                  <th className="p-3.5">Classification</th>
+                  <th className="p-3.5 w-10 text-center">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="text-slate-400 hover:text-slate-700"
+                      title="Select All for Barcode Sticker Printing"
+                    >
+                      {selectedItemIds.length === filtered.length && filtered.length > 0 ? (
+                        <CheckSquare className="w-4 h-4 text-cyan-600" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="p-3.5">Photo</th>
+                  <th className="p-3.5">SKU / Barcode</th>
                   <th className="p-3.5">Brand & Model</th>
-                  <th className="p-3.5">Specifications</th>
+                  <th className="p-3.5">Color & Size</th>
                   <th className="p-3.5 text-right">Cost Price</th>
                   <th className="p-3.5 text-right">Selling Price</th>
-                  <th className="p-3.5 text-center">GST Rate</th>
-                  <th className="p-3.5 text-center">Stock Level</th>
+                  <th className="p-3.5 text-right">Margin %</th>
+                  <th className="p-3.5 text-center">Stock Qty</th>
                   <th className="p-3.5 text-center">Quick Adjust</th>
+                  <th className="p-3.5 text-center">Tag Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-400">
+                    <td colSpan={11} className="p-8 text-center text-slate-400">
                       Loading inventory records...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-slate-400">
+                    <td colSpan={11} className="p-8 text-center text-slate-400">
                       No products match your criteria.
                     </td>
                   </tr>
                 ) : (
                   filtered.map((item) => {
                     const isOutOfStock = item.stock_quantity <= 0;
-                    const isLowStock = item.stock_quantity <= item.min_alert_threshold && !isOutOfStock;
+                    const isLowStock =
+                      item.stock_quantity <= item.min_alert_threshold && !isOutOfStock;
+                    const isSelected = selectedItemIds.includes(item.id);
+
+                    // Margin % Calculation: ((Selling - Cost) / Selling) * 100
+                    const margin =
+                      item.selling_price > 0 && item.cost_price > 0
+                        ? (((item.selling_price - item.cost_price) / item.selling_price) * 100).toFixed(1)
+                        : "0.0";
 
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr
+                        key={item.id}
+                        className={`hover:bg-slate-50/80 transition-colors ${
+                          isSelected ? "bg-cyan-50/30" : ""
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <td className="p-3.5 text-center">
+                          <button
+                            onClick={() => toggleSelectItem(item.id)}
+                            className="text-slate-400 hover:text-slate-700"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-4 h-4 text-cyan-600" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                        </td>
+
+                        {/* Photo Thumbnail */}
                         <td className="p-3.5">
-                          <p className="font-bold text-slate-900 leading-tight">
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center text-slate-400 flex-shrink-0">
+                            {item.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.image_url}
+                                alt={item.brand}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as any).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <Glasses className="w-5 h-5 opacity-40 text-slate-500" />
+                            )}
+                          </div>
+                        </td>
+
+                        {/* SKU & Barcode */}
+                        <td className="p-3.5">
+                          <p className="font-bold font-mono text-slate-900 leading-tight">
                             {item.sku}
                           </p>
                           {item.barcode && (
-                            <p className="font-mono text-[10px] text-slate-400">
-                              Barcode: {item.barcode}
+                            <p className="font-mono text-[10px] text-slate-400 mt-0.5">
+                              {item.barcode}
                             </p>
                           )}
-                        </td>
-
-                        <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 mt-1 inline-block">
                             {item.type.replace("_", " ")}
                           </span>
                         </td>
 
+                        {/* Brand & Model */}
                         <td className="p-3.5">
-                          <p className="font-bold text-cyan-800 text-xs">
-                            {item.brand}
-                          </p>
-                          <p className="text-slate-600 text-xs">
-                            {item.model || "—"}
+                          <p className="font-bold text-cyan-800 text-xs">{item.brand}</p>
+                          <p className="text-slate-700 text-xs font-medium">
+                            {item.model || item.type}
                           </p>
                         </td>
 
+                        {/* Color & Size */}
                         <td className="p-3.5 text-slate-600">
-                          {item.type === "FRAME" && item.size && (
-                            <p className="text-[11px] font-mono">
-                              {item.size} • {item.color}
+                          {item.type === "FRAME" ? (
+                            <p className="text-[11px]">
+                              {item.color || "Standard"} •{" "}
+                              <span className="font-mono text-slate-500">{item.size || "52-18-140"}</span>
                             </p>
-                          )}
-                          {item.type === "LENS" && item.lens_index && (
+                          ) : item.type === "LENS" ? (
                             <p className="text-[11px] font-semibold text-slate-700">
-                              Refractive Index {item.lens_index}
+                              Refractive Index {item.lens_index || "1.56"}
                             </p>
-                          )}
-                          {item.type === "CONTACT_LENS" && (
-                            <p className="text-[11px] text-slate-500">
-                              {item.size || "Standard pack"}
-                            </p>
+                          ) : (
+                            <p className="text-[11px] text-slate-500">{item.color || item.size || "Standard"}</p>
                           )}
                         </td>
 
+                        {/* Cost Price */}
                         <td className="p-3.5 text-right font-medium text-slate-500">
                           {formatCurrency(item.cost_price)}
                         </td>
 
-                        <td className="p-3.5 text-right font-bold text-slate-900 text-xs">
+                        {/* Selling Price */}
+                        <td className="p-3.5 text-right font-black text-slate-900 text-xs">
                           {formatCurrency(item.selling_price)}
                         </td>
 
-                        <td className="p-3.5 text-center font-bold text-slate-600">
-                          {item.gst_rate}%
+                        {/* Margin % */}
+                        <td className="p-3.5 text-right font-bold">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] ${
+                              parseFloat(margin) >= 50
+                                ? "bg-emerald-50 text-emerald-700 font-extrabold"
+                                : parseFloat(margin) >= 30
+                                ? "bg-cyan-50 text-cyan-700"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {margin}%
+                          </span>
                         </td>
 
+                        {/* Stock Qty */}
                         <td className="p-3.5 text-center">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                               isOutOfStock
                                 ? "bg-rose-100 text-rose-800"
                                 : isLowStock
@@ -258,23 +409,38 @@ export default function InventoryPage() {
                           </span>
                         </td>
 
+                        {/* Quick Adjust Buttons */}
                         <td className="p-3.5 text-center">
                           <div className="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
                             <button
-                              disabled={updatingStockId === item.id || item.stock_quantity <= 0}
-                              onClick={() => handleAdjustStock(item.id, item.stock_quantity, -1)}
-                              className="px-2 py-0.5 rounded text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-30"
+                              onClick={() => handleOpenAdjustment(item, -1)}
+                              className="px-2 py-0.5 rounded text-xs font-black text-slate-600 hover:bg-slate-200 transition-colors"
+                              title="Decrease Stock with Reason Log"
                             >
                               -
                             </button>
                             <button
-                              disabled={updatingStockId === item.id}
-                              onClick={() => handleAdjustStock(item.id, item.stock_quantity, 1)}
-                              className="px-2 py-0.5 rounded text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-30"
+                              onClick={() => handleOpenAdjustment(item, 1)}
+                              className="px-2 py-0.5 rounded text-xs font-black text-slate-600 hover:bg-slate-200 transition-colors"
+                              title="Increase Stock with Reason Log"
                             >
                               +
                             </button>
                           </div>
+                        </td>
+
+                        {/* Tag Action */}
+                        <td className="p-3.5 text-center">
+                          <button
+                            onClick={() => {
+                              setSelectedItemIds([item.id]);
+                              setIsBarcodeModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-700 hover:bg-slate-100 transition-colors"
+                            title="Print Barcode Tag for this item"
+                          >
+                            <Tag className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -286,10 +452,123 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Stock Adjustment with Reason Log Modal */}
+      {adjustingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">
+                Stock Adjustment & Reason Log
+              </h3>
+              <button
+                onClick={() => setAdjustingItem(null)}
+                className="p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Item: <strong>{adjustingItem.brand} - {adjustingItem.model || adjustingItem.sku}</strong>
+              <br />
+              Current Stock: <strong>{adjustingItem.stock_quantity} units</strong>
+            </p>
+
+            <form onSubmit={handleSubmitAdjustment} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Quantity Change (+ / -)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    required
+                    value={adjustDelta}
+                    onChange={(e) => setAdjustDelta(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-black text-sm"
+                  />
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setAdjustDelta(1)}
+                      className="px-2 py-1 rounded bg-slate-100 font-bold hover:bg-slate-200"
+                    >
+                      +1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustDelta(5)}
+                      className="px-2 py-1 rounded bg-slate-100 font-bold hover:bg-slate-200"
+                    >
+                      +5
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustDelta(-1)}
+                      className="px-2 py-1 rounded bg-slate-100 font-bold hover:bg-slate-200"
+                    >
+                      -1
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Adjustment Reason *
+                </label>
+                <select
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-semibold"
+                >
+                  <option value="PURCHASE">Purchase Inward (Vendor Shipment)</option>
+                  <option value="DAMAGE">Damage / Broken Frame / Defective</option>
+                  <option value="PHYSICAL_AUDIT">Physical Stocktaking Audit Discrepancy</option>
+                  <option value="CUSTOMER_RETURN">Customer Return / Exchange</option>
+                </select>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex justify-between">
+                <span>New Stock Level:</span>
+                <span className="font-black text-cyan-800">
+                  {Math.max(0, adjustingItem.stock_quantity + adjustDelta)} units
+                </span>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAdjustingItem(null)}
+                  className="px-3 py-1.5 rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={adjustSubmitting}
+                  className="px-4 py-1.5 rounded-lg text-white font-bold bg-cyan-600 hover:bg-cyan-700 shadow-sm"
+                >
+                  {adjustSubmitting ? "Updating..." : "Commit Stock"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Product Modal */}
       <AddProductModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => fetchItems()}
+      />
+
+      {/* Barcode Stickers Printing Modal */}
+      <BarcodeStickerModal
+        isOpen={isBarcodeModalOpen}
+        onClose={() => setIsBarcodeModalOpen(false)}
+        items={itemsForBarcodePrint}
       />
     </div>
   );

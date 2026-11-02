@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Users,
   Search,
@@ -15,19 +16,22 @@ import {
   MapPin,
   X,
   Award,
+  AlertTriangle,
+  CreditCard,
+  Eye,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
-import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [customerDetail, setCustomerDetail] = useState<any | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [filterCheckupDue, setFilterCheckupDue] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -48,264 +52,212 @@ export default function CustomersPage() {
     }
   };
 
-  const handleSelectCustomer = async (id: string) => {
-    setSelectedCustomerId(id);
-    setLoadingDetail(true);
-    try {
-      const res = await fetch(`/api/customers/${id}`);
-      const json = await res.json();
-      if (json.success) {
-        setCustomerDetail(json.data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingDetail(false);
+  // Helper to calculate checkup reminder status
+  const getCheckupStatus = (latestRx: any) => {
+    if (!latestRx) return { isDue: false, label: "No Rx on record", color: "bg-slate-100 text-slate-500" };
+    const rxDate = new Date(latestRx.createdAt);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - rxDate.getTime()) / (1000 * 60 * 60 * 24));
+    const diffMonths = Math.floor(diffDays / 30);
+
+    if (diffMonths >= 12) {
+      return {
+        isDue: true,
+        label: `⚠️ Annual Test Overdue (${diffMonths} mos)`,
+        color: "bg-rose-100 text-rose-800 font-bold",
+      };
+    } else if (diffMonths >= 10) {
+      return {
+        isDue: true,
+        label: `⚡ Annual Test Due Soon (${diffMonths} mos)`,
+        color: "bg-amber-100 text-amber-800 font-bold",
+      };
+    } else {
+      return {
+        isDue: false,
+        label: `🟢 Checkup Current (${diffMonths} mos ago)`,
+        color: "bg-emerald-100 text-emerald-800",
+      };
     }
   };
 
   const filtered = customers.filter((c) => {
-    const q = searchQuery.toLowerCase();
-    return (
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      q === "" ||
       c.name.toLowerCase().includes(q) ||
       (c.phone && c.phone.includes(q)) ||
-      (c.email && c.email.toLowerCase().includes(q))
-    );
+      (c.email && c.email.toLowerCase().includes(q));
+
+    const latestRx = c.prescriptions?.[0];
+    const checkup = getCheckupStatus(latestRx);
+    const matchesCheckupDue = !filterCheckupDue || checkup.isDue;
+
+    return matchesSearch && matchesCheckupDue;
   });
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       <Header
-        title="Patients Directory & Clinical CRM"
-        subtitle="Customer Loyalty, Prescription History & Eyewear Purchases"
+        title="Patients Directory & Clinical Optical CRM"
+        subtitle="Customer Lifetime Value, 1-Year Checkup Reminders, Refraction History & Dues"
       >
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
         >
           <UserPlus className="w-3.5 h-3.5" />
-          <span>New Patient</span>
+          <span>New Patient Registration</span>
         </button>
       </Header>
 
-      <div className="flex-1 flex overflow-hidden p-6 gap-6">
-        {/* Left List: Patients Roster */}
-        <div className="flex-1 flex flex-col min-w-0 space-y-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3">
-            <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by name, phone (+91), or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-            <div className="text-xs text-slate-500 font-medium">
-              Total: <strong className="text-slate-800">{filtered.length}</strong> patients
-            </div>
+      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 space-y-4">
+        {/* Controls Bar */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="relative w-full md:w-80">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by name, phone (+91), or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2.5">
-            {loading ? (
-              <div className="flex items-center justify-center h-48 text-slate-400 text-xs">
-                Loading customer records...
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-slate-400 text-xs bg-white rounded-2xl border border-dashed border-slate-200">
-                <Users className="w-8 h-8 mb-2 opacity-40" />
-                <p>No customer records found.</p>
-              </div>
-            ) : (
-              filtered.map((c) => {
-                const isSelected = selectedCustomerId === c.id;
-                return (
-                  <div
-                    key={c.id}
-                    onClick={() => handleSelectCustomer(c.id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 text-xs ${
-                      isSelected
-                        ? "bg-cyan-50/70 border-cyan-400 shadow-xs"
-                        : "bg-white border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center font-bold text-sm shrink-0">
-                        {c.name[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-slate-900 text-sm truncate">
-                            {c.name}
-                          </h4>
-                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
-                            <Award className="w-3 h-3" /> {c.loyalty_points || 0} pts
-                          </span>
-                        </div>
-                        <p className="text-slate-500 text-xs flex items-center gap-3 mt-1">
-                          <span className="flex items-center gap-1 font-mono text-slate-700">
-                            <Phone className="w-3 h-3 text-slate-400" /> {c.phone}
-                          </span>
-                          {c.email && (
-                            <span className="flex items-center gap-1 truncate">
-                              <Mail className="w-3 h-3 text-slate-400" /> {c.email}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFilterCheckupDue(!filterCheckupDue)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
+                filterCheckupDue
+                  ? "bg-amber-50 border-amber-300 text-amber-800"
+                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span>Filter: Annual Eye Checkup Due</span>
+            </button>
 
-                    <div className="flex items-center gap-4 text-slate-500 shrink-0">
-                      <div className="text-right hidden sm:block">
-                        <p className="font-semibold text-slate-800">
-                          {c._count?.prescriptions || 0} Rx records
-                        </p>
-                        <p className="text-[10px] text-slate-400">
-                          {c._count?.orders || 0} optical purchases
-                        </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </div>
-                );
-              })
-            )}
+            <span className="text-xs text-slate-500 font-medium">
+              Showing {filtered.length} of {customers.length} patients
+            </span>
           </div>
         </div>
 
-        {/* Right Drawer / Detail: Comprehensive Patient Clinical Profile */}
-        {selectedCustomerId && (
-          <div className="w-96 xl:w-[460px] bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden shrink-0">
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <span className="font-bold text-slate-800 text-xs uppercase tracking-wide">
-                Patient Medical Profile
-              </span>
-              <button
-                onClick={() => setSelectedCustomerId(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        {/* Patients Table */}
+        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold sticky top-0 z-10">
+                <tr>
+                  <th className="p-3.5">Patient Details</th>
+                  <th className="p-3.5">Contact Information</th>
+                  <th className="p-3.5 text-center">Visit Count</th>
+                  <th className="p-3.5 text-right">Lifetime Spend</th>
+                  <th className="p-3.5 text-right">Pending Balance</th>
+                  <th className="p-3.5 text-center">Loyalty Points</th>
+                  <th className="p-3.5 text-center">1-Year Checkup Status</th>
+                  <th className="p-3.5 text-center">CRM Profile</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-400">
+                      Loading patient database...
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-400">
+                      No patients match your search.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((c) => {
+                    const ordersList = c.orders || [];
+                    const lifetimeSpend = ordersList
+                      .filter((o: any) => o.status !== "CANCELLED")
+                      .reduce((sum: number, o: any) => sum + (o.final_payable || 0), 0);
+                    const pendingBalance = ordersList
+                      .filter((o: any) => o.status !== "CANCELLED")
+                      .reduce((sum: number, o: any) => sum + (o.balance_amount || 0), 0);
+                    const latestRx = c.prescriptions?.[0];
+                    const checkup = getCheckupStatus(latestRx);
 
-            {loadingDetail ? (
-              <div className="flex-1 flex items-center justify-center text-slate-400 text-xs">
-                Loading patient records...
-              </div>
-            ) : customerDetail ? (
-              <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
-                {/* Header Profile */}
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {customerDetail.name}
-                  </h3>
-                  <p className="text-slate-600 font-mono text-xs mt-0.5">
-                    Phone: {customerDetail.phone}
-                  </p>
-                  {customerDetail.address && (
-                    <p className="text-slate-500 text-xs flex items-center gap-1 mt-1">
-                      <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                      {customerDetail.address}
-                    </p>
-                  )}
-                  <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold text-xs border border-emerald-200">
-                    <Award className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Loyalty Balance: {customerDetail.loyalty_points || 0} Points</span>
-                  </div>
-                </div>
-
-                {/* Prescriptions History */}
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs uppercase mb-2 flex items-center gap-1.5">
-                    <Glasses className="w-3.5 h-3.5 text-cyan-600" /> Refraction Prescriptions (
-                    {customerDetail.prescriptions?.length || 0})
-                  </h4>
-
-                  <div className="space-y-2.5">
-                    {customerDetail.prescriptions?.length === 0 ? (
-                      <p className="text-slate-400 italic">No prescriptions recorded yet.</p>
-                    ) : (
-                      customerDetail.prescriptions?.map((rx: any) => (
-                        <div
-                          key={rx.id}
-                          className="p-3 rounded-xl border border-cyan-200 bg-cyan-50/30 space-y-1.5"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900">
-                              Optom: {rx.optometristName || "Dr."}
-                            </span>
-                            <span className="text-[10px] text-slate-500">
-                              {formatDate(rx.createdAt)}
-                            </span>
-                          </div>
-
-                          <div className="font-mono text-[10px] text-slate-800 bg-white p-2 rounded border border-cyan-100 space-y-0.5">
-                            <div>
-                              OD: {formatDiopter(rx.od_sph)} / {formatDiopter(rx.od_cyl)} x {rx.od_axis || "—"}° • ADD: {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
-                            </div>
-                            <div>
-                              OS: {formatDiopter(rx.os_sph)} / {formatDiopter(rx.os_cyl)} x {rx.os_axis || "—"}° • ADD: {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between text-[10px] text-slate-500 pt-0.5">
-                            <span>Lens: <strong className="uppercase">{rx.lens_type || "Single Vision"}</strong></span>
-                            <span>PD: <strong>{rx.pd_distance || "—"} mm</strong></span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Purchase Orders */}
-                <div>
-                  <h4 className="font-bold text-slate-800 text-xs uppercase mb-2 flex items-center gap-1.5">
-                    <ShoppingCart className="w-3.5 h-3.5 text-blue-600" /> Purchases & Invoices (
-                    {customerDetail.orders?.length || 0})
-                  </h4>
-
-                  <div className="space-y-2">
-                    {customerDetail.orders?.length === 0 ? (
-                      <p className="text-slate-400 italic">No optical orders yet.</p>
-                    ) : (
-                      customerDetail.orders?.map((ord: any) => (
-                        <div
-                          key={ord.id}
-                          className="p-2.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between text-xs"
-                        >
-                          <div>
-                            <p className="font-bold text-slate-900 font-mono">
-                              {ord.bill_no}
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3.5">
+                          <Link
+                            href={`/customers/${c.id}`}
+                            className="font-bold text-slate-900 text-xs hover:text-cyan-700 hover:underline flex items-center gap-1.5"
+                          >
+                            <span>{c.name}</span>
+                            <ChevronRight className="w-3 h-3 text-slate-400" />
+                          </Link>
+                          {c.dob && (
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              DOB: {formatDate(c.dob)}
                             </p>
-                            <p className="text-[10px] text-slate-500">
-                              {formatDate(ord.createdAt)} • {ord.status.replace("_", " ")}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-bold text-slate-900">
-                              {formatCurrency(ord.final_payable)}
+                          )}
+                        </td>
+
+                        <td className="p-3.5">
+                          <p className="font-mono text-slate-800 flex items-center gap-1 font-semibold">
+                            <Phone className="w-3 h-3 text-slate-400" /> {c.phone}
+                          </p>
+                          {c.email && (
+                            <p className="text-[10px] text-slate-500 mt-0.5">{c.email}</p>
+                          )}
+                        </td>
+
+                        <td className="p-3.5 text-center font-bold text-slate-700">
+                          {ordersList.length} visits
+                        </td>
+
+                        <td className="p-3.5 text-right font-black text-slate-900">
+                          {formatCurrency(lifetimeSpend)}
+                        </td>
+
+                        <td className="p-3.5 text-right font-bold">
+                          {pendingBalance > 0 ? (
+                            <span className="text-rose-600 font-black">
+                              {formatCurrency(pendingBalance)}
                             </span>
-                            <p
-                              className={`text-[10px] font-semibold ${
-                                ord.balance_amount <= 0
-                                  ? "text-emerald-600"
-                                  : "text-amber-600"
-                              }`}
-                            >
-                              {ord.balance_amount <= 0 ? "Paid in Full" : `Due: ${formatCurrency(ord.balance_amount)}`}
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : null}
+                          ) : (
+                            <span className="text-emerald-600 font-bold text-[10px]">Settled</span>
+                          )}
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-0.5">
+                            <Award className="w-2.5 h-2.5" /> {c.loyalty_points || 0} pts
+                          </span>
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${checkup.color}`}>
+                            {checkup.label}
+                          </span>
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <Link
+                            href={`/customers/${c.id}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>View CRM</span>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
       </div>
 
       <NewCustomerModal

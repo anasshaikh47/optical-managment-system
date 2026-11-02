@@ -44,7 +44,21 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, delivery_due_date } = body;
+    const { status, delivery_due_date, notes } = body;
+
+    // If technician notes provided, update prescription notes if present
+    if (notes !== undefined) {
+      const order = await prisma.order.findUnique({
+        where: { id },
+        select: { prescriptionId: true },
+      });
+      if (order?.prescriptionId) {
+        await prisma.prescription.update({
+          where: { id: order.prescriptionId },
+          data: { notes },
+        });
+      }
+    }
 
     const updated = await prisma.order.update({
       where: { id },

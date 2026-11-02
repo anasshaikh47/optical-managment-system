@@ -34,6 +34,12 @@ export default function CustomersPage() {
 
   useEffect(() => {
     fetchCustomers();
+
+    const handleCustomerCreated = () => {
+      fetchCustomers();
+    };
+    window.addEventListener("customer-created", handleCustomerCreated);
+    return () => window.removeEventListener("customer-created", handleCustomerCreated);
   }, []);
 
   const fetchCustomers = async () => {

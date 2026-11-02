@@ -129,6 +129,16 @@ export default function POSPage() {
     if (barcodeInputRef.current) {
       barcodeInputRef.current.focus();
     }
+
+    const handleCustomerCreated = (e: any) => {
+      fetchCustomers();
+      if (e?.detail?.id) {
+        setSelectedCustomerId(e.detail.id);
+        setCustomerSearch(e.detail.name || "");
+      }
+    };
+    window.addEventListener("customer-created", handleCustomerCreated);
+    return () => window.removeEventListener("customer-created", handleCustomerCreated);
   }, []);
 
   // Fetch full details of selected customer

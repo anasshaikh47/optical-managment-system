@@ -29,6 +29,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    const handleCustomerCreated = () => {
+      fetchDashboardData();
+    };
+    window.addEventListener("customer-created", handleCustomerCreated);
+    return () => window.removeEventListener("customer-created", handleCustomerCreated);
   }, []);
 
   const fetchDashboardData = async () => {

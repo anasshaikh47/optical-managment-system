@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { QuickSearchModal } from "@/components/QuickSearchModal";
 import { MobileSyncModal } from "@/components/MobileSyncModal";
@@ -22,6 +23,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
   const [isMobileSyncOpen, setIsMobileSyncOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Global keyboard shortcut: Ctrl+K / Cmd+K to open Quick Search
   useEffect(() => {
@@ -46,8 +48,12 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
 
   const handleCustomerCreated = (newCust: any) => {
     setIsNewCustomerOpen(false);
-    // If user is currently on customer page, reload or navigate to new profile
-    router.push(`/customers/${newCust.id}`);
+    setToastMessage(`✓ Customer "${newCust.name}" successfully registered (+91 ${newCust.phone.replace(/[^0-9]/g, "").slice(-10)})`);
+    setTimeout(() => setToastMessage(null), 4000);
+
+    // Refresh active components without page reload
+    window.dispatchEvent(new CustomEvent("customer-created", { detail: newCust }));
+    router.refresh();
   };
 
   return (
@@ -62,6 +68,14 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+
+      {/* Global In-App Toast Feedback */}
+      {toastMessage && (
+        <div className="fixed top-24 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-2xl animate-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Global Modals */}
       <NewCustomerModal

@@ -62,8 +62,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await prisma.inventoryItem.delete({ where: { id } });
-    return NextResponse.json({ success: true, message: "Item deleted" });
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { itemId: id } });
+      await tx.inventoryItem.delete({ where: { id } });
+    });
+    return NextResponse.json({ success: true, message: "Item deleted successfully" });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },

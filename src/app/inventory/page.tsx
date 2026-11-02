@@ -37,7 +37,7 @@ export default function InventoryPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
 
-  // Bulk Selection for Barcode Sticker Printing
+  // Bulk Selection for Barcode Sticker Printing & Bulk Delete
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
   // Stock Adjustment with Reason Log Modal
@@ -46,6 +46,14 @@ export default function InventoryPage() {
   const [adjustReason, setAdjustReason] = useState<string>("PURCHASE");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
   const [adjustmentToast, setAdjustmentToast] = useState<string | null>(null);
+
+  // Single Delete Confirmation State
+  const [deletingItem, setDeletingItem] = useState<any | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  // Bulk Delete Confirmation State
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteSubmitting, setBulkDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -103,6 +111,58 @@ export default function InventoryPage() {
     }
   };
 
+  // Single Item Deletion Handler
+  const handleConfirmSingleDelete = async () => {
+    if (!deletingItem) return;
+    setDeleteSubmitting(true);
+
+    try {
+      const res = await fetch(`/api/products/${deletingItem.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAdjustmentToast(
+          `Item "${deletingItem.brand} - ${deletingItem.model || deletingItem.sku}" removed from catalog.`
+        );
+        setTimeout(() => setAdjustmentToast(null), 4000);
+        setSelectedItemIds((prev) => prev.filter((id) => id !== deletingItem.id));
+        setDeletingItem(null);
+        fetchItems();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  };
+
+  // Bulk Deletion Handler
+  const handleConfirmBulkDelete = async () => {
+    if (selectedItemIds.length === 0) return;
+    setBulkDeleteSubmitting(true);
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedItemIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAdjustmentToast(`Successfully deleted ${selectedItemIds.length} item(s) from inventory.`);
+        setTimeout(() => setAdjustmentToast(null), 4000);
+        setSelectedItemIds([]);
+        setIsBulkDeleteModalOpen(false);
+        fetchItems();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBulkDeleteSubmitting(false);
+    }
+  };
+
   // Bulk selection toggles
   const toggleSelectAll = () => {
     if (selectedItemIds.length === filtered.length) {
@@ -142,9 +202,20 @@ export default function InventoryPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       <Header
         title="VisionPulse Inventory & Frame Barcode Management"
-        subtitle="Catalog, Stock Adjustments, Profit Margins & 50mm Optical Label Generator"
+        subtitle="Catalog, Stock Adjustments, Profit Margins, Barcode Label Generator & Item Deletion"
       >
         <div className="flex items-center gap-2">
+          {/* Bulk Delete Action Button (Visible when 1 or more items selected) */}
+          {selectedItemIds.length > 0 && (
+            <button
+              onClick={() => setIsBulkDeleteModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-colors cursor-pointer animate-in fade-in"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected ({selectedItemIds.length})</span>
+            </button>
+          )}
+
           {/* Print Barcode Stickers Action Button */}
           <button
             onClick={() => setIsBarcodeModalOpen(true)}
@@ -167,7 +238,7 @@ export default function InventoryPage() {
         </div>
       </Header>
 
-      {/* Stock Adjustment Success Toast */}
+      {/* Stock Adjustment / Deletion Success Toast */}
       {adjustmentToast && (
         <div className="bg-emerald-600 text-white px-6 py-2.5 text-xs font-bold flex items-center justify-between shadow-md animate-in slide-in-from-top">
           <div className="flex items-center gap-2">
@@ -242,8 +313,8 @@ export default function InventoryPage() {
                   <th className="p-3.5 w-10 text-center">
                     <button
                       onClick={toggleSelectAll}
-                      className="text-slate-400 hover:text-slate-700"
-                      title="Select All for Barcode Sticker Printing"
+                      className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                      title="Select All for Barcode Sticker Printing or Bulk Delete"
                     >
                       {selectedItemIds.length === filtered.length && filtered.length > 0 ? (
                         <CheckSquare className="w-4 h-4 text-cyan-600" />
@@ -261,7 +332,7 @@ export default function InventoryPage() {
                   <th className="p-3.5 text-right">Margin %</th>
                   <th className="p-3.5 text-center">Stock Qty</th>
                   <th className="p-3.5 text-center">Quick Adjust</th>
-                  <th className="p-3.5 text-center">Tag Action</th>
+                  <th className="p-3.5 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -301,7 +372,7 @@ export default function InventoryPage() {
                         <td className="p-3.5 text-center">
                           <button
                             onClick={() => toggleSelectItem(item.id)}
-                            className="text-slate-400 hover:text-slate-700"
+                            className="text-slate-400 hover:text-slate-700 cursor-pointer"
                           >
                             {isSelected ? (
                               <CheckSquare className="w-4 h-4 text-cyan-600" />
@@ -414,14 +485,14 @@ export default function InventoryPage() {
                           <div className="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
                             <button
                               onClick={() => handleOpenAdjustment(item, -1)}
-                              className="px-2 py-0.5 rounded text-xs font-black text-slate-600 hover:bg-slate-200 transition-colors"
+                              className="px-2 py-0.5 rounded text-xs font-black text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
                               title="Decrease Stock with Reason Log"
                             >
                               -
                             </button>
                             <button
                               onClick={() => handleOpenAdjustment(item, 1)}
-                              className="px-2 py-0.5 rounded text-xs font-black text-slate-600 hover:bg-slate-200 transition-colors"
+                              className="px-2 py-0.5 rounded text-xs font-black text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
                               title="Increase Stock with Reason Log"
                             >
                               +
@@ -429,18 +500,30 @@ export default function InventoryPage() {
                           </div>
                         </td>
 
-                        {/* Tag Action */}
+                        {/* Actions: Tag & Delete Buttons */}
                         <td className="p-3.5 text-center">
-                          <button
-                            onClick={() => {
-                              setSelectedItemIds([item.id]);
-                              setIsBarcodeModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-700 hover:bg-slate-100 transition-colors"
-                            title="Print Barcode Tag for this item"
-                          >
-                            <Tag className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="inline-flex items-center gap-1">
+                            {/* Barcode Tag Button */}
+                            <button
+                              onClick={() => {
+                                setSelectedItemIds([item.id]);
+                                setIsBarcodeModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                              title="Print Barcode Tag for this item"
+                            >
+                              <Tag className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete Button (Trash icon with red hover) */}
+                            <button
+                              onClick={() => setDeletingItem(item)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title={`Delete ${item.brand} - ${item.model || item.sku}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -451,6 +534,107 @@ export default function InventoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Single Item Delete Confirmation Popup Modal */}
+      {deletingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Delete Inventory Item?
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  This item will be permanently removed.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+              <p>
+                <strong>Brand:</strong> {deletingItem.brand}
+              </p>
+              <p>
+                <strong>Model / Item:</strong> {deletingItem.model || deletingItem.type}
+              </p>
+              <p className="font-mono text-[11px]">
+                <strong>SKU:</strong> {deletingItem.sku}
+              </p>
+              <p>
+                <strong>Current Stock:</strong> {deletingItem.stock_quantity} units
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Are you sure you want to delete this item? This action removes the item from the catalog.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingItem(null)}
+                className="px-3 py-1.5 rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteSubmitting}
+                onClick={handleConfirmSingleDelete}
+                className="px-4 py-1.5 rounded-lg text-white font-bold bg-rose-600 hover:bg-rose-700 shadow-sm text-xs cursor-pointer disabled:opacity-50"
+              >
+                {deleteSubmitting ? "Deleting..." : "Delete Item"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Popup Modal */}
+      {isBulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Delete {selectedItemIds.length} Selected Items?
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Bulk removal from inventory database
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Are you sure you want to delete all <strong>{selectedItemIds.length}</strong> selected inventory items? This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                className="px-3 py-1.5 rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={bulkDeleteSubmitting}
+                onClick={handleConfirmBulkDelete}
+                className="px-4 py-1.5 rounded-lg text-white font-bold bg-rose-600 hover:bg-rose-700 shadow-sm text-xs cursor-pointer disabled:opacity-50"
+              >
+                {bulkDeleteSubmitting ? "Deleting..." : `Delete ${selectedItemIds.length} Items`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stock Adjustment with Reason Log Modal */}
       {adjustingItem && (

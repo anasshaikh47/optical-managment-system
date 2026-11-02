@@ -107,3 +107,37 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { ids } = body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Array of item IDs is required for bulk deletion" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({
+        where: { itemId: { in: ids } },
+      });
+      await tx.inventoryItem.deleteMany({
+        where: { id: { in: ids } },
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully deleted ${ids.length} inventory item(s)`,
+    });
+  } catch (error: any) {
+    console.error("Error bulk deleting items:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete inventory items" },
+      { status: 500 }
+    );
+  }
+}

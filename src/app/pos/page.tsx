@@ -227,6 +227,7 @@ export default function POSPage() {
           fitting_key: item.type === "LENS" ? "STANDARD" : "FREE",
           fitting_charges: defaultFitting,
           subtotal: item.selling_price + defaultFitting,
+          image_url: item.image_url,
         },
       ];
     });
@@ -695,6 +696,17 @@ We will message you the moment your glasses pass optical lab inspection!`;
                           </span>
                         )}
                       </div>
+
+                      {item.image_url ? (
+                        <div className="w-full h-20 rounded-lg overflow-hidden bg-slate-50 border border-slate-100 my-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image_url}
+                            alt={item.brand}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : null}
 
                       <p className="text-[10px] font-bold text-cyan-700 uppercase tracking-wide truncate w-full">
                         {item.brand}
@@ -1218,16 +1230,28 @@ We will message you the moment your glasses pass optical lab inspection!`;
                     className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2 text-xs"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-mono">
-                            {item.type}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">{item.sku}</span>
+                      <div className="flex items-center gap-2.5">
+                        {item.image_url ? (
+                          <div className="w-10 h-10 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : null}
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-mono">
+                              {item.type}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">{item.sku}</span>
+                          </div>
+                          <h5 className="text-xs font-bold text-slate-900 leading-tight mt-0.5">
+                            {item.name}
+                          </h5>
                         </div>
-                        <h5 className="text-xs font-bold text-slate-900 leading-tight mt-0.5">
-                          {item.name}
-                        </h5>
                       </div>
                       <span className="font-bold text-xs text-slate-900 font-mono">
                         {formatCurrency(item.subtotal)}

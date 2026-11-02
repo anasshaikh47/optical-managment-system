@@ -6,7 +6,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       customerId,
-      prescriptionId,
+      prescriptionId: existingPrescriptionId,
+      prescriptionData, // Optional inline prescription object
       items, // array of { itemId, quantity, unit_price, coating_charges, fitting_charges }
       total_amount, // subtotal
       discount_amount = 0,
@@ -15,7 +16,8 @@ export async function POST(request: Request) {
       paid_amount = 0,
       method = "UPI", // 'CASH' | 'UPI' | 'CARD'
       transaction_ref,
-      deliveryDays = 3,
+      delivery_due_date: customDeliveryDate,
+      deliveryDays = 2,
       status = "PLACED",
     } = body;
 
@@ -44,11 +46,11 @@ export async function POST(request: Request) {
       payment_type = "ADVANCE";
     }
 
-    // Determine order tracking status
+    const hasRx = !!existingPrescriptionId || !!prescriptionData;
     let orderStatus = status;
-    if (orderStatus === "PLACED" && prescriptionId) {
+    if (orderStatus === "PLACED" && hasRx) {
       orderStatus = "LENS_PROCESSING";
-    } else if (balanceAmountNum <= 0 && !prescriptionId) {
+    } else if (balanceAmountNum <= 0 && !hasRx) {
       orderStatus = "DELIVERED";
     }
 
@@ -57,15 +59,44 @@ export async function POST(request: Request) {
     const year = new Date().getFullYear();
     const bill_no = `VP-${year}-${String(count + 1).padStart(4, "0")}`;
 
-    const delivery_due_date = new Date(Date.now() + (deliveryDays || 3) * 24 * 60 * 60 * 1000);
+    const delivery_due_date = customDeliveryDate
+      ? new Date(customDeliveryDate)
+      : new Date(Date.now() + (deliveryDays || 2) * 24 * 60 * 60 * 1000);
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create Order
+      let finalRxId = existingPrescriptionId || null;
+
+      // 1. If inline prescription data is passed, create Prescription record first
+      if (prescriptionData && !finalRxId) {
+        const createdRx = await tx.prescription.create({
+          data: {
+            customerId,
+            optometristName: prescriptionData.optometristName || "Dr. Staff Optometrist",
+            od_sph: prescriptionData.od_sph !== "" && prescriptionData.od_sph !== undefined ? parseFloat(prescriptionData.od_sph) : null,
+            od_cyl: prescriptionData.od_cyl !== "" && prescriptionData.od_cyl !== undefined ? parseFloat(prescriptionData.od_cyl) : null,
+            od_axis: prescriptionData.od_axis !== "" && prescriptionData.od_axis !== undefined ? parseInt(prescriptionData.od_axis, 10) : null,
+            od_add: prescriptionData.od_add !== "" && prescriptionData.od_add !== undefined ? parseFloat(prescriptionData.od_add) : null,
+
+            os_sph: prescriptionData.os_sph !== "" && prescriptionData.os_sph !== undefined ? parseFloat(prescriptionData.os_sph) : null,
+            os_cyl: prescriptionData.os_cyl !== "" && prescriptionData.os_cyl !== undefined ? parseFloat(prescriptionData.os_cyl) : null,
+            os_axis: prescriptionData.os_axis !== "" && prescriptionData.os_axis !== undefined ? parseInt(prescriptionData.os_axis, 10) : null,
+            os_add: prescriptionData.os_add !== "" && prescriptionData.os_add !== undefined ? parseFloat(prescriptionData.os_add) : null,
+
+            pd_distance: prescriptionData.pd_distance !== "" && prescriptionData.pd_distance !== undefined ? parseFloat(prescriptionData.pd_distance) : null,
+            pd_near: prescriptionData.pd_near !== "" && prescriptionData.pd_near !== undefined ? parseFloat(prescriptionData.pd_near) : null,
+            lens_type: prescriptionData.lens_type || "SINGLE_VISION",
+            notes: prescriptionData.notes || null,
+          },
+        });
+        finalRxId = createdRx.id;
+      }
+
+      // 2. Create Order
       const order = await tx.order.create({
         data: {
           bill_no,
           customerId,
-          prescriptionId: prescriptionId || null,
+          prescriptionId: finalRxId,
           status: orderStatus,
           total_amount: parseFloat(total_amount) || 0,
           discount_amount: parseFloat(discount_amount) || 0,

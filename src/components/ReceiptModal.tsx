@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Printer, X, Glasses, CheckCircle2, Phone, MapPin, IndianRupee } from "lucide-react";
+import { Printer, X, Glasses, CheckCircle2, Phone, MapPin, IndianRupee, MessageSquare } from "lucide-react";
 import { formatCurrency, formatDate, formatDateTime, formatDiopter } from "@/lib/utils";
 
 interface ReceiptModalProps {
@@ -18,6 +18,60 @@ export function ReceiptModal({ order, onClose }: ReceiptModalProps) {
     window.print();
   };
 
+  const handleWhatsApp = () => {
+    if (!order.customer?.phone) return;
+    let cleanPhone = order.customer.phone.replace(/[^0-9]/g, "");
+    if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+
+    const itemsSummary = order.items
+      ?.map(
+        (it: any) =>
+          `• ${it.item ? `${it.item.brand} - ${it.item.model || it.item.type}` : "Eyewear Item"} (x${it.quantity}) - ₹${it.subtotal}`
+      )
+      .join("\n");
+
+    const deliveryFormatted = order.delivery_due_date
+      ? new Date(order.delivery_due_date).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "2 Days";
+
+    let rxSummary = "";
+    if (order.prescription) {
+      const rx = order.prescription;
+      rxSummary = `\n👁️ *Prescription Specs*:
+• OD (Right): SPH ${formatDiopter(rx.od_sph)} | CYL ${formatDiopter(rx.od_cyl)} x ${rx.od_axis || 0}° ${rx.od_add ? `| ADD +${rx.od_add.toFixed(2)}` : ""}
+• OS (Left): SPH ${formatDiopter(rx.os_sph)} | CYL ${formatDiopter(rx.os_cyl)} x ${rx.os_axis || 0}° ${rx.os_add ? `| ADD +${rx.os_add.toFixed(2)}` : ""}
+• Lens Type: ${(rx.lens_type || "Single Vision").replace("_", " ")}
+• PD: ${rx.pd_distance || "63"}mm`;
+    }
+
+    const message = `👓 *VISIONPULSE EYEWEAR STUDIO*
+Precision Clinical Optometry & Premium Eyewear
+
+Dear *${order.customer.name}*,
+Thank you for your order! Here are your GST Tax Invoice & Lab Job details:
+
+🧾 *Bill / Job Order*: #${order.bill_no}
+📅 *Ready for Delivery*: ${deliveryFormatted}
+
+💰 *Payment Breakdown*:
+• Net Payable: ₹${order.final_payable}
+• Advance Received: ₹${order.paid_amount}
+• Balance Due at Pickup: ₹${order.balance_amount}
+
+📦 *Items*:
+${itemsSummary}
+${rxSummary}
+
+📍 *Store Location*: Galleria Arcade, Powai, Mumbai - 400076
+📞 *Helpline*: +91 98201 12345`;
+
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
   const rx = order.prescription;
 
   return (
@@ -32,16 +86,25 @@ export function ReceiptModal({ order, onClose }: ReceiptModalProps) {
             </h3>
           </div>
           <div className="flex items-center gap-2">
+            {order.customer?.phone && (
+              <button
+                onClick={handleWhatsApp}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>WhatsApp Slip</span>
+              </button>
+            )}
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Invoice</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -261,13 +324,22 @@ export function ReceiptModal({ order, onClose }: ReceiptModalProps) {
         <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end gap-2 print:hidden">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition-colors"
+            className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             Close
           </button>
+          {order.customer?.phone && (
+            <button
+              onClick={handleWhatsApp}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Send WhatsApp</span>
+            </button>
+          )}
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print Slip</span>

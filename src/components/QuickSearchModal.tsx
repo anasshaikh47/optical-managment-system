@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { CustomerHistoryModal } from "@/components/CustomerHistoryModal";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 interface QuickSearchModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ interface QuickSearchModalProps {
 }
 
 export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
+  const { tenantFetch } = useAuth();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,9 +70,9 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
     setLoading(true);
     try {
       const [custRes, ordRes, invRes] = await Promise.all([
-        fetch("/api/customers").then((r) => r.json()).catch(() => ({ success: false })),
-        fetch("/api/orders").then((r) => r.json()).catch(() => ({ success: false })),
-        fetch("/api/inventory").then((r) => r.json()).catch(() => ({ success: false })),
+        tenantFetch("/api/customers").then((r) => r.json()).catch(() => ({ success: false })),
+        tenantFetch("/api/orders").then((r) => r.json()).catch(() => ({ success: false })),
+        tenantFetch("/api/products").then((r) => r.json()).catch(() => ({ success: false })),
       ]);
 
       const q = searchTerm.toLowerCase().trim();
@@ -130,7 +132,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
   const handleOpenCustomerHistory = async (customer: any) => {
     // Fetch complete customer history with all prescriptions and orders
     try {
-      const res = await fetch(`/api/customers/${customer.id}`);
+      const res = await tenantFetch(`/api/customers/${customer.id}`);
       const json = await res.json();
       if (json.success && json.data) {
         setSelectedHistoryCustomer(json.data);

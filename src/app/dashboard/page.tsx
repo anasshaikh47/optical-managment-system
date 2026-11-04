@@ -20,8 +20,10 @@ import {
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DashboardPage() {
+  const { shopId, tenantFetch } = useAuth();
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
@@ -35,12 +37,12 @@ export default function DashboardPage() {
     };
     window.addEventListener("customer-created", handleCustomerCreated);
     return () => window.removeEventListener("customer-created", handleCustomerCreated);
-  }, []);
+  }, [shopId]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard");
+      const res = await tenantFetch("/api/dashboard");
       const json = await res.json();
       if (json.success) {
         setData(json.data);

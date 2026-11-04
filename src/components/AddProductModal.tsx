@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
   X,
   PackagePlus,
@@ -26,6 +27,7 @@ export function AddProductModal({
   onClose,
   onSuccess,
 }: AddProductModalProps) {
+  const { shopId, tenantFetch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -178,10 +180,10 @@ export function AddProductModal({
     setError(null);
 
     try {
-      const res = await fetch("/api/products", {
+      const res = await tenantFetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, shopId, userId: shopId }),
       });
 
       const data = await res.json();

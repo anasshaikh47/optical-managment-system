@@ -30,6 +30,7 @@ import {
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
 import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 const STAGES = [
   { key: "PLACED", label: "Order Placed" },
@@ -69,14 +70,16 @@ export default function OrderDetailsPage({
   // WhatsApp active dropdown popup menu
   const [showWaMenu, setShowWaMenu] = useState(false);
 
+  const { shopId, tenantFetch } = useAuth();
+
   useEffect(() => {
     fetchOrderDetails();
-  }, [orderId]);
+  }, [orderId, shopId]);
 
   const fetchOrderDetails = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}`);
+      const res = await tenantFetch(`/api/orders/${orderId}`);
       const data = await res.json();
       if (data.success) {
         setOrder(data.data);
@@ -102,7 +105,7 @@ export default function OrderDetailsPage({
     }
 
     try {
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await tenantFetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -119,7 +122,7 @@ export default function OrderDetailsPage({
   const handleSaveNotes = async () => {
     setSavingNotes(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await tenantFetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: labNotes }),
@@ -142,7 +145,7 @@ export default function OrderDetailsPage({
 
     setPaySubmitting(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}/payments`, {
+      const res = await tenantFetch(`/api/orders/${orderId}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

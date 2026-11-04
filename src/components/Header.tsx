@@ -14,6 +14,7 @@ import {
   Menu,
 } from "lucide-react";
 import { useAppUi } from "@/context/AppUiContext";
+import { useAuth } from "@/context/AuthContext";
 import { InstallPwaButton } from "@/components/InstallPwaButton";
 
 interface HeaderProps {
@@ -24,6 +25,7 @@ interface HeaderProps {
 
 export function Header({ children }: HeaderProps) {
   const { openNewCustomerModal, openQuickSearchModal, openMobileSyncModal, toggleSidebar } = useAppUi();
+  const { userDisplayName } = useAuth();
 
   return (
     <header className="bg-white border-b border-slate-200 flex flex-col flex-shrink-0 z-20 shadow-xs select-none">
@@ -51,11 +53,11 @@ export function Header({ children }: HeaderProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-none truncate">
-                My Optics Shop
+                {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
               </h2>
             </div>
             <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate mt-0.5 hidden xs:block">
-              Welcome back! Manage your shop efficiently
+              {userDisplayName ? `Welcome, ${userDisplayName}! Counter Active` : "Welcome back! Manage your shop efficiently"}
             </p>
           </div>
         </div>

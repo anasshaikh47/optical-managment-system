@@ -1,38 +1,80 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  getShopIdFromRequest,
+  loadTenantState,
+  saveTenantState,
+  TenantPrescription,
+} from "@/lib/tenant/store";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get("customerId");
     const query = searchParams.get("query");
+    const shopId = getShopIdFromRequest(request);
 
-    const where: any = {};
-    if (customerId) {
-      where.customerId = customerId;
+    if (shopId !== "default") {
+      const tenant = loadTenantState(shopId);
+      let list = tenant.prescriptions.map((p) => {
+        const customer = tenant.customers.find((c) => c.id === p.customerId);
+        const orderCount = tenant.orders.filter((o) => o.prescriptionId === p.id).length;
+        return {
+          ...p,
+          customer,
+          _count: { orders: orderCount },
+        };
+      });
+
+      if (customerId) {
+        list = list.filter((p) => p.customerId === customerId);
+      }
+
+      if (query) {
+        const q = query.toLowerCase();
+        list = list.filter(
+          (p) =>
+            (p.customer && p.customer.name.toLowerCase().includes(q)) ||
+            (p.customer && p.customer.phone.toLowerCase().includes(q)) ||
+            (p.optometristName && p.optometristName.toLowerCase().includes(q)) ||
+            (p.lens_type && p.lens_type.toLowerCase().includes(q))
+        );
+      }
+
+      return NextResponse.json({ success: true, data: list });
     }
 
-    if (query) {
-      where.OR = [
-        { customer: { name: { contains: query } } },
-        { customer: { phone: { contains: query } } },
-        { optometristName: { contains: query } },
-        { lens_type: { contains: query } },
-      ];
-    }
+    try {
+      const where: any = {};
+      if (customerId) {
+        where.customerId = customerId;
+      }
 
-    const prescriptions = await prisma.prescription.findMany({
-      where,
-      include: {
-        customer: true,
-        _count: {
-          select: { orders: true },
+      if (query) {
+        where.OR = [
+          { customer: { name: { contains: query } } },
+          { customer: { phone: { contains: query } } },
+          { optometristName: { contains: query } },
+          { lens_type: { contains: query } },
+        ];
+      }
+
+      const prescriptions = await prisma.prescription.findMany({
+        where,
+        include: {
+          customer: true,
+          _count: {
+            select: { orders: true },
+          },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      });
 
-    return NextResponse.json({ success: true, data: prescriptions });
+      return NextResponse.json({ success: true, data: prescriptions });
+    } catch {
+      const tenant = loadTenantState("default");
+      return NextResponse.json({ success: true, data: tenant.prescriptions });
+    }
   } catch (error: any) {
     console.error("Error fetching prescriptions:", error);
     return NextResponse.json(
@@ -44,6 +86,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const shopId = getShopIdFromRequest(request);
     const body = await request.json();
     const {
       customerId,
@@ -58,7 +101,7 @@ export async function POST(request: Request) {
       os_add,
       pd_distance,
       pd_near,
-      lens_type,
+      lens_type = "SINGLE_VISION",
       notes,
     } = body;
 
@@ -69,23 +112,55 @@ export async function POST(request: Request) {
       );
     }
 
+    if (shopId !== "default") {
+      const tenant = loadTenantState(shopId);
+      const now = new Date().toISOString();
+      const newRx: TenantPrescription = {
+        id: `rx-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        customerId,
+        optometristName: optometristName || "Dr. Staff Optometrist",
+        od_sph: od_sph !== undefined && od_sph !== "" ? parseFloat(od_sph) : null,
+        od_cyl: od_cyl !== undefined && od_cyl !== "" ? parseFloat(od_cyl) : null,
+        od_axis: od_axis !== undefined && od_axis !== "" ? parseInt(od_axis, 10) : null,
+        od_add: od_add !== undefined && od_add !== "" ? parseFloat(od_add) : null,
+        os_sph: os_sph !== undefined && os_sph !== "" ? parseFloat(os_sph) : null,
+        os_cyl: os_cyl !== undefined && os_cyl !== "" ? parseFloat(os_cyl) : null,
+        os_axis: os_axis !== undefined && os_axis !== "" ? parseInt(os_axis, 10) : null,
+        os_add: os_add !== undefined && os_add !== "" ? parseFloat(os_add) : null,
+        pd_distance: pd_distance !== undefined && pd_distance !== "" ? parseFloat(pd_distance) : null,
+        pd_near: pd_near !== undefined && pd_near !== "" ? parseFloat(pd_near) : null,
+        lens_type,
+        notes: notes || null,
+        shopId,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      tenant.prescriptions.unshift(newRx);
+      saveTenantState(tenant);
+
+      const customer = tenant.customers.find((c) => c.id === customerId);
+      return NextResponse.json(
+        { success: true, data: { ...newRx, customer } },
+        { status: 201 }
+      );
+    }
+
     const prescription = await prisma.prescription.create({
       data: {
         customerId,
-        optometristName: optometristName || "Dr. Staff Optometrist",
-        od_sph: od_sph !== "" && od_sph !== undefined ? parseFloat(od_sph) : null,
-        od_cyl: od_cyl !== "" && od_cyl !== undefined ? parseFloat(od_cyl) : null,
-        od_axis: od_axis !== "" && od_axis !== undefined ? parseInt(od_axis, 10) : null,
-        od_add: od_add !== "" && od_add !== undefined ? parseFloat(od_add) : null,
-
-        os_sph: os_sph !== "" && os_sph !== undefined ? parseFloat(os_sph) : null,
-        os_cyl: os_cyl !== "" && os_cyl !== undefined ? parseFloat(os_cyl) : null,
-        os_axis: os_axis !== "" && os_axis !== undefined ? parseInt(os_axis, 10) : null,
-        os_add: os_add !== "" && os_add !== undefined ? parseFloat(os_add) : null,
-
-        pd_distance: pd_distance !== "" && pd_distance !== undefined ? parseFloat(pd_distance) : null,
-        pd_near: pd_near !== "" && pd_near !== undefined ? parseFloat(pd_near) : null,
-        lens_type: lens_type || "SINGLE_VISION",
+        optometristName: optometristName || null,
+        od_sph: od_sph !== undefined && od_sph !== "" ? parseFloat(od_sph) : null,
+        od_cyl: od_cyl !== undefined && od_cyl !== "" ? parseFloat(od_cyl) : null,
+        od_axis: od_axis !== undefined && od_axis !== "" ? parseInt(od_axis, 10) : null,
+        od_add: od_add !== undefined && od_add !== "" ? parseFloat(od_add) : null,
+        os_sph: os_sph !== undefined && os_sph !== "" ? parseFloat(os_sph) : null,
+        os_cyl: os_cyl !== undefined && os_cyl !== "" ? parseFloat(os_cyl) : null,
+        os_axis: os_axis !== undefined && os_axis !== "" ? parseInt(os_axis, 10) : null,
+        os_add: os_add !== undefined && os_add !== "" ? parseFloat(os_add) : null,
+        pd_distance: pd_distance !== undefined && pd_distance !== "" ? parseFloat(pd_distance) : null,
+        pd_near: pd_near !== undefined && pd_near !== "" ? parseFloat(pd_near) : null,
+        lens_type,
         notes: notes || null,
       },
       include: {

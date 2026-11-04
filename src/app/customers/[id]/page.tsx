@@ -26,6 +26,7 @@ import {
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
 import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CustomerProfilePage({
   params,
@@ -33,6 +34,7 @@ export default function CustomerProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id: customerId } = use(params);
+  const { shopId, tenantFetch } = useAuth();
 
   const [customer, setCustomer] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,12 +46,12 @@ export default function CustomerProfilePage({
 
   useEffect(() => {
     fetchCustomerProfile();
-  }, [customerId]);
+  }, [customerId, shopId]);
 
   const fetchCustomerProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/customers/${customerId}`);
+      const res = await tenantFetch(`/api/customers/${customerId}`);
       const json = await res.json();
       if (json.success) {
         setCustomer(json.data);

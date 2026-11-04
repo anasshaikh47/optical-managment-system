@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  getShopIdFromRequest,
+  loadTenantState,
+  saveTenantState,
+  TenantPayment,
+} from "@/lib/tenant/store";
 
 export async function POST(
   request: Request,
@@ -7,6 +13,7 @@ export async function POST(
 ) {
   try {
     const { id: orderId } = await params;
+    const shopId = getShopIdFromRequest(request);
     const body = await request.json();
     const { amount, method = "UPI", transaction_ref } = body;
 
@@ -16,6 +23,63 @@ export async function POST(
         { success: false, error: "Valid payment amount is required" },
         { status: 400 }
       );
+    }
+
+    if (shopId !== "default") {
+      const tenant = loadTenantState(shopId);
+      const order = tenant.orders.find((o) => o.id === orderId);
+      if (!order) {
+        return NextResponse.json(
+          { success: false, error: "Order not found" },
+          { status: 404 }
+        );
+      }
+
+      const newPaidAmount = order.paid_amount + paymentAmount;
+      const newBalance = Math.max(0, order.final_payable - newPaidAmount);
+      const newStatus =
+        newBalance <= 0 && order.status === "READY_FOR_PICKUP"
+          ? "DELIVERED"
+          : order.status;
+
+      order.paid_amount = parseFloat(newPaidAmount.toFixed(2));
+      order.balance_amount = parseFloat(newBalance.toFixed(2));
+      order.status = newStatus;
+      order.updatedAt = new Date().toISOString();
+
+      const newPayment: TenantPayment = {
+        id: `pay-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        orderId,
+        amount: paymentAmount,
+        method,
+        payment_type: "BALANCE",
+        transaction_ref: transaction_ref || null,
+        createdAt: new Date().toISOString(),
+      };
+
+      tenant.payments.unshift(newPayment);
+      order.payments.unshift(newPayment);
+      saveTenantState(tenant);
+
+      const customer = tenant.customers.find((c) => c.id === order.customerId);
+      const prescription = tenant.prescriptions.find((p) => p.id === order.prescriptionId);
+      const items = order.items.map((it) => ({
+        ...it,
+        item: tenant.inventory.find((inv) => inv.id === it.itemId),
+      }));
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          payment: newPayment,
+          order: {
+            ...order,
+            customer,
+            prescription,
+            items,
+          },
+        },
+      });
     }
 
     const order = await prisma.order.findUnique({
@@ -31,7 +95,8 @@ export async function POST(
 
     const newPaidAmount = order.paid_amount + paymentAmount;
     const newBalance = Math.max(0, order.final_payable - newPaidAmount);
-    const newStatus = newBalance <= 0 && order.status === "READY_FOR_PICKUP" ? "DELIVERED" : order.status;
+    const newStatus =
+      newBalance <= 0 && order.status === "READY_FOR_PICKUP" ? "DELIVERED" : order.status;
 
     const [payment, updatedOrder] = await prisma.$transaction([
       prisma.payment.create({
@@ -59,14 +124,6 @@ export async function POST(
           payments: true,
         },
       }),
-      prisma.customer.update({
-        where: { id: order.customerId },
-        data: {
-          loyalty_points: {
-            increment: Math.floor(paymentAmount / 100),
-          },
-        },
-      }),
     ]);
 
     return NextResponse.json({
@@ -74,9 +131,9 @@ export async function POST(
       data: { payment, order: updatedOrder },
     });
   } catch (error: any) {
-    console.error("Error adding balance payment:", error);
+    console.error("Error creating payment:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to record payment" },
+      { success: false, error: error.message || "Failed to process payment" },
       { status: 500 }
     );
   }

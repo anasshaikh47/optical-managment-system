@@ -15,8 +15,10 @@ import {
 } from "lucide-react";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
 import { formatDate, formatDiopter } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 function PrescriptionsContent() {
+  const { shopId, tenantFetch } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const shouldOpenCreate = searchParams.get("create") === "true";
@@ -31,12 +33,12 @@ function PrescriptionsContent() {
       setIsModalOpen(true);
     }
     fetchPrescriptions();
-  }, [shouldOpenCreate]);
+  }, [shouldOpenCreate, shopId]);
 
   const fetchPrescriptions = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/prescriptions");
+      const res = await tenantFetch("/api/prescriptions");
       const json = await res.json();
       if (json.success) {
         setPrescriptions(json.data);

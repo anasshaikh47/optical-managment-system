@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { Users, Store, Shield, CheckCircle2, UserPlus, Phone, Mail, Award, Clock } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function StaffPage() {
+  const { userDisplayName, userEmail } = useAuth();
+
   const staffMembers = [
     {
       id: "usr-01",
-      name: "Rajesh Sharma",
+      name: userDisplayName || "Store Owner",
       role: "STORE OWNER",
       pin: "****",
       phone: "+91 98201 12345",
-      email: "rajesh@myopticsshop.com",
+      email: userEmail || "owner@visionpulse.in",
       terminal: "Terminal #01 (Active Counter)",
       status: "ONLINE",
       permissions: "Full Administrative & Financial Access",

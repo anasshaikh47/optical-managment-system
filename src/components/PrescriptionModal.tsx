@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Glasses, Check, User, Stethoscope } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface PrescriptionModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export function PrescriptionModal({
   onSuccess,
   preselectedCustomerId,
 }: PrescriptionModalProps) {
+  const { shopId, tenantFetch } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function PrescriptionModal({
 
   const fetchCustomers = async () => {
     try {
-      const res = await fetch("/api/customers");
+      const res = await tenantFetch("/api/customers");
       const data = await res.json();
       if (data.success) {
         setCustomers(data.data);
@@ -71,10 +73,10 @@ export function PrescriptionModal({
     setError(null);
 
     try {
-      const res = await fetch("/api/prescriptions", {
+      const res = await tenantFetch("/api/prescriptions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, shopId, userId: shopId }),
       });
 
       const data = await res.json();

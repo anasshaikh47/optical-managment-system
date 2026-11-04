@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
   Search,
   ShoppingCart,
@@ -54,6 +55,7 @@ const FITTING_OPTIONS = [
 ];
 
 export default function POSPage() {
+  const { shopId, tenantFetch } = useAuth();
   // Inventory Items & Filtering
   const [items, setItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -149,7 +151,7 @@ export default function POSPage() {
     };
     window.addEventListener("customer-created", handleCustomerCreated);
     return () => window.removeEventListener("customer-created", handleCustomerCreated);
-  }, []);
+  }, [shopId]);
 
   // Fetch full details of selected customer
   useEffect(() => {
@@ -163,7 +165,7 @@ export default function POSPage() {
   const fetchInventory = async () => {
     setLoadingItems(true);
     try {
-      const res = await fetch("/api/products");
+      const res = await tenantFetch("/api/products");
       const data = await res.json();
       if (data.success) {
         setItems(data.data);
@@ -177,7 +179,7 @@ export default function POSPage() {
 
   const fetchCustomers = async () => {
     try {
-      const res = await fetch("/api/customers");
+      const res = await tenantFetch("/api/customers");
       const data = await res.json();
       if (data.success) {
         setCustomers(data.data);
@@ -190,7 +192,7 @@ export default function POSPage() {
   const fetchCustomerDetails = async (id: string) => {
     setIsCustomerLoading(true);
     try {
-      const res = await fetch(`/api/customers/${id}`);
+      const res = await tenantFetch(`/api/customers/${id}`);
       const data = await res.json();
       if (data.success) {
         setSelectedCustomerDetails(data.data);
@@ -618,10 +620,10 @@ We will message you the moment your glasses pass optical lab inspection!`;
     };
 
     try {
-      const res = await fetch("/api/pos/checkout", {
+      const res = await tenantFetch("/api/pos/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, shopId, userId: shopId }),
       });
 
       const data = await res.json();

@@ -21,10 +21,12 @@ import {
 import { useAppUi } from "@/context/AppUiContext";
 import { InstallPwaButton } from "@/components/InstallPwaButton";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { openNewCustomerModal, isSidebarOpen, closeSidebar } = useAppUi();
+  const { user, userDisplayName, userEmail, userAvatarUrl, signOut } = useAuth();
 
   // Auto-close mobile sidebar drawer whenever route changes
   useEffect(() => {
@@ -86,10 +88,8 @@ export function Sidebar() {
     );
   };
 
-  const handleLogoutClick = () => {
-    if (confirm("You are currently on OWNER - Active Terminal. Do you want to lock or switch counter user?")) {
-      alert("Terminal session locked. Re-enter staff PIN to resume.");
-    }
+  const handleLogoutClick = async () => {
+    await signOut();
   };
 
   return (
@@ -236,18 +236,35 @@ export function Sidebar() {
             </span>
           </div>
 
-          {/* Current User Card: OWNER - Active Terminal */}
+          {/* Logged In User Profile Card */}
           <div className="flex items-center justify-between p-2 rounded-xl bg-[#0e1935] border border-[#1a2b56]">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center font-bold text-xs shrink-0">
-                RS
-              </div>
+              {userAvatarUrl ? (
+                <img
+                  src={userAvatarUrl}
+                  alt={userDisplayName || "User Avatar"}
+                  className="w-8 h-8 rounded-lg object-cover border border-cyan-500/30 shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center font-bold text-xs shrink-0">
+                  {userDisplayName
+                    ? userDisplayName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()
+                    : userEmail
+                    ? userEmail[0].toUpperCase()
+                    : "OP"}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="text-xs font-bold text-white truncate leading-tight">
-                  Rajesh Sharma
+                  {userDisplayName || userEmail || "Store Owner"}
                 </p>
                 <p className="text-[10px] text-emerald-400 font-mono font-semibold truncate">
-                  OWNER • Active Terminal
+                  {userEmail || "OWNER • Active Terminal"}
                 </p>
               </div>
             </div>
@@ -255,7 +272,7 @@ export function Sidebar() {
               type="button"
               onClick={handleLogoutClick}
               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-              title="Lock Counter Terminal"
+              title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
             </button>

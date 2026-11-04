@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
-import { Header } from "@/components/Header";
 import { AppUiProvider } from "@/context/AppUiContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { AppShell } from "@/components/AppShell";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Optical Store ERP & POS | My Optics Shop",
+  title: "Optical Store ERP & POS | VisionPulse",
   description:
     "Optical Store Management, Billing & POS System - Precision Optometry, Lab Jobs, Stock Control & Tax Invoicing",
   manifest: "/manifest.json",
@@ -54,17 +54,11 @@ export default function RootLayout({
       <body
         className={`${inter.className} h-full bg-slate-100 text-slate-900 flex overflow-hidden antialiased`}
       >
-        <AppUiProvider>
-          <div className="flex h-full w-full overflow-hidden relative">
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0 w-full overflow-hidden">
-              <Header />
-              <main className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
-                {children}
-              </main>
-            </div>
-          </div>
-        </AppUiProvider>
+        <AuthProvider>
+          <AppUiProvider>
+            <AppShell>{children}</AppShell>
+          </AppUiProvider>
+        </AuthProvider>
       </body>
     </html>
   );

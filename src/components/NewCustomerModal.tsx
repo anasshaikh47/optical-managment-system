@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, UserPlus, Check, Phone, MapPin, Mail, Calendar, AlertCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface NewCustomerModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export function NewCustomerModal({
   onClose,
   onSuccess,
 }: NewCustomerModalProps) {
+  const { shopId, tenantFetch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,11 +62,13 @@ export function NewCustomerModal({
     setSubmitting(true);
 
     try {
-      const res = await fetch("/api/customers", {
+      const res = await tenantFetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          shopId,
+          userId: shopId,
           name: trimmedName,
           phone: formattedPhone,
         }),

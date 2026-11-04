@@ -24,8 +24,10 @@ import {
 } from "lucide-react";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CustomersPage() {
+  const { shopId, tenantFetch } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,12 +42,12 @@ export default function CustomersPage() {
     };
     window.addEventListener("customer-created", handleCustomerCreated);
     return () => window.removeEventListener("customer-created", handleCustomerCreated);
-  }, []);
+  }, [shopId]);
 
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/customers");
+      const res = await tenantFetch("/api/customers");
       const json = await res.json();
       if (json.success) {
         setCustomers(json.data);

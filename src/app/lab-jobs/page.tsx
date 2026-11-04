@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 const WORKSHOP_STAGES = [
   { key: "ALL", label: "All Workshop Jobs" },
@@ -27,6 +28,7 @@ const WORKSHOP_STAGES = [
 ];
 
 export default function LabJobsPage() {
+  const { shopId, tenantFetch } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("ALL");
@@ -36,12 +38,12 @@ export default function LabJobsPage() {
 
   useEffect(() => {
     fetchWorkshopOrders();
-  }, []);
+  }, [shopId]);
 
   const fetchWorkshopOrders = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/orders");
+      const res = await tenantFetch("/api/orders");
       const json = await res.json();
       if (json.success) {
         // Show orders that have prescriptions or spectacles processing
@@ -57,7 +59,7 @@ export default function LabJobsPage() {
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setUpdatingId(orderId);
     try {
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await tenantFetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),

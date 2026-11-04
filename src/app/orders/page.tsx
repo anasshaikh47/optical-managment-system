@@ -31,6 +31,7 @@ import {
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
 import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 const STAGES = [
   { key: "PLACED", label: "New Order Placed", color: "border-blue-400 bg-blue-50 text-blue-900", badge: "bg-blue-100 text-blue-800" },
@@ -74,14 +75,16 @@ export default function OrdersPage() {
   // WhatsApp active dropdown popup menu
   const [activeWaMenuId, setActiveWaMenuId] = useState<string | null>(null);
 
+  const { shopId, tenantFetch } = useAuth();
+
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [shopId]);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/orders");
+      const res = await tenantFetch("/api/orders");
       const json = await res.json();
       if (json.success) {
         setOrders(json.data);
@@ -111,7 +114,7 @@ export default function OrdersPage() {
     );
 
     try {
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await tenantFetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: targetStage }),
@@ -133,7 +136,7 @@ export default function OrdersPage() {
 
     setPaySubmitting(true);
     try {
-      const res = await fetch(`/api/orders/${balanceModalOrder.id}/payments`, {
+      const res = await tenantFetch(`/api/orders/${balanceModalOrder.id}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

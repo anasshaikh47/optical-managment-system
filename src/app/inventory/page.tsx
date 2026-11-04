@@ -24,8 +24,10 @@ import {
 import { AddProductModal } from "@/components/AddProductModal";
 import { BarcodeStickerModal } from "@/components/BarcodeStickerModal";
 import { formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function InventoryPage() {
+  const { shopId, tenantFetch } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState("ALL");
@@ -56,12 +58,12 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [shopId]);
 
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/products");
+      const res = await tenantFetch("/api/products");
       const json = await res.json();
       if (json.success) {
         setItems(json.data);
@@ -87,7 +89,7 @@ export default function InventoryPage() {
     setAdjustSubmitting(true);
 
     try {
-      const res = await fetch(`/api/products/${adjustingItem.id}`, {
+      const res = await tenantFetch(`/api/products/${adjustingItem.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stock_quantity: newStock }),
@@ -116,7 +118,7 @@ export default function InventoryPage() {
     setDeleteSubmitting(true);
 
     try {
-      const res = await fetch(`/api/products/${deletingItem.id}`, {
+      const res = await tenantFetch(`/api/products/${deletingItem.id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -142,7 +144,7 @@ export default function InventoryPage() {
     setBulkDeleteSubmitting(true);
 
     try {
-      const res = await fetch("/api/products", {
+      const res = await tenantFetch("/api/products", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedItemIds }),

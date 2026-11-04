@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Settings, Save, Check, Store, Receipt } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SettingsPage() {
+  const { shopId, tenantFetch } = useAuth();
   const [settings, setSettings] = useState<any>({
     storeName: "VisionPulse Eyewear Studio",
     tagline: "Precision Clinical Optometry & Premium Eyewear",
@@ -23,11 +25,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [shopId]);
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch("/api/settings");
+      const res = await tenantFetch("/api/settings");
       const json = await res.json();
       if (json.success && json.data) {
         setSettings(json.data);
@@ -45,10 +47,10 @@ export default function SettingsPage() {
     setSavedSuccess(false);
 
     try {
-      const res = await fetch("/api/settings", {
+      const res = await tenantFetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, shopId, userId: shopId }),
       });
       const data = await res.json();
       if (data.success) {

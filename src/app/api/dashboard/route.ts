@@ -1,35 +1,77 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getShopIdFromRequest, loadTenantState } from "@/lib/tenant/store";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const [
-      orders,
-      inventoryItems,
-      customers,
-      payments,
-      settings,
-    ] = await Promise.all([
-      prisma.order.findMany({
-        include: {
-          customer: true,
-          prescription: true,
-          items: {
-            include: { item: true },
-          },
-          payments: {
+    const shopId = getShopIdFromRequest(request);
+
+    let orders: any[] = [];
+    let inventoryItems: any[] = [];
+    let customers: any[] = [];
+    let payments: any[] = [];
+    let settings: any = null;
+
+    if (shopId !== "default") {
+      const tenant = loadTenantState(shopId);
+      orders = tenant.orders.map((o) => {
+        const customer = tenant.customers.find((c) => c.id === o.customerId);
+        const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
+        const items = o.items.map((it) => ({
+          ...it,
+          item: tenant.inventory.find((inv) => inv.id === it.itemId),
+        }));
+        const payments = tenant.payments.filter((p) => p.orderId === o.id);
+        return { ...o, customer, prescription, items, payments };
+      });
+      inventoryItems = tenant.inventory;
+      customers = tenant.customers;
+      payments = tenant.payments;
+      settings = tenant.settings;
+    } else {
+      try {
+        const [
+          dbOrders,
+          dbInventoryItems,
+          dbCustomers,
+          dbPayments,
+          dbSettings,
+        ] = await Promise.all([
+          prisma.order.findMany({
+            include: {
+              customer: true,
+              prescription: true,
+              items: {
+                include: { item: true },
+              },
+              payments: {
+                orderBy: { createdAt: "desc" },
+              },
+            },
             orderBy: { createdAt: "desc" },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.inventoryItem.findMany(),
-      prisma.customer.findMany(),
-      prisma.payment.findMany({
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.storeSetting.findUnique({ where: { id: "default" } }),
-    ]);
+          }),
+          prisma.inventoryItem.findMany(),
+          prisma.customer.findMany(),
+          prisma.payment.findMany({
+            orderBy: { createdAt: "desc" },
+          }),
+          prisma.storeSetting.findUnique({ where: { id: "default" } }),
+        ]);
+
+        orders = dbOrders;
+        inventoryItems = dbInventoryItems;
+        customers = dbCustomers;
+        payments = dbPayments;
+        settings = dbSettings;
+      } catch {
+        const tenant = loadTenantState("default");
+        orders = tenant.orders;
+        inventoryItems = tenant.inventory;
+        customers = tenant.customers;
+        payments = tenant.payments;
+        settings = tenant.settings;
+      }
+    }
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -98,7 +140,7 @@ export async function GET() {
 
       // Profit = (selling_price - cost_price) * quantity + coating + fitting - discount
       let orderProfit = 0;
-      order.items.forEach((oi) => {
+      order.items?.forEach((oi: any) => {
         const costPrice = oi.item?.cost_price || 0;
         const marginPerUnit = oi.unit_price - costPrice;
         orderProfit += (marginPerUnit * oi.quantity) + oi.coating_charges + oi.fitting_charges;
@@ -137,7 +179,7 @@ export async function GET() {
           daySales += o.paid_amount;
           count += 1;
           let p = 0;
-          o.items.forEach((oi) => {
+          o.items?.forEach((oi: any) => {
             p += (oi.unit_price - (oi.item?.cost_price || 0)) * oi.quantity + oi.coating_charges + oi.fitting_charges;
           });
           dayProfit += Math.max(0, p - o.discount_amount);
@@ -182,7 +224,7 @@ export async function GET() {
     const lensTypeMap: Record<string, { type: string; count: number; value: number }> = {};
 
     orders.forEach((order) => {
-      order.items.forEach((oi) => {
+      order.items?.forEach((oi: any) => {
         const brand = oi.item?.brand || "Other";
         if (!brandMap[brand]) {
           brandMap[brand] = { brand, count: 0, value: 0 };
@@ -227,7 +269,7 @@ export async function GET() {
     let servicesCount = 0;
 
     orders.forEach((order) => {
-      order.items.forEach((oi) => {
+      order.items?.forEach((oi: any) => {
         if (oi.item?.type === "FRAME") {
           framesAmount += oi.subtotal;
           framesCount += oi.quantity;

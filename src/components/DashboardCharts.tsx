@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ResponsiveContainer,
   PieChart,
@@ -26,6 +26,7 @@ interface DashboardChartsProps {
 
 export function DashboardCharts({ analytics }: DashboardChartsProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const touchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const breakdownData =
     analytics?.salesBreakdown && analytics.salesBreakdown.length > 0
@@ -59,23 +60,46 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
 
   const totalValue = breakdownData.reduce((acc, curr) => acc + curr.value, 0);
 
+  const handleSliceHover = (index: number) => {
+    if (touchTimeoutRef.current) clearTimeout(touchTimeoutRef.current);
+    setActiveIndex(index);
+  };
+
+  const handleSliceLeave = () => {
+    setActiveIndex(null);
+  };
+
+  const handleSliceClick = (index: number) => {
+    setActiveIndex((prev) => (prev === index ? null : index));
+    if (touchTimeoutRef.current) clearTimeout(touchTimeoutRef.current);
+    // Auto-dismiss active touch selection after 2.5s so it never gets permanently stuck
+    touchTimeoutRef.current = setTimeout(() => {
+      setActiveIndex(null);
+    }, 2500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (touchTimeoutRef.current) clearTimeout(touchTimeoutRef.current);
+    };
+  }, []);
+
+  // Floating non-blocking tooltip badge
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-xl border border-slate-800 text-xs space-y-1">
-          <div className="flex items-center gap-2">
+        <div className="bg-slate-900/95 backdrop-blur-xs text-white px-3 py-1.5 rounded-xl shadow-xl border border-slate-700/80 text-xs space-y-0.5 pointer-events-none select-none animate-in fade-in zoom-in-95 duration-100">
+          <div className="flex items-center gap-1.5">
             <span
               className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: data.color }}
             />
-            <p className="font-bold text-slate-100">{data.label || data.name}</p>
+            <p className="font-bold text-slate-100 text-xs truncate max-w-[140px]">{data.label || data.name}</p>
           </div>
-          <p className="font-black text-sm font-mono text-cyan-400">
-            {formatCurrency(data.value)}
-          </p>
-          <p className="text-[10px] text-slate-400">
-            Share: <strong className="text-white">{data.percentage}%</strong> of total sales
+          <p className="font-black text-xs font-mono text-cyan-400">
+            {formatCurrency(data.value)}{" "}
+            <span className="text-[10px] text-slate-300 font-normal">({data.percentage}%)</span>
           </p>
         </div>
       );
@@ -92,6 +116,8 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
     }
     return <Wrench className="w-4 h-4 text-amber-600" />;
   };
+
+  const activeItem = activeIndex !== null ? breakdownData[activeIndex] : null;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
@@ -123,23 +149,33 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
 
       {/* Main Visual: Single Circular Donut Graph & Detailed Legend Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pt-5">
-        {/* The Circular Donut Visual (5 Cols on LG) */}
-        <div className="lg:col-span-5 relative flex items-center justify-center h-60 sm:h-64 w-full">
+        {/* The Circular Donut Visual with Responsive Aspect-Square Mobile Sizing */}
+        <div className="lg:col-span-5 relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[340px] mx-auto aspect-square select-none">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Tooltip content={<CustomTooltip />} />
+            <PieChart style={{ outline: "none" }}>
+              <Tooltip
+                content={<CustomTooltip />}
+                cursor={false}
+                wrapperStyle={{
+                  pointerEvents: "none",
+                  zIndex: 40,
+                  outline: "none",
+                }}
+              />
               <Pie
                 data={breakdownData}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                innerRadius={72}
-                outerRadius={104}
+                innerRadius="58%"
+                outerRadius="82%"
                 paddingAngle={4}
                 cornerRadius={5}
-                onMouseEnter={(_, index) => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
+                onMouseEnter={(_, index) => handleSliceHover(index)}
+                onMouseLeave={handleSliceLeave}
+                onClick={(_, index) => handleSliceClick(index)}
+                style={{ outline: "none" }}
               >
                 {breakdownData.map((entry, index) => (
                   <Cell
@@ -147,11 +183,12 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
                     fill={entry.color}
                     stroke="#ffffff"
                     strokeWidth={2}
-                    className="transition-all duration-200 cursor-pointer hover:opacity-90"
+                    className="cursor-pointer transition-all duration-150"
                     style={{
-                      transform:
-                        activeIndex === index ? "scale(1.03)" : "scale(1)",
-                      transformOrigin: "center center",
+                      outline: "none",
+                      WebkitTapHighlightColor: "transparent",
+                      opacity: activeIndex === null || activeIndex === index ? 1 : 0.6,
+                      filter: activeIndex === index ? "drop-shadow(0 2px 6px rgba(0,0,0,0.18))" : "none",
                     }}
                   />
                 ))}
@@ -159,17 +196,27 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
             </PieChart>
           </ResponsiveContainer>
 
-          {/* Center Info in Donut */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Total Sales
-            </span>
-            <span className="text-lg font-black text-slate-900 font-mono tracking-tight mt-0.5">
-              {formatCurrency(totalValue)}
-            </span>
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.2 rounded-full mt-1 border border-emerald-200">
-              Active Counter
-            </span>
+          {/* Center Info in Donut (Always vertically & horizontally centered with clean backing and z-index) */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center z-10 select-none">
+            <div className="w-[124px] sm:w-[144px] aspect-square rounded-full bg-white/95 backdrop-blur-2xs flex flex-col items-center justify-center shadow-xs border border-slate-100/90 p-2 transition-all duration-200">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[110px]">
+                {activeItem ? activeItem.name : "Total Sales"}
+              </span>
+              <span className="text-base sm:text-lg font-black text-slate-900 font-mono tracking-tight mt-0.5">
+                {formatCurrency(activeItem ? activeItem.value : totalValue)}
+              </span>
+              <span
+                className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 border transition-colors ${
+                  activeItem
+                    ? "bg-cyan-50 text-cyan-800 border-cyan-200"
+                    : "text-emerald-700 bg-emerald-50 border-emerald-200"
+                }`}
+              >
+                {activeItem
+                  ? `${activeItem.percentage}% Share`
+                  : "Active Counter"}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -178,11 +225,12 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
           {breakdownData.map((item, idx) => (
             <div
               key={item.name}
-              onMouseEnter={() => setActiveIndex(idx)}
-              onMouseLeave={() => setActiveIndex(null)}
+              onMouseEnter={() => handleSliceHover(idx)}
+              onMouseLeave={handleSliceLeave}
+              onClick={() => handleSliceClick(idx)}
               className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                 activeIndex === idx
-                  ? "bg-slate-50 border-slate-300 shadow-xs"
+                  ? "bg-slate-50 border-slate-300 shadow-xs ring-1 ring-slate-200"
                   : "bg-white border-slate-100 hover:border-slate-200"
               }`}
             >

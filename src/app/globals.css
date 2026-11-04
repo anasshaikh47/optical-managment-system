@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Suppress mobile SVG / Recharts tap outline glitches */
+.recharts-pie-sector:focus,
+.recharts-sector:focus,
+.recharts-surface:focus,
+path.recharts-sector:focus,
+path.recharts-pie-sector:focus {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}

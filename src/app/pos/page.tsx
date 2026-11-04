@@ -653,7 +653,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
+    <div className="min-h-screen w-full overflow-y-auto pb-24 bg-slate-100 flex flex-col">
 
       {/* Barcode Flash Toast Feedback */}
       {barcodeFeedback && (
@@ -673,11 +673,11 @@ We will message you the moment your glasses pass optical lab inspection!`;
         </div>
       )}
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* ======================================================== */}
         {/* LEFT COLUMN: Fast Barcode, Catalog & Prescription Matrix */}
         {/* ======================================================== */}
-        <div className="flex-1 flex flex-col min-w-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 overflow-y-auto">
+        <div className="flex-1 flex flex-col min-w-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 overflow-visible lg:overflow-y-auto">
           {/* Top Sticky Barcode & Search Controls */}
           <div className="p-4 bg-white border-b border-slate-200 space-y-3 sticky top-0 z-10 shadow-xs">
             {/* High-speed Barcode Scanner Field */}
@@ -1149,7 +1149,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
         {/* ======================================================== */}
         {/* RIGHT COLUMN: Customer Lookup, Active Cart & Financials */}
         {/* ======================================================== */}
-        <div className="w-full lg:w-96 xl:w-[460px] flex flex-col bg-white border-t lg:border-t-0 lg:border-l border-slate-200 shadow-sm flex-shrink-0 overflow-y-auto">
+        <div className="w-full lg:w-96 xl:w-[460px] flex flex-col bg-white border-t lg:border-t-0 lg:border-l border-slate-200 shadow-sm flex-shrink-0 overflow-visible lg:overflow-y-auto">
           {/* SECTION 1: Customer Lookup & Auto-fill */}
           <div className="p-4 border-b border-slate-200 bg-slate-50/80 space-y-3">
             <div className="flex items-center justify-between">
@@ -1583,7 +1583,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
           </div>
 
           {/* SECTION 3: Live Totals & Advance/Balance Calculation */}
-          <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3.5">
+          <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-3.5 pb-28 md:pb-6">
             {checkoutError && (
               <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -1840,7 +1840,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             </div>
 
             {/* SECTION 4: Dual Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-28 sm:pb-2">
               {/* Button 1: Save & Print Lab Job Slip */}
               <button
                 type="button"

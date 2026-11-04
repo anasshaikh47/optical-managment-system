@@ -102,8 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         },
       });
+      if (result.error) {
+        console.error("Supabase Auth Detailed Error:", result.error);
+      }
       return result;
     } catch (error: any) {
+      console.error("Supabase Auth Detailed Error:", error);
       return { error };
     }
   }, [supabase]);
@@ -116,8 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           password,
         });
+        if (result.error) {
+          console.error("Supabase Auth Detailed Error:", result.error);
+        }
         return result;
       } catch (error: any) {
+        console.error("Supabase Auth Detailed Error:", error);
         return { data: null, error };
       }
     },
@@ -139,8 +147,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
           },
         });
+        if (result.error) {
+          console.error("Supabase Auth Detailed Error:", result.error);
+        }
         return result;
       } catch (error: any) {
+        console.error("Supabase Auth Detailed Error:", error);
         return { data: null, error };
       }
     },

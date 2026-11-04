@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, Shield, Store, ArrowRight, Loader2, Mail, Lock, User, CheckCircle2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading, signInWithGoogle, signInWithPassword, signUpWithPassword } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
 
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -34,11 +36,23 @@ function LoginContent() {
     setSuccessMsg(null);
     setGoogleLoading(true);
     try {
-      const { error } = await signInWithGoogle();
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
       if (error) {
+        console.error("Supabase Auth Detailed Error:", error);
         setErrorMsg(error.message || "Failed to initiate Google sign in.");
       }
     } catch (err: any) {
+      console.error("Supabase Auth Detailed Error:", err);
       setErrorMsg(err.message || "Google OAuth failed.");
     } finally {
       setGoogleLoading(false);
@@ -65,18 +79,36 @@ function LoginContent() {
 
     try {
       if (activeTab === "signin") {
-        const { error } = await signInWithPassword(email, password);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
         if (error) {
+          console.error("Supabase Auth Detailed Error:", error);
           setErrorMsg(error.message || "Invalid email or password.");
         } else {
           setSuccessMsg("Signed in successfully! Redirecting...");
           const redirectUrl = searchParams.get("redirect") || "/dashboard";
           router.push(redirectUrl);
+          router.refresh();
         }
       } else {
         const displayName = fullName || storeName || email.split("@")[0];
-        const { error } = await signUpWithPassword(email, password, displayName);
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: displayName,
+              name: displayName,
+              store_name: storeName || `${displayName}'s Optics`,
+            },
+          },
+        });
+
         if (error) {
+          console.error("Supabase Auth Detailed Error:", error);
           setErrorMsg(error.message || "Could not register store account.");
         } else {
           setSuccessMsg("Account created! Please check your email to confirm, or sign in now.");
@@ -84,6 +116,7 @@ function LoginContent() {
         }
       }
     } catch (err: any) {
+      console.error("Supabase Auth Detailed Error:", err);
       setErrorMsg(err.message || "An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);

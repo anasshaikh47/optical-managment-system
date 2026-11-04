@@ -6,6 +6,7 @@ import { CheckCircle2 } from "lucide-react";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { QuickSearchModal } from "@/components/QuickSearchModal";
 import { MobileSyncModal } from "@/components/MobileSyncModal";
+import { InstallPwaModal } from "@/components/InstallPwaModal";
 
 interface AppUiContextType {
   openNewCustomerModal: () => void;
@@ -18,6 +19,14 @@ interface AppUiContextType {
   openSidebar: () => void;
   closeSidebar: () => void;
   toggleSidebar: () => void;
+  // PWA progressive web app state
+  isInstallable: boolean;
+  isInstalled: boolean;
+  isIos: boolean;
+  isInstallModalOpen: boolean;
+  openInstallModal: () => void;
+  closeInstallModal: () => void;
+  promptInstall: () => Promise<void>;
 }
 
 const AppUiContext = createContext<AppUiContextType | undefined>(undefined);
@@ -30,6 +39,13 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // PWA State
+  const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
   // Global keyboard shortcut: Ctrl+K / Cmd+K to open Quick Search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,6 +56,59 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Register PWA Service Worker & Listen to PWA Install Lifecycle
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Register Service Worker
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          // Service worker active
+        })
+        .catch((err) => {
+          console.warn("PWA SW registration:", err);
+        });
+    }
+
+    // Check if running in standalone mode already
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes("android-app://");
+    setIsInstalled(isStandalone);
+
+    // Detect iOS
+    const isIosDevice =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIos(isIosDevice);
+
+    // Capture beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    // Capture appinstalled event
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+      setToastMessage("✓ Optical Store ERP successfully installed as native app!");
+      setTimeout(() => setToastMessage(null), 4000);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
   }, []);
 
   const openNewCustomerModal = () => setIsNewCustomerOpen(true);
@@ -54,6 +123,25 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const openSidebar = () => setIsSidebarOpen(true);
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
+  const openInstallModal = () => setIsInstallModalOpen(true);
+  const closeInstallModal = () => setIsInstallModalOpen(false);
+
+  const promptInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult && choiceResult.outcome === "accepted") {
+        setIsInstalled(true);
+        setIsInstallable(false);
+        setDeferredPrompt(null);
+        setToastMessage("✓ Optical POS installed! Launch it anytime from your home screen/desktop.");
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    } else {
+      setIsInstallModalOpen(true);
+    }
+  };
 
   const handleCustomerCreated = (newCust: any) => {
     setIsNewCustomerOpen(false);
@@ -78,6 +166,13 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         openSidebar,
         closeSidebar,
         toggleSidebar,
+        isInstallable,
+        isInstalled,
+        isIos,
+        isInstallModalOpen,
+        openInstallModal,
+        closeInstallModal,
+        promptInstall,
       }}
     >
       {children}
@@ -105,6 +200,15 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       <MobileSyncModal
         isOpen={isMobileSyncOpen}
         onClose={closeMobileSyncModal}
+      />
+
+      <InstallPwaModal
+        isOpen={isInstallModalOpen}
+        onClose={closeInstallModal}
+        onInstall={promptInstall}
+        isInstallable={isInstallable}
+        isInstalled={isInstalled}
+        isIos={isIos}
       />
     </AppUiContext.Provider>
   );

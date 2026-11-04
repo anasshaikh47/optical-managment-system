@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <!-- Glasses Rim Left -->
+  <circle cx="170" cy="256" r="76" stroke="url(#cyanGrad)" stroke-width="26" fill="#0c4a6e" fill-opacity="0.35"/>
+  <!-- Glasses Rim Right -->
+  <circle cx="342" cy="256" r="76" stroke="url(#cyanGrad)" stroke-width="26" fill="#0c4a6e" fill-opacity="0.35"/>
+  <!-- Glasses Bridge -->
+  <path d="M236 242 C248 226, 264 226, 276 242" stroke="url(#cyanGrad)" stroke-width="22" stroke-linecap="round"/>
+  <!-- Left Temple -->
+  <path d="M94 250 C60 244, 38 234, 20 230" stroke="url(#cyanGrad)" stroke-width="20" stroke-linecap="round"/>
+  <!-- Right Temple -->
+  <path d="M418 250 C452 244, 474 234, 492 230" stroke="url(#cyanGrad)" stroke-width="20" stroke-linecap="round"/>
+  <!-- Left Lens Glint -->
+  <path d="M140 216 L174 250" stroke="#e0f2fe" stroke-width="12" stroke-linecap="round" stroke-opacity="0.85"/>
+  <!-- Right Lens Glint -->
+  <path d="M312 216 L346 250" stroke="#e0f2fe" stroke-width="12" stroke-linecap="round" stroke-opacity="0.85"/>
+  <defs>
+    <linearGradient id="cyanGrad" x1="0" y1="200" x2="512" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06b6d4"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+</svg>

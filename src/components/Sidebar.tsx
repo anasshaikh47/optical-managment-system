@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useAppUi } from "@/context/AppUiContext";
+import { InstallPwaButton } from "@/components/InstallPwaButton";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
@@ -210,6 +211,9 @@ export function Sidebar() {
         {/* BOTTOM SECTION                                           */}
         {/* ======================================================== */}
         <div className="p-3 border-t border-[#1a233a] bg-[#070d1e]/90 space-y-2.5">
+          {/* Native PWA Install App Action */}
+          <InstallPwaButton variant="sidebar" />
+
           {/* WhatsApp Accounting Support Button */}
           <button
             type="button"

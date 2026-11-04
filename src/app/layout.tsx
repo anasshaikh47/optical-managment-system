@@ -11,13 +11,29 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#0B132B",
+  themeColor: "#0f172a",
 };
 
 export const metadata: Metadata = {
-  title: "My Optics Shop | Optical Store ERP & POS Management",
+  title: "Optical Store ERP & POS | My Optics Shop",
   description:
-    "Ultra User-Friendly Optical Clinic, Eyewear Inventory, Refraction Prescription Management & POS System for My Optics Shop",
+    "Optical Store Management, Billing & POS System - Precision Optometry, Lab Jobs, Stock Control & Tax Invoicing",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "OpticalPOS",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -27,6 +43,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0f172a" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="OpticalPOS" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
       <body
         className={`${inter.className} h-full bg-slate-100 text-slate-900 flex overflow-hidden antialiased`}
       >

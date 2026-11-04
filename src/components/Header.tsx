@@ -14,6 +14,7 @@ import {
   Menu,
 } from "lucide-react";
 import { useAppUi } from "@/context/AppUiContext";
+import { InstallPwaButton } from "@/components/InstallPwaButton";
 
 interface HeaderProps {
   title?: string;
@@ -146,6 +147,9 @@ export function Header({ children }: HeaderProps) {
             <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
             <span>Main Branch - Live</span>
           </div>
+
+          {/* Native PWA Install Button */}
+          <InstallPwaButton variant="header" />
         </div>
 
         {/* Counter Terminal Info (Hidden on very small screens, visible from md:) */}

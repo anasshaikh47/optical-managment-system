@@ -23,7 +23,6 @@ import {
   FileText,
   Eye,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
 import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
@@ -66,11 +65,8 @@ export default function CustomerProfilePage({
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col h-full bg-slate-100">
-        <Header title="Patient Clinical Profile" subtitle="Loading..." />
-        <div className="flex-1 flex items-center justify-center text-slate-400 text-xs">
-          Loading patient CRM profile...
-        </div>
+      <div className="flex-1 flex flex-col h-full bg-slate-100 items-center justify-center text-slate-400 text-xs">
+        Loading patient CRM profile...
       </div>
     );
   }
@@ -78,7 +74,6 @@ export default function CustomerProfilePage({
   if (error || !customer) {
     return (
       <div className="flex-1 flex flex-col h-full bg-slate-100 p-6">
-        <Header title="Patient Not Found" subtitle="Error Loading CRM Profile" />
         <div className="p-8 text-center text-rose-600 bg-white rounded-2xl border border-rose-200 mt-4 space-y-3">
           <AlertTriangle className="w-8 h-8 mx-auto" />
           <p className="font-bold">{error || "Patient not found."}</p>
@@ -155,12 +150,7 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title={`Patient CRM: ${customer.name}`}
-        subtitle="Complete Optical Refraction History, Lifetime Orders & Loyalty Profile"
-      />
-
-      <div className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 space-y-4">
+      <div className="flex-1 flex flex-col overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4">
         {/* Navigation & Action Bar */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -354,7 +344,7 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
 
                   {/* Refraction Matrix Table */}
                   <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                    <table className="w-full text-center text-xs font-mono border-collapse">
+                    <table className="w-full min-w-[500px] text-center text-xs font-mono border-collapse">
                       <thead className="bg-slate-100 text-slate-700 uppercase font-sans font-bold text-[10px]">
                         <tr>
                           <th className="p-1.5 text-left pl-3">Eye</th>
@@ -420,93 +410,95 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
             </span>
           </div>
 
-          <table className="w-full text-xs text-left border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold">
-              <tr>
-                <th className="p-3">Bill / Order #</th>
-                <th className="p-3">Items Purchased</th>
-                <th className="p-3">Order Date</th>
-                <th className="p-3 text-right">Net Payable</th>
-                <th className="p-3 text-right">Amount Paid</th>
-                <th className="p-3 text-right">Balance Due</th>
-                <th className="p-3 text-center">Status</th>
-                <th className="p-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.length === 0 ? (
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[750px] text-xs text-left border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold">
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400 italic">
-                    No orders placed by this patient yet.
-                  </td>
+                  <th className="p-3">Bill / Order #</th>
+                  <th className="p-3">Items Purchased</th>
+                  <th className="p-3">Order Date</th>
+                  <th className="p-3 text-right">Net Payable</th>
+                  <th className="p-3 text-right">Amount Paid</th>
+                  <th className="p-3 text-right">Balance Due</th>
+                  <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Actions</th>
                 </tr>
-              ) : (
-                orders.map((ord: any) => (
-                  <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-3 font-mono font-bold text-cyan-800">
-                      <Link href={`/orders/${ord.id}`} className="hover:underline">
-                        {ord.bill_no}
-                      </Link>
-                    </td>
-
-                    <td className="p-3 font-semibold text-slate-800">
-                      {ord.items
-                        ?.map(
-                          (i: any) =>
-                            `${i.quantity}x ${i.item?.brand} ${i.item?.model || i.item?.type}`
-                        )
-                        .join(", ")}
-                    </td>
-
-                    <td className="p-3 text-slate-500">{formatDate(ord.createdAt)}</td>
-
-                    <td className="p-3 text-right font-black text-slate-900">
-                      {formatCurrency(ord.final_payable)}
-                    </td>
-
-                    <td className="p-3 text-right font-semibold text-emerald-600">
-                      {formatCurrency(ord.paid_amount)}
-                    </td>
-
-                    <td className="p-3 text-right font-bold">
-                      {ord.balance_amount > 0 ? (
-                        <span className="text-rose-600">
-                          {formatCurrency(ord.balance_amount)}
-                        </span>
-                      ) : (
-                        <span className="text-emerald-600 font-bold">Paid Full</span>
-                      )}
-                    </td>
-
-                    <td className="p-3 text-center">
-                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                        {ord.status.replace("_", " ")}
-                      </span>
-                    </td>
-
-                    <td className="p-3 text-center">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          onClick={() => setSelectedReceiptOrder(ord)}
-                          className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
-                          title="Print GST Invoice"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                        <Link
-                          href={`/orders/${ord.id}`}
-                          className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
-                          title="View Details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                      No orders placed by this patient yet.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  orders.map((ord: any) => (
+                    <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-3 font-mono font-bold text-cyan-800">
+                        <Link href={`/orders/${ord.id}`} className="hover:underline">
+                          {ord.bill_no}
+                        </Link>
+                      </td>
+
+                      <td className="p-3 font-semibold text-slate-800">
+                        {ord.items
+                          ?.map(
+                            (i: any) =>
+                              `${i.quantity}x ${i.item?.brand} ${i.item?.model || i.item?.type}`
+                          )
+                          .join(", ")}
+                      </td>
+
+                      <td className="p-3 text-slate-500">{formatDate(ord.createdAt)}</td>
+
+                      <td className="p-3 text-right font-black text-slate-900">
+                        {formatCurrency(ord.final_payable)}
+                      </td>
+
+                      <td className="p-3 text-right font-semibold text-emerald-600">
+                        {formatCurrency(ord.paid_amount)}
+                      </td>
+
+                      <td className="p-3 text-right font-bold">
+                        {ord.balance_amount > 0 ? (
+                          <span className="text-rose-600">
+                            {formatCurrency(ord.balance_amount)}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 font-bold">Paid Full</span>
+                        )}
+                      </td>
+
+                      <td className="p-3 text-center">
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                          {ord.status.replace("_", " ")}
+                        </span>
+                      </td>
+
+                      <td className="p-3 text-center">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => setSelectedReceiptOrder(ord)}
+                            className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
+                            title="Print GST Invoice"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          <Link
+                            href={`/orders/${ord.id}`}
+                            className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
+                            title="View Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

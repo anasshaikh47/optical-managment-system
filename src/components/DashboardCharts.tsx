@@ -94,9 +94,9 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
       {/* Chart Section Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
             <PieChartIcon className="w-5 h-5 stroke-[2.2]" />
@@ -111,7 +111,7 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
           </div>
         </div>
 
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
             Total Revenue Audited
           </span>
@@ -124,7 +124,7 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
       {/* Main Visual: Single Circular Donut Graph & Detailed Legend Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pt-5">
         {/* The Circular Donut Visual (5 Cols on LG) */}
-        <div className="lg:col-span-5 relative flex items-center justify-center h-64">
+        <div className="lg:col-span-5 relative flex items-center justify-center h-60 sm:h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Tooltip content={<CustomTooltip />} />

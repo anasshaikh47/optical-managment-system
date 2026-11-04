@@ -103,7 +103,7 @@ export default function CustomersPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 space-y-4">
+      <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-4 md:p-6 space-y-4">
         {/* Controls Bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="relative w-full md:w-80">
@@ -117,7 +117,7 @@ export default function CustomersPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-between sm:justify-end">
             <button
               onClick={() => setFilterCheckupDue(!filterCheckupDue)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
@@ -142,8 +142,8 @@ export default function CustomersPage() {
 
         {/* Patients Table */}
         <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-xs text-left border-collapse">
+          <div className="flex-1 overflow-auto w-full">
+            <table className="w-full min-w-[750px] text-xs text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold sticky top-0 z-10">
                 <tr>
                   <th className="p-3.5">Patient Details</th>

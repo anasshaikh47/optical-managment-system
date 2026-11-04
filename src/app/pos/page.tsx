@@ -579,11 +579,11 @@ We will message you the moment your glasses pass optical lab inspection!`;
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* ======================================================== */}
         {/* LEFT COLUMN: Fast Barcode, Catalog & Prescription Matrix */}
         {/* ======================================================== */}
-        <div className="flex-1 flex flex-col min-w-0 border-r border-slate-200 bg-slate-50 overflow-y-auto">
+        <div className="flex-1 flex flex-col min-w-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 overflow-y-auto">
           {/* Top Sticky Barcode & Search Controls */}
           <div className="p-4 bg-white border-b border-slate-200 space-y-3 sticky top-0 z-10 shadow-xs">
             {/* High-speed Barcode Scanner Field */}
@@ -1055,7 +1055,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
         {/* ======================================================== */}
         {/* RIGHT COLUMN: Customer Lookup, Active Cart & Financials */}
         {/* ======================================================== */}
-        <div className="w-96 xl:w-[460px] flex flex-col bg-white border-l border-slate-200 shadow-sm flex-shrink-0 overflow-y-auto">
+        <div className="w-full lg:w-96 xl:w-[460px] flex flex-col bg-white border-t lg:border-t-0 lg:border-l border-slate-200 shadow-sm flex-shrink-0 overflow-y-auto">
           {/* SECTION 1: Customer Lookup & Auto-fill */}
           <div className="p-4 border-b border-slate-200 bg-slate-50/80 space-y-3">
             <div className="flex items-center justify-between">

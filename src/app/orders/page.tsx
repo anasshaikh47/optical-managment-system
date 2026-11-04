@@ -633,8 +633,8 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
           /* VIEW 2: DETAILED ORDERS TABLE VIEW                      */
           /* ======================================================== */
           <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-xs text-left border-collapse">
+            <div className="flex-1 overflow-auto w-full">
+              <table className="w-full min-w-[850px] text-xs text-left border-collapse">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold sticky top-0 z-10">
                   <tr>
                     <th className="p-3.5">Bill / Order #</th>

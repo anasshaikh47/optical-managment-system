@@ -65,7 +65,7 @@ export default function SettingsPage() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
 
-      <div className="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 max-w-4xl w-full mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           {savedSuccess && (
             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-2">

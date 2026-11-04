@@ -27,7 +27,6 @@ import {
   Send,
   X,
 } from "lucide-react";
-import { Header } from "@/components/Header";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
 import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
@@ -242,11 +241,8 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col h-full bg-slate-100">
-        <Header title="Order & Workshop Details" subtitle="Loading..." />
-        <div className="flex-1 flex items-center justify-center text-slate-400 text-xs">
-          Loading order details...
-        </div>
+      <div className="flex-1 flex flex-col h-full bg-slate-100 items-center justify-center text-slate-400 text-xs">
+        Loading order details...
       </div>
     );
   }
@@ -254,7 +250,6 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
   if (error || !order) {
     return (
       <div className="flex-1 flex flex-col h-full bg-slate-100 p-6">
-        <Header title="Order Not Found" subtitle="Error Loading Order" />
         <div className="p-8 text-center text-rose-600 bg-white rounded-2xl border border-rose-200 mt-4 space-y-3">
           <AlertCircle className="w-8 h-8 mx-auto" />
           <p className="font-bold">{error || "Order not found."}</p>
@@ -285,15 +280,10 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <Header
-        title={`Order #${order.bill_no}`}
-        subtitle={`Eyewear Glazing, Workshop Lab Specs & Payment History`}
-      />
-
-      <div className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 space-y-4">
+      <div className="flex-1 flex flex-col overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4">
         {/* Navigation Breadcrumb & Action Toolbar */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             <Link
               href="/orders"
               className="font-bold text-slate-500 hover:text-cyan-700 flex items-center gap-1"
@@ -317,7 +307,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
           </div>
 
           {/* Action Buttons Toolbar */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Workshop Thermal Slip */}
             <button
               onClick={() => setShowThermalModal(true)}
@@ -620,44 +610,46 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                 </span>
               </div>
 
-              <table className="w-full text-xs text-left border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-[10px] uppercase font-bold">
-                  <tr>
-                    <th className="p-3">Item Description</th>
-                    <th className="p-3 text-center">Qty</th>
-                    <th className="p-3 text-right">Unit Rate</th>
-                    <th className="p-3 text-right">Coating & Fitting</th>
-                    <th className="p-3 text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {order.items?.map((it: any) => {
-                    const extra = (it.coating_charges || 0) + (it.fitting_charges || 0);
-                    return (
-                      <tr key={it.id}>
-                        <td className="p-3 font-semibold text-slate-800">
-                          {it.item?.brand} - {it.item?.model || it.item?.type}
-                          <span className="text-[10px] text-slate-400 font-mono block">
-                            SKU: {it.item?.sku}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center font-bold text-slate-700">
-                          {it.quantity}
-                        </td>
-                        <td className="p-3 text-right text-slate-700">
-                          {formatCurrency(it.unit_price)}
-                        </td>
-                        <td className="p-3 text-right text-slate-500">
-                          {extra > 0 ? formatCurrency(extra) : "—"}
-                        </td>
-                        <td className="p-3 text-right font-bold text-slate-900">
-                          {formatCurrency(it.subtotal)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto w-full">
+                <table className="w-full min-w-[550px] text-xs text-left border-collapse">
+                  <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-[10px] uppercase font-bold">
+                    <tr>
+                      <th className="p-3">Item Description</th>
+                      <th className="p-3 text-center">Qty</th>
+                      <th className="p-3 text-right">Unit Rate</th>
+                      <th className="p-3 text-right">Coating & Fitting</th>
+                      <th className="p-3 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {order.items?.map((it: any) => {
+                      const extra = (it.coating_charges || 0) + (it.fitting_charges || 0);
+                      return (
+                        <tr key={it.id}>
+                          <td className="p-3 font-semibold text-slate-800">
+                            {it.item?.brand} - {it.item?.model || it.item?.type}
+                            <span className="text-[10px] text-slate-400 font-mono block">
+                              SKU: {it.item?.sku}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center font-bold text-slate-700">
+                            {it.quantity}
+                          </td>
+                          <td className="p-3 text-right text-slate-700">
+                            {formatCurrency(it.unit_price)}
+                          </td>
+                          <td className="p-3 text-right text-slate-500">
+                            {extra > 0 ? formatCurrency(extra) : "—"}
+                          </td>
+                          <td className="p-3 text-right font-bold text-slate-900">
+                            {formatCurrency(it.subtotal)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

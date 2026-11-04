@@ -60,7 +60,7 @@ function PrescriptionsContent() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
+      <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-4 md:p-6 space-y-4">
         {/* Search & Statistics Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="relative w-full sm:w-80">
@@ -74,7 +74,7 @@ function PrescriptionsContent() {
             />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-between sm:justify-end w-full sm:w-auto">
             <span className="text-xs text-slate-500 font-medium">
               Showing <strong className="text-slate-800">{filtered.length}</strong> clinical prescriptions
             </span>
@@ -159,8 +159,8 @@ function PrescriptionsContent() {
                 </div>
 
                 {/* Optical Diopter Measurement Matrix */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-center border-collapse">
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full min-w-[550px] text-xs text-center border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold">
                         <th className="p-2 border border-slate-200 text-left">Eye Designation</th>

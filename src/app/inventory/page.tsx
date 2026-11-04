@@ -200,7 +200,7 @@ export default function InventoryPage() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
       {/* Inventory Action Toolbar */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-2xs">
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-2xs">
         <div>
           <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
             Inventory & Stock Catalog
@@ -209,7 +209,7 @@ export default function InventoryPage() {
             Manage frames, lenses, stock levels, barcodes & pricing margins
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Bulk Delete Action Button (Visible when 1 or more items selected) */}
           {selectedItemIds.length > 0 && (
             <button
@@ -311,8 +311,8 @@ export default function InventoryPage() {
 
         {/* Inventory Table */}
         <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-xs text-left border-collapse">
+          <div className="flex-1 overflow-auto w-full">
+            <table className="w-full min-w-[850px] text-xs text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold sticky top-0 z-10">
                 <tr>
                   <th className="p-3.5 w-10 text-center">

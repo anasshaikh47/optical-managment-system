@@ -130,8 +130,8 @@ export default function StaffPage() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[700px] text-xs text-left">
             <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-100">
               <tr>
                 <th className="p-3.5">Staff Name</th>

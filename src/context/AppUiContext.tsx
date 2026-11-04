@@ -14,6 +14,10 @@ interface AppUiContextType {
   closeQuickSearchModal: () => void;
   openMobileSyncModal: () => void;
   closeMobileSyncModal: () => void;
+  isSidebarOpen: boolean;
+  openSidebar: () => void;
+  closeSidebar: () => void;
+  toggleSidebar: () => void;
 }
 
 const AppUiContext = createContext<AppUiContextType | undefined>(undefined);
@@ -23,6 +27,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
   const [isMobileSyncOpen, setIsMobileSyncOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Global keyboard shortcut: Ctrl+K / Cmd+K to open Quick Search
@@ -46,6 +51,10 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const openMobileSyncModal = () => setIsMobileSyncOpen(true);
   const closeMobileSyncModal = () => setIsMobileSyncOpen(false);
 
+  const openSidebar = () => setIsSidebarOpen(true);
+  const closeSidebar = () => setIsSidebarOpen(false);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
   const handleCustomerCreated = (newCust: any) => {
     setIsNewCustomerOpen(false);
     setToastMessage(`✓ Customer "${newCust.name}" successfully registered (+91 ${newCust.phone.replace(/[^0-9]/g, "").slice(-10)})`);
@@ -65,6 +74,10 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         closeQuickSearchModal,
         openMobileSyncModal,
         closeMobileSyncModal,
+        isSidebarOpen,
+        openSidebar,
+        closeSidebar,
+        toggleSidebar,
       }}
     >
       {children}

@@ -427,7 +427,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
           <div className="lg:col-span-2 space-y-4">
             {/* Lab & Refraction Prescription Details Card */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-              <div className="p-4 bg-gradient-to-r from-slate-50 to-cyan-50/50 border-b border-slate-200 flex items-center justify-between">
+              <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-cyan-600 text-white flex items-center justify-center">
                     <Glasses className="w-4 h-4" />

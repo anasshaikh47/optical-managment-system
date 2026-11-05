@@ -196,7 +196,7 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-cyan-400 flex items-center justify-center font-bold text-lg shadow-xs">
                 {customer.name.substring(0, 2).toUpperCase()}
               </div>
               <div>

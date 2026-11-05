@@ -100,17 +100,12 @@ export async function GET(request: Request) {
           yesterdaySales += o.paid_amount;
         }
       });
-      // Fallback baseline for visual presentation if seeded orders were on same date
-      if (todaySales === 0 && orders.length > 0) {
-        todaySales = orders.slice(0, 3).reduce((acc, o) => acc + o.paid_amount, 0);
-        yesterdaySales = orders.slice(3, 5).reduce((acc, o) => acc + o.paid_amount, 0);
-      }
     }
 
     const salesChangePercent =
       yesterdaySales > 0
         ? parseFloat((((todaySales - yesterdaySales) / yesterdaySales) * 100).toFixed(1))
-        : 14.5;
+        : 0;
 
     // 2. Net Profit Calculation across all sold items
     let totalNetProfit = 0;
@@ -186,14 +181,6 @@ export async function GET(request: Request) {
         }
       });
 
-      // Provide realistic distributed trend data if all sample orders were created on same instant
-      if (daySales === 0) {
-        const simulatedSales = Math.round(8000 + Math.sin(i) * 3500 + (6 - i) * 1200);
-        daySales = simulatedSales;
-        dayProfit = Math.round(simulatedSales * 0.48);
-        count = Math.max(1, Math.round(simulatedSales / 4500));
-      }
-
       dailyTrend.push({
         date: dateStr,
         day: dayName,
@@ -205,18 +192,18 @@ export async function GET(request: Request) {
 
     // Weekly last 4 weeks
     const weeklyTrend = [
-      { week: "Week 1", sales: Math.round(totalRevenue * 0.18) + 12000, profit: Math.round(totalNetProfit * 0.2) + 5500 },
-      { week: "Week 2", sales: Math.round(totalRevenue * 0.22) + 16000, profit: Math.round(totalNetProfit * 0.24) + 7200 },
-      { week: "Week 3", sales: Math.round(totalRevenue * 0.28) + 19000, profit: Math.round(totalNetProfit * 0.27) + 8900 },
-      { week: "This Week", sales: Math.max(todaySales, Math.round(totalRevenue * 0.32)), profit: Math.round(totalNetProfit * 0.29) },
+      { week: "Week 1", sales: Math.round(totalRevenue * 0.18), profit: Math.round(totalNetProfit * 0.2) },
+      { week: "Week 2", sales: Math.round(totalRevenue * 0.22), profit: Math.round(totalNetProfit * 0.24) },
+      { week: "Week 3", sales: Math.round(totalRevenue * 0.28), profit: Math.round(totalNetProfit * 0.27) },
+      { week: "This Week", sales: Math.round(totalRevenue * 0.32), profit: Math.round(totalNetProfit * 0.29) },
     ];
 
     // Monthly last 6 months
     const monthNames = ["May", "Jun", "Jul", "Aug", "Sep", "Oct"];
     const monthlyTrend = monthNames.map((m, idx) => ({
       month: m,
-      sales: Math.round(65000 + idx * 14000 + Math.sin(idx) * 8000),
-      profit: Math.round(31000 + idx * 6500),
+      sales: totalRevenue > 0 ? Math.round((totalRevenue / 6) * (0.8 + idx * 0.08)) : 0,
+      profit: totalNetProfit > 0 ? Math.round((totalNetProfit / 6) * (0.8 + idx * 0.08)) : 0,
     }));
 
     // 5. Brand Distribution & Lens Types
@@ -289,7 +276,7 @@ export async function GET(request: Request) {
     });
 
     const totalCalculatedBreakdown = framesAmount + lensesAmount + servicesAmount;
-    let salesBreakdown: any[];
+    let salesBreakdown: any[] = [];
 
     if (totalCalculatedBreakdown > 0) {
       salesBreakdown = [
@@ -314,34 +301,7 @@ export async function GET(request: Request) {
           label: "Fitting, Lab & Repairs",
           value: servicesAmount,
           count: servicesCount,
-          percentage: Math.max(1, Math.round((servicesAmount / totalCalculatedBreakdown) * 100)),
-          color: "#F59E0B",
-        },
-      ];
-    } else {
-      salesBreakdown = [
-        {
-          name: "Frames",
-          label: "Spectacle Frames",
-          value: 18500,
-          count: 5,
-          percentage: 55,
-          color: "#2563EB",
-        },
-        {
-          name: "Lenses",
-          label: "Prescription Lenses",
-          value: 11800,
-          count: 4,
-          percentage: 35,
-          color: "#10B981",
-        },
-        {
-          name: "Services/Repairing",
-          label: "Fitting, Lab & Repairs",
-          value: 3400,
-          count: 3,
-          percentage: 10,
+          percentage: Math.max(0, Math.round((servicesAmount / totalCalculatedBreakdown) * 100)),
           color: "#F59E0B",
         },
       ];
@@ -368,7 +328,7 @@ export async function GET(request: Request) {
           totalBalanceDue,
           readyForPickupCount,
           lowStockCount: lowStockItems.length,
-          dueTodayCount: dueTodayCount || 2,
+          dueTodayCount: dueTodayCount || 0,
           totalRevenue,
           totalOrders: orders.length,
           totalCustomers: customers.length,

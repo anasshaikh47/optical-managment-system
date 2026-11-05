@@ -351,8 +351,30 @@ export default function InventoryPage() {
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="p-8 text-center text-slate-400">
-                      No products match your criteria.
+                    <td colSpan={11} className="p-12 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2.5">
+                        <Package className="w-10 h-10 text-slate-300 stroke-[1.5]" />
+                        <h4 className="font-extrabold text-slate-800 text-sm">
+                          {items.length === 0
+                            ? "Available Inventory: 0 items"
+                            : "No items match your filter"}
+                        </h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          {items.length === 0
+                            ? "Your store inventory is empty. Add your first optical frame, prescription lens, or accessory to start cataloging and selling."
+                            : "Try searching with a different SKU, brand name, or reset the filter pills."}
+                        </p>
+                        {items.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4 stroke-[2.5]" />
+                            <span>Add Your First Product</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (

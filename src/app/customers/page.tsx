@@ -21,6 +21,7 @@ import {
   Eye,
   MessageSquare,
   Sparkles,
+  Plus,
 } from "lucide-react";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -167,8 +168,30 @@ export default function CustomersPage() {
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
-                      No patients match your search.
+                    <td colSpan={8} className="p-12 text-center text-slate-500">
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2.5">
+                        <UserPlus className="w-10 h-10 text-slate-300 stroke-[1.5]" />
+                        <h4 className="font-extrabold text-slate-800 text-sm">
+                          {customers.length === 0
+                            ? "Registered Patients: 0"
+                            : "No patients match your search"}
+                        </h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          {customers.length === 0
+                            ? "No patient or customer records found in store directory. Register your first customer to manage optical prescriptions, visit history, and CRM alerts."
+                            : "Try searching by another phone number, full name, or clear the search input."}
+                        </p>
+                        {customers.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsModalOpen(true)}
+                            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Add First Customer</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (

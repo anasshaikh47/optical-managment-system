@@ -27,7 +27,7 @@ export function InstallPwaModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-slate-950 to-cyan-950 text-cyan-400 flex items-center justify-center shadow-xs border border-slate-800">
+            <div className="w-9 h-9 rounded-xl bg-slate-900 text-cyan-400 flex items-center justify-center shadow-xs border border-slate-800">
               <Smartphone className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div>

@@ -153,168 +153,29 @@ const memoryStore = new Map<string, TenantState>();
 
 function getInitialStarterState(shopId: string): TenantState {
   const isDefault = shopId === "default" || !shopId;
-  const storePrefix = isDefault ? "VisionPulse" : "My Optics";
-
-  const customerId = `cust-${shopId.slice(0, 8)}-01`;
-  const itemId1 = `item-${shopId.slice(0, 8)}-01`;
-  const itemId2 = `item-${shopId.slice(0, 8)}-02`;
-  const rxId = `rx-${shopId.slice(0, 8)}-01`;
-  const orderId = `ord-${shopId.slice(0, 8)}-01`;
-  const paymentId = `pay-${shopId.slice(0, 8)}-01`;
-
+  const storePrefix = isDefault ? "VisionPulse Optical" : "My Optical Store";
   const now = new Date().toISOString();
 
-  const inventory: TenantInventoryItem[] = [
-    {
-      id: itemId1,
-      sku: isDefault ? "RB-5154" : `FRM-${shopId.slice(0, 4).toUpperCase()}-01`,
-      barcode: `890${Math.floor(100000000 + Math.random() * 900000000)}`,
-      type: "FRAME",
-      brand: "Ray-Ban",
-      model: "Clubmaster Classic",
-      color: "Tortoise / Gold",
-      size: "51-21-145",
-      lens_index: null,
-      cost_price: 3800,
-      selling_price: 7890,
-      gst_rate: 12.0,
-      stock_quantity: 12,
-      min_alert_threshold: 3,
-      image_url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&q=80",
-      shopId,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: itemId2,
-      sku: isDefault ? "ZEISS-SV156" : `LNS-${shopId.slice(0, 4).toUpperCase()}-01`,
-      barcode: `890${Math.floor(100000000 + Math.random() * 900000000)}`,
-      type: "LENS",
-      brand: "Zeiss",
-      model: "ClearView Single Vision",
-      color: "Clear / BlueProtect",
-      size: "70mm Diameter",
-      lens_index: "1.56",
-      cost_price: 1200,
-      selling_price: 2800,
-      gst_rate: 12.0,
-      stock_quantity: 24,
-      min_alert_threshold: 5,
-      image_url: "https://images.unsplash.com/photo-1591076482161-42ce6da69f67?w=400&q=80",
-      shopId,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-
-  const customers: TenantCustomer[] = [
-    {
-      id: customerId,
-      name: "Aarav Patel",
-      phone: "+91 98201 23456",
-      email: "aarav.patel@example.com",
-      address: "Sea Green Apts, Powai, Mumbai",
-      dob: "1992-05-15",
-      loyalty_points: 150,
-      shopId,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-
-  const prescriptions: TenantPrescription[] = [
-    {
-      id: rxId,
-      customerId,
-      optometristName: "Dr. Priya Nair, M.Opt",
-      od_sph: -1.75,
-      od_cyl: -0.5,
-      od_axis: 90,
-      od_add: 1.5,
-      os_sph: -1.5,
-      os_cyl: -0.75,
-      os_axis: 85,
-      os_add: 1.5,
-      pd_distance: 63.0,
-      pd_near: 60.0,
-      lens_type: "SINGLE_VISION",
-      notes: "Anti-glare ARC with blue-cut coating for daily screen work",
-      shopId,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-
-  const payments: TenantPayment[] = [
-    {
-      id: paymentId,
-      orderId,
-      method: "UPI",
-      amount: 10690,
-      payment_type: "FULL",
-      transaction_ref: "UPI-4039281726",
-      createdAt: now,
-    },
-  ];
-
-  const orders: TenantOrder[] = [
-    {
-      id: orderId,
-      bill_no: `VP-${new Date().getFullYear()}-0001`,
-      customerId,
-      prescriptionId: rxId,
-      status: "READY_FOR_PICKUP",
-      total_amount: 10690,
-      discount_amount: 0,
-      tax_amount: 1282.8,
-      final_payable: 10690,
-      paid_amount: 10690,
-      balance_amount: 0,
-      delivery_due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-      shopId,
-      items: [
-        {
-          id: `item-order-1`,
-          orderId,
-          itemId: itemId1,
-          quantity: 1,
-          unit_price: 7890,
-          coating_charges: 0,
-          fitting_charges: 0,
-          subtotal: 7890,
-          createdAt: now,
-        },
-        {
-          id: `item-order-2`,
-          orderId,
-          itemId: itemId2,
-          quantity: 1,
-          unit_price: 2800,
-          coating_charges: 0,
-          fitting_charges: 0,
-          subtotal: 2800,
-          createdAt: now,
-        },
-      ],
-      payments,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
+  // Strict multi-tenant zero state: new accounts start with completely clean registers
+  const inventory: TenantInventoryItem[] = [];
+  const customers: TenantCustomer[] = [];
+  const prescriptions: TenantPrescription[] = [];
+  const payments: TenantPayment[] = [];
+  const orders: TenantOrder[] = [];
 
   const settings: TenantStoreSetting = {
     id: `setting-${shopId}`,
-    storeName: `${storePrefix} Eyewear Studio`,
-    tagline: "Precision Clinical Optometry & Premium Eyewear",
-    gstin: "27AABCV1234F1Z8",
-    phone: "+91 98201 12345",
-    email: "care@opticscloud.in",
-    address: "Galleria Arcade, Powai, Mumbai - 400076",
+    storeName: storePrefix,
+    tagline: "Clinical Optometry & Optical Retail POS",
+    gstin: "",
+    phone: "",
+    email: "",
+    address: "",
     currencySymbol: "₹",
     currencyCode: "INR",
     defaultGstRate: 12.0,
     receiptFooter:
-      "1-Year warranty against frame manufacturing defects. Spectacle power adaptation guarantee for 14 days.",
+      "Thank you for your visit. Spectacle adaptation warranty applicable as per store policy.",
     shopId,
     updatedAt: now,
   };

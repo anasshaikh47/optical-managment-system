@@ -30,6 +30,15 @@ function LoginContent() {
     }
   }, [user, authLoading, router, searchParams]);
 
+  // Check for error in URL params (e.g. from OAuth redirect or disabled provider)
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    const errorDesc = searchParams.get("error_description");
+    if (errorParam || errorDesc) {
+      setErrorMsg("Google sign-in is being configured. Please sign in or register with Email & Password.");
+    }
+  }, [searchParams]);
+
   // Handle Google OAuth Sign In
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
@@ -49,11 +58,11 @@ function LoginContent() {
       });
       if (error) {
         console.error("Supabase Auth Detailed Error:", error);
-        setErrorMsg(error.message || "Failed to initiate Google sign in.");
+        setErrorMsg("Google sign-in is being configured. Please sign in or register with Email & Password.");
       }
     } catch (err: any) {
       console.error("Supabase Auth Detailed Error:", err);
-      setErrorMsg(err.message || "Google OAuth failed.");
+      setErrorMsg("Google sign-in is being configured. Please sign in or register with Email & Password.");
     } finally {
       setGoogleLoading(false);
     }
@@ -110,8 +119,13 @@ function LoginContent() {
         if (error) {
           console.error("Supabase Auth Detailed Error:", error);
           setErrorMsg(error.message || "Could not register store account.");
+        } else if (data?.session) {
+          setSuccessMsg("Store account registered! Redirecting to fresh counter...");
+          const redirectUrl = searchParams.get("redirect") || "/dashboard";
+          router.push(redirectUrl);
+          router.refresh();
         } else {
-          setSuccessMsg("Account created! Please check your email to confirm, or sign in now.");
+          setSuccessMsg("Store account registered! Please sign in with your email and password.");
           setActiveTab("signin");
         }
       }

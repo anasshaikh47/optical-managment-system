@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   Send,
   ChevronDown,
+  Plus,
 } from "lucide-react";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
@@ -660,8 +661,29 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-slate-400">
-                        No orders match the selected filters.
+                      <td colSpan={9} className="p-12 text-center text-slate-500">
+                        <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2.5">
+                          <Glasses className="w-10 h-10 text-slate-300 stroke-[1.5]" />
+                          <h4 className="font-extrabold text-slate-800 text-sm">
+                            {orders.length === 0
+                              ? "Orders: 0"
+                              : "No orders match the selected filters"}
+                          </h4>
+                          <p className="text-xs text-slate-400 leading-relaxed">
+                            {orders.length === 0
+                              ? "No optical orders or spectacle jobs recorded yet. Open the POS Terminal to register counter sales and track lens glazing."
+                              : "Try adjusting the status filter tabs or clear the search criteria."}
+                          </p>
+                          {orders.length === 0 && (
+                            <Link
+                              href="/pos"
+                              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Create First Bill / Sale</span>
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ) : (

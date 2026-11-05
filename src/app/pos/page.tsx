@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   Search,
@@ -766,7 +767,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
         </div>
       ) : (
         selectedCustomerDetails && (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-50/50 to-slate-50 border border-cyan-200 shadow-2xs space-y-3">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs space-y-3">
             <div className="flex items-start justify-between">
               <div>
                 <h4 className="font-bold text-slate-900 text-base sm:text-lg flex items-center gap-2">
@@ -963,10 +964,27 @@ We will message you the moment your glasses pass optical lab inspection!`;
             Loading optical inventory...
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            <Package className="w-8 h-8 mb-1.5 opacity-40" />
-            <p className="font-semibold text-slate-600">No items match &ldquo;{searchQuery}&rdquo;</p>
-            <p className="text-xs text-slate-400 mt-0.5">Try searching another brand or model.</p>
+          <div className="flex flex-col items-center justify-center p-8 text-center text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <Package className="w-10 h-10 mb-2 text-slate-300 stroke-[1.5]" />
+            <p className="font-bold text-slate-800 text-sm">
+              {items.length === 0
+                ? "Available Inventory: 0 items"
+                : `No items match "${searchQuery}"`}
+            </p>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
+              {items.length === 0
+                ? "No products found in store inventory. Add frames or lenses to stock to enable counter sales."
+                : "Try searching another brand name or reset the category filter."}
+            </p>
+            {items.length === 0 && (
+              <Link
+                href="/inventory"
+                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Your First Product</span>
+              </Link>
+            )}
           </div>
         ) : (
           <div className={`grid ${isMobile ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 md:grid-cols-3 xl:grid-cols-4"} gap-3`}>
@@ -1904,7 +1922,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
           type="button"
           onClick={() => handleCheckout("WHATSAPP")}
           disabled={cart.length === 0 || isSubmitting}
-          className="w-full py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
+          className="w-full py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
         >
           <MessageSquare className="w-4 h-4" />
           <span>Save & WhatsApp</span>

@@ -408,7 +408,7 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => handleSendWhatsAppAlert(ord)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-[#25D366] hover:bg-[#20ba59] shadow-xs shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-white bg-[#25D366] hover:bg-[#20ba59] shadow-xs transition-colors cursor-pointer"
                           title="Send instant WhatsApp order status update"
                         >
                           <MessageCircle className="w-3.5 h-3.5 fill-white stroke-[#25D366]" />

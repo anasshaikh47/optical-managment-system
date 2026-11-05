@@ -94,7 +94,7 @@ export function Header({ children }: HeaderProps) {
           {/* [ 📦 Inventory ] */}
           <Link
             href="/inventory"
-            className="px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-bold text-xs sm:text-sm text-slate-800 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-indigo-400 shadow-xs flex items-center gap-1.5 sm:gap-2.5 transition-all hover:shadow-sm active:scale-[0.98] cursor-pointer"
+            className="hidden sm:flex px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-bold text-xs sm:text-sm text-slate-800 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-indigo-400 shadow-xs items-center gap-1.5 sm:gap-2.5 transition-all hover:shadow-sm active:scale-[0.98] cursor-pointer"
             title="Manage Frames, Lenses & Barcodes"
           >
             <Package className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 stroke-[2.4]" />
@@ -104,7 +104,7 @@ export function Header({ children }: HeaderProps) {
           {/* [ ⚡ POS Terminal / New Bill ] */}
           <Link
             href="/pos"
-            className="px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-black text-xs sm:text-sm text-amber-950 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 border-2 border-amber-500/50 shadow-md shadow-amber-400/25 flex items-center gap-1.5 sm:gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="hidden sm:flex px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-black text-xs sm:text-sm text-amber-950 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 border-2 border-amber-500/50 shadow-md shadow-amber-400/25 items-center gap-1.5 sm:gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             title="Open Optical POS Billing Screen"
           >
             <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-amber-950 text-amber-950 stroke-[2.5]" />
@@ -116,8 +116,9 @@ export function Header({ children }: HeaderProps) {
 
       {/* ======================================================== */}
       {/* 2. LOWER SUB-ROW - COMPACT SECONDARY STATUS BAR          */}
+      {/* (Hidden on mobile screens to eliminate screen clutter)   */}
       {/* ======================================================== */}
-      <div className="bg-slate-50/95 border-t border-slate-200/80 px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div className="hidden md:flex bg-slate-50/95 border-t border-slate-200/80 px-3 sm:px-4 lg:px-6 py-1.5 sm:py-2 flex-wrap items-center justify-between gap-2 text-xs">
         {/* Status Pills */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Database Ledger: Cloud Synced */}

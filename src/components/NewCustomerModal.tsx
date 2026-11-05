@@ -110,7 +110,7 @@ export function NewCustomerModal({
                 Quick Patient / Customer Registration
               </h3>
               <p className="text-[11px] text-slate-500 font-medium">
-                Add walk-in customer with immediate optical ledger activation
+                Add walk-in patient with immediate pharmacy ledger activation
               </p>
             </div>
           </div>

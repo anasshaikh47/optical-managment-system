@@ -1,17 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
   X,
-  PackagePlus,
-  Check,
+  Pill,
   Sparkles,
-  UploadCloud,
   Camera,
-  Trash2,
-  RefreshCw,
-  Image as ImageIcon,
   AlertCircle,
   Link as LinkIcon,
 } from "lucide-react";
@@ -20,168 +15,152 @@ interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (product: any) => void;
+  initialData?: any | null;
 }
 
 export function AddProductModal({
   isOpen,
   onClose,
   onSuccess,
+  initialData,
 }: AddProductModalProps) {
   const { shopId, tenantFetch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [showUrlFallback, setShowUrlFallback] = useState(false);
-  const [uploadedFileInfo, setUploadedFileInfo] = useState<{
-    name: string;
-    sizeKb: number;
-  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     sku: "",
     barcode: "",
-    type: "FRAME",
-    brand: "",
-    model: "",
-    color: "",
-    size: "52-18-140",
-    lens_index: "1.56",
-    cost_price: "",
-    selling_price: "",
-    gst_rate: "12.0",
-    stock_quantity: "15",
-    min_alert_threshold: "4",
+    name: "",
+    genericSaltName: "",
+    manufacturer: "",
+    packType: "Strip",
+    tabletsPerStrip: "10",
+    hsnCode: "3004",
+    rackLocation: "Rack A-01",
+    minStockAlert: "10",
+    scheduleType: "GENERAL",
+    isScheduleH: false,
+    batchNumber: "",
+    expiryDate: "12/2026",
+    mrp: "",
+    purchaseRate: "",
+    saleRate: "",
+    stripQuantity: "20",
+    looseTabletQuantity: "0",
+    gstRate: "12.0",
     image_url: "",
   });
 
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        sku: initialData.sku || "",
+        barcode: initialData.barcode || "",
+        name: initialData.name || initialData.brand || "",
+        genericSaltName: initialData.genericSaltName || initialData.model || "",
+        manufacturer: initialData.manufacturer || "",
+        packType: initialData.packType || initialData.type || "Strip",
+        tabletsPerStrip: String(initialData.tabletsPerStrip || 10),
+        hsnCode: initialData.hsnCode || "3004",
+        rackLocation: initialData.rackLocation || "Rack A-01",
+        minStockAlert: String(initialData.minStockAlert ?? initialData.min_alert_threshold ?? 10),
+        scheduleType: initialData.scheduleType || (initialData.isScheduleH ? "SCHEDULE_H" : "GENERAL"),
+        isScheduleH: !!initialData.isScheduleH,
+        batchNumber: initialData.batchNumber || "BT-001",
+        expiryDate: initialData.expiryDate || "12/2026",
+        mrp: String(initialData.mrp || initialData.saleRate || initialData.selling_price || ""),
+        purchaseRate: String(initialData.purchaseRate || initialData.cost_price || ""),
+        saleRate: String(initialData.saleRate || initialData.selling_price || ""),
+        stripQuantity: String(initialData.stripQuantity ?? initialData.stock_quantity ?? 0),
+        looseTabletQuantity: String(initialData.looseTabletQuantity || 0),
+        gstRate: String(initialData.gstRate || initialData.gst_rate || 12.0),
+        image_url: initialData.image_url || "",
+      });
+    } else {
+      setFormData({
+        sku: "",
+        barcode: "",
+        name: "",
+        genericSaltName: "",
+        manufacturer: "",
+        packType: "Strip",
+        tabletsPerStrip: "10",
+        hsnCode: "3004",
+        rackLocation: "Rack A-01",
+        minStockAlert: "10",
+        scheduleType: "GENERAL",
+        isScheduleH: false,
+        batchNumber: "",
+        expiryDate: "12/2026",
+        mrp: "",
+        purchaseRate: "",
+        saleRate: "",
+        stripQuantity: "20",
+        looseTabletQuantity: "0",
+        gstRate: "12.0",
+        image_url: "",
+      });
+    }
+  }, [initialData, isOpen]);
+
   if (!isOpen) return null;
 
-  // Auto-generate unique Barcode / SKU
-  const handleAutoGenerateSku = () => {
-    const prefix =
-      formData.type === "FRAME"
-        ? formData.brand
-          ? formData.brand.substring(0, 3).toUpperCase()
-          : "FRM"
-        : formData.type === "LENS"
-        ? "LNS"
-        : formData.type === "CONTACT_LENS"
-        ? "CNT"
-        : "ACC";
-
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const generatedSku = `${prefix}-${randomNum}`;
-    const generatedBarcode = `890${Math.floor(100000000 + Math.random() * 900000000)}`;
+  // Auto-generate SKU & Batch Number
+  const handleAutoGenerate = () => {
+    const prefix = formData.name ? formData.name.substring(0, 3).toUpperCase() : "MED";
+    const randomSku = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const randomBatch = `BT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const randomBarcode = `890${Math.floor(100000000 + Math.random() * 900000000)}`;
 
     setFormData((prev) => ({
       ...prev,
-      sku: generatedSku,
-      barcode: prev.barcode || generatedBarcode,
+      sku: prev.sku || randomSku,
+      batchNumber: prev.batchNumber || randomBatch,
+      barcode: prev.barcode || randomBarcode,
     }));
   };
 
-  // Process & Optimize Selected Image File (Client-side Canvas Compression)
   const processImageFile = (file: File) => {
     setError(null);
-
     if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image file (.jpg, .png, .webp).");
+      setError("Please select a valid image file.");
       return;
     }
-
-    if (file.size > 8 * 1024 * 1024) {
-      setError("Image file is too large. Please select a photo under 8MB.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Resize to max 800x800 for instant local storage & rendering
-        const maxDim = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-
-          setFormData((prev) => ({
-            ...prev,
-            image_url: compressedDataUrl,
-          }));
-
-          setUploadedFileInfo({
-            name: file.name,
-            sizeKb: Math.round(compressedDataUrl.length / 1024),
-          });
-        }
-      };
-      img.src = event.target?.result as string;
+      setFormData((prev) => ({
+        ...prev,
+        image_url: event.target?.result as string,
+      }));
     };
     reader.readAsDataURL(file);
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      processImageFile(e.target.files[0]);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processImageFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setFormData((prev) => ({ ...prev, image_url: "" }));
-    setUploadedFileInfo(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const cost = parseFloat(formData.cost_price) || 0;
-  const selling = parseFloat(formData.selling_price) || 0;
+  const cost = parseFloat(formData.purchaseRate) || 0;
+  const selling = parseFloat(formData.saleRate) || 0;
   const marginPct = selling > 0 ? (((selling - cost) / selling) * 100).toFixed(1) : null;
-  const profitAmt = selling > 0 ? selling - cost : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.sku || !formData.brand || !formData.selling_price) {
-      setError("SKU, Brand, and Selling Price are required.");
+    if (!formData.sku || !formData.name || !formData.saleRate) {
+      setError("SKU, Medicine Name, and Sale Rate are required.");
       return;
     }
 
     setSubmitting(true);
     setError(null);
 
+    const isEdit = !!initialData?.id;
+    const url = isEdit ? `/api/products/${initialData.id}` : "/api/products";
+    const method = isEdit ? "PATCH" : "POST";
+
     try {
-      const res = await tenantFetch("/api/products", {
-        method: "POST",
+      const res = await tenantFetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, shopId, userId: shopId }),
       });
@@ -191,7 +170,7 @@ export function AddProductModal({
         onSuccess(data.data);
         onClose();
       } else {
-        setError(data.error || "Failed to add inventory item");
+        setError(data.error || "Failed to save medicine");
       }
     } catch (err: any) {
       setError(err.message || "An error occurred");
@@ -207,14 +186,14 @@ export function AddProductModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <PackagePlus className="w-5 h-5 stroke-[2.2]" />
+              <Pill className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 text-sm">
-                Add New Inventory Item
+                {initialData ? "Edit Medicine & Batch Details" : "Add New Medicine to Pharmacy Inventory"}
               </h3>
               <p className="text-[11px] text-slate-500 font-medium">
-                Spectacle frame, ophthalmic lens, or store optical accessory
+                Salt composition, batch tracking, expiry date, rack location & GST
               </p>
             </div>
           </div>
@@ -236,24 +215,25 @@ export function AddProductModal({
             </div>
           )}
 
-          {/* Product Category Radio Tabs */}
+          {/* Medicine Formulation / Pack Type Radio Tabs */}
           <div>
             <label className="block text-slate-700 font-bold mb-1.5">
-              Product Category
+              Formulation / Pack Type
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
-                { key: "FRAME", label: "Spectacle Frame" },
-                { key: "LENS", label: "Power Lens" },
-                { key: "CONTACT_LENS", label: "Contact Lens" },
-                { key: "ACCESSORY", label: "Accessory / Case" },
+                { key: "Strip", label: "Strip / Tab" },
+                { key: "Bottle", label: "Bottle / Syrup" },
+                { key: "Box", label: "Box / Vial" },
+                { key: "Ointment", label: "Ointment" },
+                { key: "Syringe", label: "Syringe" },
               ].map((cat) => (
                 <button
                   type="button"
                   key={cat.key}
-                  onClick={() => setFormData({ ...formData, type: cat.key })}
-                  className={`py-2 px-2.5 rounded-xl font-bold text-center border transition-all cursor-pointer ${
-                    formData.type === cat.key
+                  onClick={() => setFormData({ ...formData, packType: cat.key })}
+                  className={`py-2 px-2 rounded-xl font-bold text-center border transition-all cursor-pointer ${
+                    formData.packType === cat.key
                       ? "bg-slate-900 text-white border-slate-900 shadow-xs"
                       : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                   }`}
@@ -264,36 +244,109 @@ export function AddProductModal({
             </div>
           </div>
 
-          {/* Brand & Model */}
+          {/* Medicine Brand Name & Generic Salt Name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-slate-700 font-bold mb-1">
-                Brand Name <span className="text-rose-500">*</span>
+                Medicine Brand Name <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Ray-Ban, Titan, Zeiss"
-                value={formData.brand}
-                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                placeholder="e.g. Dolo 650, Augmentin 625 Duo"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
               />
             </div>
             <div>
               <label className="block text-slate-700 font-bold mb-1">
-                Model No / Name
+                Generic Salt Name / Composition <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. Clubmaster RB-5154"
-                value={formData.model}
-                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                required
+                placeholder="e.g. Paracetamol 650mg, Amoxicillin + Clav"
+                value={formData.genericSaltName}
+                onChange={(e) => setFormData({ ...formData, genericSaltName: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
               />
             </div>
           </div>
 
-          {/* Auto-Generate Barcode & SKU Row */}
+          {/* Manufacturer & Pack Size */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Manufacturer / Pharma Company
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Micro Labs, GSK, Cipla, Alkem"
+                value={formData.manufacturer}
+                onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Tablets per Strip / Units per Pack
+              </label>
+              <input
+                type="number"
+                min="1"
+                placeholder="10"
+                value={formData.tabletsPerStrip}
+                onChange={(e) => setFormData({ ...formData, tabletsPerStrip: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Batch Number & Expiry Date Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-xl">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Batch Number <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. AUG-8492"
+                value={formData.batchNumber}
+                onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono font-bold text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Expiry Date (MM/YYYY) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 08/2027"
+                value={formData.expiryDate}
+                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono font-bold text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Rack Location <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Rack A-12"
+                value={formData.rackLocation}
+                onChange={(e) => setFormData({ ...formData, rackLocation: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono font-semibold text-xs"
+              />
+            </div>
+          </div>
+
+          {/* SKU & Barcode Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -302,7 +355,7 @@ export function AddProductModal({
                 </label>
                 <button
                   type="button"
-                  onClick={handleAutoGenerateSku}
+                  onClick={handleAutoGenerate}
                   className="text-[10px] text-emerald-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3 text-emerald-600" />
@@ -312,10 +365,10 @@ export function AddProductModal({
               <input
                 type="text"
                 required
-                placeholder="e.g. RB-5154"
+                placeholder="e.g. MED-AUG625"
                 value={formData.sku}
                 onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-xs focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-xs"
               />
             </div>
             <div>
@@ -327,68 +380,147 @@ export function AddProductModal({
                 placeholder="e.g. 8901234567890"
                 value={formData.barcode}
                 onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-xs focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-xs"
               />
             </div>
           </div>
 
-          {/* Color & Size / Lens Index Details */}
-          {formData.type === "FRAME" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Color / Finish
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Matte Black / Gold"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Frame Dimensions (Size)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 52-18-140"
-                  value={formData.size}
-                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-semibold focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
-                />
-              </div>
+          {/* MRP, Purchase Rate, Sale Rate & Margins */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                MRP (₹)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="223.50"
+                value={formData.mrp}
+                onChange={(e) => setFormData({ ...formData, mrp: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Purchase Rate (₹)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="165.00"
+                value={formData.purchaseRate}
+                onChange={(e) => setFormData({ ...formData, purchaseRate: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Sale Rate (₹) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                placeholder="201.15"
+                value={formData.saleRate}
+                onChange={(e) => setFormData({ ...formData, saleRate: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-emerald-400 rounded-xl text-xs font-mono font-bold text-emerald-800"
+              />
+            </div>
+          </div>
+
+          {marginPct && (
+            <div className="flex items-center justify-between text-xs font-bold px-3 py-2 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
+              <span>Gross Margin: {marginPct}%</span>
+              <span>Profit / Pack: ₹{(selling - cost).toFixed(2)}</span>
             </div>
           )}
 
-          {formData.type === "LENS" && (
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-              <label className="block text-[11px] text-slate-700 font-bold mb-1">
-                Refractive Index
+          {/* Quantity, GST & HSN */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Strips in Stock
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.stripQuantity}
+                onChange={(e) => setFormData({ ...formData, stripQuantity: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Loose Tablets
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.looseTabletQuantity}
+                onChange={(e) => setFormData({ ...formData, looseTabletQuantity: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                GST Rate (%)
               </label>
               <select
-                value={formData.lens_index}
-                onChange={(e) => setFormData({ ...formData, lens_index: e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800"
+                value={formData.gstRate}
+                onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
               >
-                <option value="1.50">1.50 Standard CR-39</option>
-                <option value="1.56">1.56 Mid-Index Aspheric</option>
-                <option value="1.60">1.60 High-Index Tough</option>
-                <option value="1.67">1.67 Ultra-Thin Anti-Reflective</option>
-                <option value="1.74">1.74 Premium Super-Thin Hi-Index</option>
+                <option value="12.0">12% (Standard Pharma)</option>
+                <option value="5.0">5% (Life Saving)</option>
+                <option value="18.0">18% (Supplements/Cosmetics)</option>
+                <option value="0.0">0% (Tax Exempt)</option>
               </select>
             </div>
-          )}
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Min Stock Alert
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={formData.minStockAlert}
+                onChange={(e) => setFormData({ ...formData, minStockAlert: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+              />
+            </div>
+          </div>
 
-          {/* ======================================================== */}
-          {/* IMAGE UPLOAD DROPZONE & LIVE PREVIEW                     */}
-          {/* ======================================================== */}
+          {/* Schedule H / Rx Only Toggle */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+            <div>
+              <label className="text-slate-800 font-bold block">
+                Schedule H / Rx Only Medicine
+              </label>
+              <p className="text-[10px] text-slate-500">
+                Requires mandatory registered doctor prescription during counter billing
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={formData.isScheduleH}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  isScheduleH: e.target.checked,
+                  scheduleType: e.target.checked ? "SCHEDULE_H" : "GENERAL",
+                })
+              }
+              className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+          </div>
+
+          {/* Photo Upload */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-slate-700 font-bold flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Product Photo (Drag & Drop or Camera)</span>
+                <span>Medicine Photo (Optional)</span>
               </label>
               <button
                 type="button"
@@ -400,198 +532,49 @@ export function AddProductModal({
               </button>
             </div>
 
-            {/* Hidden native file input supporting mobile camera / gallery */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileInputChange}
-              className="hidden"
-            />
-
-            {!formData.image_url ? (
-              /* Drag & Drop Upload Dropzone Box */
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                }}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group ${
-                  isDragging
-                    ? "border-emerald-500 bg-emerald-50/80 scale-[1.01]"
-                    : "border-slate-300 bg-slate-50/70 hover:bg-slate-100 hover:border-emerald-400"
-                }`}
-              >
-                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-slate-600 group-hover:text-emerald-600 group-hover:scale-110 flex items-center justify-center transition-all shadow-2xs">
-                  <UploadCloud className="w-6 h-6 stroke-[2.2]" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800">
-                    <span className="text-emerald-700">Click to upload photo</span> or drag & drop here
-                  </p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
-                    Supports JPG, PNG, WEBP • Mobile Camera Ready (Max 8MB)
-                  </p>
-                </div>
-              </div>
+            {showUrlFallback ? (
+              <input
+                type="url"
+                placeholder="https://example.com/medicine.jpg"
+                value={formData.image_url}
+                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono"
+              />
             ) : (
-              /* Live Image Preview Card with Remove / Change Action */
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-16 h-16 rounded-xl border border-slate-300 overflow-hidden bg-white shadow-xs shrink-0 relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={formData.image_url}
-                      alt="Product Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      <p className="text-xs font-bold text-slate-900 truncate">
-                        {uploadedFileInfo?.name || "Photo Ready"}
-                      </p>
-                    </div>
-                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                      {uploadedFileInfo?.sizeKb
-                        ? `Optimized Base64: ~${uploadedFileInfo.sizeKb} KB`
-                        : "Stored in Catalog & POS Cart"}
-                    </p>
-                    <span className="inline-block mt-1 text-[9px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded">
-                      Live Preview Active
-                    </span>
-                  </div>
-                </div>
-
-                {/* Remove / Change Buttons */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 transition-colors cursor-pointer"
-                    title="Choose a different image"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Change</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
-                    title="Remove selected image"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Remove</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Optional Fallback: URL Input */}
-            {showUrlFallback && (
-              <div className="pt-1 animate-in fade-in">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50"
+              >
                 <input
-                  type="url"
-                  placeholder="Or paste external image URL: https://images.unsplash.com/..."
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-mono focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition-all"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => e.target.files && processImageFile(e.target.files[0])}
+                  className="hidden"
                 />
+                <p className="text-xs font-semibold text-slate-600">Click or tap to upload medicine photo</p>
+                {formData.image_url && (
+                  <p className="text-[10px] text-emerald-600 font-bold mt-1">Image selected</p>
+                )}
               </div>
             )}
           </div>
 
-          {/* Pricing, Cost Price & Margin Calculation */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Cost Price (₹)
-                </label>
-                <input
-                  type="number"
-                  step="1"
-                  placeholder="2000"
-                  value={formData.cost_price}
-                  onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Selling Price (₹) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="1"
-                  required
-                  placeholder="4500"
-                  value={formData.selling_price}
-                  onChange={(e) => setFormData({ ...formData, selling_price: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-emerald-400 rounded-xl text-emerald-800 text-xs font-mono font-black focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Stock Qty <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  required
-                  value={formData.stock_quantity}
-                  onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  GST Rate (%)
-                </label>
-                <input
-                  type="number"
-                  value={formData.gst_rate}
-                  onChange={(e) => setFormData({ ...formData, gst_rate: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Profit Margin Indicator */}
-            {marginPct !== null && (
-              <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200">
-                <span className="text-slate-600 font-medium">Calculated Profit Margin:</span>
-                <span className="font-black font-mono text-emerald-700">
-                  {marginPct}% (+₹{profitAmt} margin/unit)
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Footer Submit Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+          {/* Submit Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 font-semibold transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all disabled:opacity-60 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
             >
-              <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>{submitting ? "Adding Item..." : "Save Product to Catalog"}</span>
+              {submitting ? "Saving..." : initialData ? "Update Medicine" : "Save Medicine to Stock"}
             </button>
           </div>
         </form>

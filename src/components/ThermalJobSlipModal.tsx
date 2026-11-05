@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { Printer, X, Glasses, Check, AlertTriangle, Calendar, Phone, Clock, Wrench } from "lucide-react";
-import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
+import { Printer, X, Pill, Check, AlertTriangle, Calendar, Phone, Clock, Stethoscope } from "lucide-react";
+import { formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
 
 interface ThermalJobSlipModalProps {
   order: any;
@@ -19,17 +19,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
   };
 
   const rx = order.prescription;
-  const frameItem = order.items?.find((i: any) => i.item?.type === "FRAME")?.item;
-  const lensItem = order.items?.find((i: any) => i.item?.type === "LENS")?.item;
-  const allItems = order.items || [];
-
-  // Check if delivery due today or overdue
-  const todayStr = new Date().toISOString().split("T")[0];
-  const orderDueStr = order.delivery_due_date
-    ? new Date(order.delivery_due_date).toISOString().split("T")[0]
-    : null;
-  const isDueToday = orderDueStr === todayStr;
-  const isOverdue = orderDueStr && orderDueStr < todayStr && order.status !== "DELIVERED";
+  const items = order.items || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
@@ -37,9 +27,9 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
         {/* Controls Header (Hidden in Print) */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50 print:hidden">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-600" />
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-600" />
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-              Workshop Lab Ticket (80mm Thermal)
+              Pharmacy Dispensing Slip (80mm Thermal)
             </h3>
           </div>
           <div className="flex items-center gap-2">
@@ -68,17 +58,20 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
             {/* Store Header */}
             <div className="text-center pb-2 border-b-2 border-dashed border-black">
               <h2 className="text-sm font-black tracking-wider uppercase">
-                VISIONPULSE OPTICAL LAB
+                PHARMAPULSE MEDICAL & POS
               </h2>
               <p className="text-[10px] font-sans font-semibold">
-                PRECISION LENS GLAZING & WORKSHOP TICKET
+                PHARMACY DISPENSING COUNTER TOKEN
               </p>
               <p className="text-[9px] mt-0.5">
-                Galleria Arcade, Powai, Mumbai • Tel: 98201 12345
+                DL: DL-20B/21B-458920 • GSTIN: 27AABCV1234F1Z8
+              </p>
+              <p className="text-[9px]">
+                Main Hospital Road • Emergency Desk: +91 98201 12345
               </p>
             </div>
 
-            {/* Simulated Barcode Banner */}
+            {/* Barcode Banner */}
             <div className="text-center py-1 bg-slate-50 rounded border border-slate-200">
               <div className="tracking-[3px] text-xs font-black select-none">
                 ||| | |||| | ||||| | ||| |||| | ||
@@ -88,219 +81,148 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
               </p>
             </div>
 
-            {/* Urgency Alert if Due Today or Overdue */}
-            {(isDueToday || isOverdue) && (
-              <div className="text-center py-1 px-2 border-2 border-black font-black uppercase text-xs">
-                {isOverdue ? "⚠️ OVERDUE RUSH JOB" : "⚡ PROMISED DUE TODAY"}
-              </div>
-            )}
-
-            {/* Job Metadata */}
+            {/* Token Metadata */}
             <div className="space-y-1 text-[10px] border-b border-dashed border-black pb-2">
               <div className="flex justify-between">
-                <span className="font-sans font-bold">BILL NO:</span>
+                <span className="font-sans font-bold">TOKEN / BILL:</span>
                 <span className="font-black text-xs">{order.bill_no}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-sans font-bold">BOOKED AT:</span>
+                <span className="font-sans font-bold">DATE & TIME:</span>
                 <span>{formatDateTime(order.createdAt)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-sans font-bold">PROMISED READY:</span>
-                <span className="font-black underline">
-                  {order.delivery_due_date ? formatDate(order.delivery_due_date) : "Express (2 Days)"}
-                </span>
               </div>
               <div className="flex justify-between">
                 <span className="font-sans font-bold">PATIENT:</span>
                 <span className="font-bold uppercase">
-                  {order.customer ? order.customer.name : "Walk-in Guest"}
+                  {order.customer ? order.customer.name : "Walk-in Patient"}
                 </span>
               </div>
               {order.customer?.phone && (
                 <div className="flex justify-between">
-                  <span className="font-sans font-bold">CONTACT:</span>
+                  <span className="font-sans font-bold">PHONE:</span>
                   <span>{order.customer.phone}</span>
                 </div>
               )}
+              {order.customer?.age && (
+                <div className="flex justify-between">
+                  <span className="font-sans font-bold">PATIENT AGE:</span>
+                  <span>{order.customer.age} Yrs</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span className="font-sans font-bold">CURRENT STATUS:</span>
+                <span className="font-sans font-bold">STATUS:</span>
                 <span className="font-black uppercase">{order.status.replace("_", " ")}</span>
               </div>
             </div>
 
-            {/* Eye Prescription Power Matrix (OD & OS) */}
-            {rx ? (
-              <div className="space-y-1.5 border-b border-dashed border-black pb-2.5">
-                <div className="flex justify-between items-center">
-                  <span className="font-black text-[10px] uppercase">
-                    OPTICAL POWER MATRIX
-                  </span>
-                  <span className="text-[9px]">
-                    Optom: {rx.optometristName || "Dr. Staff"}
-                  </span>
+            {/* Doctor & Rx Details */}
+            {rx && (
+              <div className="space-y-1 border-b border-dashed border-black pb-2 text-[10px]">
+                <div className="flex items-center gap-1 font-black">
+                  <Stethoscope className="w-3 h-3" />
+                  <span>PRESCRIPTION DETAILS</span>
                 </div>
-
-                <table className="w-full text-center border border-black text-[10px] border-collapse">
-                  <thead>
-                    <tr className="border-b border-black bg-slate-100 font-black">
-                      <th className="p-0.5 border-r border-black text-left pl-1">EYE</th>
-                      <th className="p-0.5 border-r border-black">SPH</th>
-                      <th className="p-0.5 border-r border-black">CYL</th>
-                      <th className="p-0.5 border-r border-black">AXIS</th>
-                      <th className="p-0.5">ADD</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-black font-bold">
-                      <td className="p-0.5 border-r border-black text-left pl-1 font-black">OD (R)</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.od_sph)}</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.od_cyl)}</td>
-                      <td className="p-0.5 border-r border-black">{rx.od_axis !== null ? `${rx.od_axis}°` : "—"}</td>
-                      <td className="p-0.5">{rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}</td>
-                    </tr>
-                    <tr className="font-bold">
-                      <td className="p-0.5 border-r border-black text-left pl-1 font-black">OS (L)</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.os_sph)}</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.os_cyl)}</td>
-                      <td className="p-0.5 border-r border-black">{rx.os_axis !== null ? `${rx.os_axis}°` : "—"}</td>
-                      <td className="p-0.5">{rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                {/* Pupillary Distance & Design */}
-                <div className="grid grid-cols-2 gap-1 text-[9px] pt-1">
-                  <div>
-                    <span className="font-bold">PD (Distance):</span>{" "}
-                    <strong>{rx.pd_distance ? `${rx.pd_distance} mm` : "63.0 mm"}</strong>
+                {rx.doctorName && (
+                  <div className="flex justify-between">
+                    <span className="font-sans font-bold">DOCTOR:</span>
+                    <span>Dr. {rx.doctorName}</span>
                   </div>
-                  <div>
-                    <span className="font-bold">PD (Near):</span>{" "}
-                    <strong>{rx.pd_near ? `${rx.pd_near} mm` : "60.0 mm"}</strong>
+                )}
+                {rx.clinicOrHospital && (
+                  <div className="flex justify-between">
+                    <span className="font-sans font-bold">CLINIC/HOSPITAL:</span>
+                    <span>{rx.clinicOrHospital}</span>
                   </div>
-                  <div className="col-span-2">
-                    <span className="font-bold">LENS DESIGN:</span>{" "}
-                    <strong className="uppercase">
-                      {(rx.lens_type || "Single Vision").replace("_", " ")}
-                    </strong>
+                )}
+                {rx.doctorRegNo && (
+                  <div className="flex justify-between">
+                    <span className="font-sans font-bold">REG NO:</span>
+                    <span>{rx.doctorRegNo}</span>
                   </div>
-                </div>
-
-                {rx.notes && (
-                  <div className="text-[9px] bg-slate-50 p-1 border border-slate-300 rounded mt-1">
-                    <span className="font-black">RX NOTE:</span> {rx.notes}
+                )}
+                {rx.dosageInstructions && (
+                  <div className="bg-slate-50 p-1 border border-slate-300 rounded text-[9px] mt-1">
+                    <span className="font-bold">DOSAGE REGIMEN: </span>
+                    {rx.dosageInstructions}
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="text-[10px] text-center py-2 border-b border-dashed border-black italic">
-                NO PRESCRIPTION (OVER-THE-COUNTER / RETAIL GLAZING)
-              </div>
             )}
 
-            {/* Frame & Mounting Details */}
-            <div className="space-y-1 text-[10px] border-b border-dashed border-black pb-2">
-              <span className="font-black uppercase text-[10px]">
-                FRAME & MOUNTING SPECIFICATIONS
-              </span>
-              {frameItem ? (
-                <div className="space-y-0.5">
-                  <p>
-                    <span className="font-bold">BRAND:</span>{" "}
-                    <strong>{frameItem.brand}</strong>
-                  </p>
-                  <p>
-                    <span className="font-bold">MODEL:</span>{" "}
-                    <strong>{frameItem.model || frameItem.sku}</strong>
-                  </p>
-                  <p>
-                    <span className="font-bold">COLOR / SIZE:</span>{" "}
-                    {frameItem.color || "Standard"} • {frameItem.size || "52-18-140"}
-                  </p>
-                </div>
-              ) : (
-                <p className="italic text-slate-500">
-                  Customer&apos;s Own Frame (B.Y.O.F) / Retail Eyewear
-                </p>
-              )}
-            </div>
+            {/* Prescribed Medicines to Dispense */}
+            <div className="space-y-1.5 border-b border-dashed border-black pb-2 text-[10px]">
+              <div className="flex justify-between font-black uppercase text-[10px]">
+                <span>MEDICINES TO DISPENSE</span>
+                <span>QTY</span>
+              </div>
 
-            {/* Lens Material, Index & Coating Details */}
-            <div className="space-y-1 text-[10px] border-b border-dashed border-black pb-2">
-              <span className="font-black uppercase text-[10px]">
-                LENS & COATING SPECIFICATIONS
-              </span>
-              {lensItem ? (
-                <div className="space-y-0.5">
-                  <p>
-                    <span className="font-bold">LENS:</span>{" "}
-                    <strong>{lensItem.brand} - {lensItem.model || "Power Lens"}</strong>
-                  </p>
-                  <p>
-                    <span className="font-bold">REFRACTIVE INDEX:</span>{" "}
-                    <strong>Index {lensItem.lens_index || "1.56 Mid-Index"}</strong>
-                  </p>
-                </div>
-              ) : null}
+              {items.map((item: any, idx: number) => {
+                const med = item.medicine || item.item || {};
+                const name = med.name || med.brand || "Medicine Item";
+                const salt = med.genericSaltName || med.model || "";
+                const batch = item.batchNumber || med.batchNumber || "B-101";
+                const exp = item.expiryDate || med.expiryDate || "";
+                const rack = med.rackLocation ? `Rack: ${med.rackLocation}` : "";
 
-              {/* Order Item Extra Charges breakdown */}
-              {allItems.map((it: any, idx: number) => {
-                const coating = it.coating_charges || 0;
-                const fitting = it.fitting_charges || 0;
-                if (coating === 0 && fitting === 0) return null;
                 return (
-                  <div key={idx} className="text-[9px]">
-                    {coating > 0 && <div>• COATING APPLIED: Blue-Cut / Anti-Glare (+₹{coating})</div>}
-                    {fitting > 0 && <div>• LAB FITTING: Precision Edging (+₹{fitting})</div>}
+                  <div key={idx} className="border-b border-dotted border-slate-300 pb-1">
+                    <div className="flex justify-between font-bold">
+                      <span>{name}</span>
+                      <span>{item.quantity} {item.unitType === "LOOSE_TABLET" ? "tabs" : "units"}</span>
+                    </div>
+                    {salt && <p className="text-[9px] text-slate-600">{salt}</p>}
+                    <div className="flex justify-between text-[9px] text-slate-500 mt-0.5">
+                      <span>Batch: {batch} {exp && `• Exp: ${exp}`}</span>
+                      <span>{rack}</span>
+                    </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Financial Summary & Balance Alert */}
+            {/* Financial Summary */}
             <div className="text-[10px] space-y-0.5 border-b border-dashed border-black pb-2">
               <div className="flex justify-between">
-                <span>NET BILL AMOUNT:</span>
+                <span>NET PAYABLE:</span>
                 <span>{formatCurrency(order.final_payable)}</span>
               </div>
               <div className="flex justify-between">
-                <span>ADVANCE RECEIVED:</span>
+                <span>AMOUNT PAID:</span>
                 <span>{formatCurrency(order.paid_amount)}</span>
               </div>
               <div className="flex justify-between font-black text-xs pt-0.5">
-                <span>BALANCE AT DELIVERY:</span>
+                <span>BALANCE DUE:</span>
                 <span>{formatCurrency(order.balance_amount)}</span>
               </div>
             </div>
 
-            {/* Workshop Technician QA Checkpoints & Sign-off */}
+            {/* Pharmacist Verification Pass */}
             <div className="space-y-1.5 pt-1 text-[9px]">
               <span className="font-black uppercase text-[10px]">
-                TECHNICIAN WORKSHOP QA PASS
+                REGISTERED PHARMACIST DISPENSING CHECKLIST
               </span>
               <div className="space-y-1 font-sans">
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 border border-black inline-block" />
-                  <span>Lens Edged & Optical Axis Calibrated</span>
+                  <span>Batch Number & Expiry Date Verified</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 border border-black inline-block" />
-                  <span>Bevel / Groove Mount Securely Fitted</span>
+                  <span>Dosage, Caution & Timing Instructions Affixed</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 border border-black inline-block" />
-                  <span>Ultrasonic Cleaned & Pantoscopic Tilt Checked</span>
+                  <span>Schedule H / Rx Register Entry Recorded</span>
                 </div>
               </div>
 
               <div className="pt-3 flex justify-between items-end">
                 <div>
-                  <p className="text-[8px] text-slate-500">QA STAMP / DATE</p>
+                  <p className="text-[8px] text-slate-500">DISPENSED DATE</p>
                   <p className="font-bold">___ / ___ / 2026</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[8px] text-slate-500">TECHNICIAN SIGNATURE</p>
+                  <p className="text-[8px] text-slate-500">PHARMACIST SIGNATURE</p>
                   <p className="font-bold">____________________</p>
                 </div>
               </div>
@@ -308,7 +230,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
 
             {/* Footer */}
             <div className="text-center pt-2 text-[8px] border-t border-dotted border-black">
-              VisionPulse Optical ERP • Powered by Automated Lab Engine
+              PharmaPulse ERP • Keep medicines out of reach of children
             </div>
           </div>
         </div>

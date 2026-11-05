@@ -4,8 +4,9 @@ import {
   getShopIdFromRequest,
   loadTenantState,
   saveTenantState,
-  TenantInventoryItem,
+  TenantMedicine,
 } from "@/lib/tenant/store";
+import { getExpiryStatus } from "@/lib/utils";
 
 export async function GET(request: Request) {
   try {
@@ -13,30 +14,58 @@ export async function GET(request: Request) {
     const type = searchParams.get("type") || searchParams.get("category");
     const query = searchParams.get("query");
     const lowStock = searchParams.get("lowStock");
+    const nearExpiry = searchParams.get("nearExpiry");
+    const scheduleH = searchParams.get("scheduleH");
+    const outOfStock = searchParams.get("outOfStock");
     const shopId = getShopIdFromRequest(request);
 
     if (shopId !== "default") {
       const tenant = loadTenantState(shopId);
-      let items = [...tenant.inventory];
+      let items = [...(tenant.medicines || tenant.inventory || [])];
 
       if (type && type !== "ALL") {
-        items = items.filter((p) => p.type === type);
+        items = items.filter(
+          (p) =>
+            p.packType?.toLowerCase() === type.toLowerCase() ||
+            p.scheduleType?.toLowerCase() === type.toLowerCase() ||
+            p.type?.toLowerCase() === type.toLowerCase()
+        );
       }
 
       if (query) {
-        const q = query.toLowerCase();
+        const q = query.toLowerCase().trim();
         items = items.filter(
           (p) =>
-            p.brand.toLowerCase().includes(q) ||
-            (p.model && p.model.toLowerCase().includes(q)) ||
-            p.sku.toLowerCase().includes(q) ||
+            p.name?.toLowerCase().includes(q) ||
+            p.genericSaltName?.toLowerCase().includes(q) ||
+            p.manufacturer?.toLowerCase().includes(q) ||
+            p.batchNumber?.toLowerCase().includes(q) ||
+            p.sku?.toLowerCase().includes(q) ||
             (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-            (p.color && p.color.toLowerCase().includes(q))
+            (p.rackLocation && p.rackLocation.toLowerCase().includes(q)) ||
+            (p.brand && p.brand.toLowerCase().includes(q))
         );
       }
 
       if (lowStock === "true") {
-        items = items.filter((p) => p.stock_quantity <= p.min_alert_threshold);
+        items = items.filter((p) => p.stripQuantity <= p.minStockAlert);
+      }
+
+      if (outOfStock === "true") {
+        items = items.filter((p) => p.stripQuantity <= 0 && p.looseTabletQuantity <= 0);
+      }
+
+      if (scheduleH === "true") {
+        items = items.filter(
+          (p) => p.isScheduleH || p.scheduleType === "SCHEDULE_H" || p.scheduleType === "SCHEDULE_H1"
+        );
+      }
+
+      if (nearExpiry === "true") {
+        items = items.filter((p) => {
+          const exp = getExpiryStatus(p.expiryDate);
+          return exp.status === "EXPIRING_SOON" || exp.status === "EXPIRED";
+        });
       }
 
       return NextResponse.json({ success: true, data: items });
@@ -46,35 +75,69 @@ export async function GET(request: Request) {
     try {
       const where: any = {};
       if (type && type !== "ALL") {
-        where.type = type;
+        where.OR = [
+          { packType: type },
+          { scheduleType: type },
+        ];
       }
       if (query) {
         where.OR = [
-          { brand: { contains: query } },
-          { model: { contains: query } },
-          { sku: { contains: query } },
-          { barcode: { contains: query } },
-          { color: { contains: query } },
+          { name: { contains: query, mode: "insensitive" } },
+          { genericSaltName: { contains: query, mode: "insensitive" } },
+          { manufacturer: { contains: query, mode: "insensitive" } },
+          { batchNumber: { contains: query, mode: "insensitive" } },
+          { sku: { contains: query, mode: "insensitive" } },
+          { barcode: { contains: query, mode: "insensitive" } },
+          { rackLocation: { contains: query, mode: "insensitive" } },
+        ];
+      }
+      if (scheduleH === "true") {
+        where.OR = [
+          { isScheduleH: true },
+          { scheduleType: "SCHEDULE_H" },
+          { scheduleType: "SCHEDULE_H1" },
         ];
       }
 
-      const items = await prisma.inventoryItem.findMany({
+      const items = await prisma.medicine.findMany({
         where,
         orderBy: { updatedAt: "desc" },
       });
 
+      let filtered = items.map((p) => ({
+        ...p,
+        // Map compatibility fields
+        brand: p.name,
+        model: p.genericSaltName,
+        type: p.packType,
+        cost_price: p.purchaseRate,
+        selling_price: p.saleRate,
+        stock_quantity: p.stripQuantity,
+        min_alert_threshold: p.minStockAlert,
+      }));
+
       if (lowStock === "true") {
-        const filtered = items.filter((p) => p.stock_quantity <= p.min_alert_threshold);
-        return NextResponse.json({ success: true, data: filtered });
+        filtered = filtered.filter((p) => p.stripQuantity <= p.minStockAlert);
       }
 
-      return NextResponse.json({ success: true, data: items });
+      if (outOfStock === "true") {
+        filtered = filtered.filter((p) => p.stripQuantity <= 0 && p.looseTabletQuantity <= 0);
+      }
+
+      if (nearExpiry === "true") {
+        filtered = filtered.filter((p) => {
+          const exp = getExpiryStatus(p.expiryDate);
+          return exp.status === "EXPIRING_SOON" || exp.status === "EXPIRED";
+        });
+      }
+
+      return NextResponse.json({ success: true, data: filtered });
     } catch {
       const tenant = loadTenantState("default");
-      return NextResponse.json({ success: true, data: tenant.inventory });
+      return NextResponse.json({ success: true, data: tenant.medicines });
     }
   } catch (error: any) {
-    console.error("Error fetching inventory items:", error);
+    console.error("Error fetching medicine inventory items:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Failed to fetch items" },
       { status: 500 }
@@ -89,98 +152,155 @@ export async function POST(request: Request) {
     const {
       sku,
       barcode,
-      type = "FRAME",
+      name,
       brand,
+      genericSaltName,
       model,
-      color,
-      size,
-      lens_index,
+      manufacturer = "General Pharma",
+      packType = "Strip",
+      tabletsPerStrip = 10,
+      hsnCode = "3004",
+      rackLocation = "Rack A-01",
+      minStockAlert = 10,
+      scheduleType = "GENERAL",
+      isScheduleH = false,
+      batchNumber = "BT-001",
+      expiryDate = "12/2026",
+      mrp,
+      purchaseRate,
       cost_price,
+      saleRate,
       selling_price,
-      gst_rate = 12.0,
-      stock_quantity = 0,
-      min_alert_threshold = 5,
+      stripQuantity,
+      stock_quantity,
+      looseTabletQuantity = 0,
+      gstRate = 12.0,
       image_url,
     } = body;
 
-    if (!sku || !brand || !selling_price) {
+    const medName = name || brand;
+    const medSalt = genericSaltName || model || medName;
+    const medSaleRate = parseFloat(saleRate || selling_price) || 0;
+    const medPurchaseRate = parseFloat(purchaseRate || cost_price) || 0;
+    const medMrp = parseFloat(mrp) || medSaleRate;
+    const medStripQty = parseInt(stripQuantity ?? stock_quantity, 10) || 0;
+    const medLooseQty = parseInt(looseTabletQuantity, 10) || 0;
+    const medMinStock = parseInt(minStockAlert, 10) || 10;
+    const medGstRate = parseFloat(gstRate) || 12.0;
+    const medTabletsPerStrip = parseInt(tabletsPerStrip, 10) || 10;
+
+    if (!sku || !medName || !medSaleRate) {
       return NextResponse.json(
-        { success: false, error: "SKU, Brand, and Selling Price are required" },
+        { success: false, error: "SKU, Medicine Name, and Sale Rate are required" },
         { status: 400 }
       );
     }
 
     if (shopId !== "default") {
       const tenant = loadTenantState(shopId);
-      const existing = tenant.inventory.find((i) => i.sku.toLowerCase() === sku.toLowerCase());
+      const existing = tenant.medicines.find((i) => i.sku.toLowerCase() === sku.toLowerCase());
       if (existing) {
         return NextResponse.json(
-          { success: false, error: `Item with SKU "${sku}" already exists` },
+          { success: false, error: `Medicine with SKU "${sku}" already exists in catalog` },
           { status: 409 }
         );
       }
 
       const now = new Date().toISOString();
-      const newItem: TenantInventoryItem = {
-        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      const newItem: TenantMedicine = {
+        id: `med-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
         sku,
         barcode: barcode || null,
-        type,
-        brand,
-        model: model || null,
-        color: color || null,
-        size: size || null,
-        lens_index: lens_index || null,
-        cost_price: parseFloat(cost_price) || 0,
-        selling_price: parseFloat(selling_price) || 0,
-        gst_rate: parseFloat(gst_rate) || 12.0,
-        stock_quantity: parseInt(stock_quantity, 10) || 0,
-        min_alert_threshold: parseInt(min_alert_threshold, 10) || 5,
+        name: medName,
+        genericSaltName: medSalt,
+        manufacturer,
+        packType,
+        tabletsPerStrip: medTabletsPerStrip,
+        hsnCode,
+        rackLocation,
+        minStockAlert: medMinStock,
+        scheduleType,
+        isScheduleH: isScheduleH || scheduleType === "SCHEDULE_H" || scheduleType === "SCHEDULE_H1",
+        batchNumber,
+        expiryDate,
+        mrp: medMrp,
+        purchaseRate: medPurchaseRate,
+        saleRate: medSaleRate,
+        stripQuantity: medStripQty,
+        looseTabletQuantity: medLooseQty,
+        gstRate: medGstRate,
         image_url: image_url || null,
+        // compatibility aliases
+        brand: medName,
+        model: medSalt,
+        type: packType,
+        cost_price: medPurchaseRate,
+        selling_price: medSaleRate,
+        stock_quantity: medStripQty,
+        min_alert_threshold: medMinStock,
         shopId,
         createdAt: now,
         updatedAt: now,
       };
 
-      tenant.inventory.unshift(newItem);
+      tenant.medicines.unshift(newItem);
+      tenant.inventory = tenant.medicines;
       saveTenantState(tenant);
 
       return NextResponse.json({ success: true, data: newItem }, { status: 201 });
     }
 
     // Default tenant via Prisma
-    const existing = await prisma.inventoryItem.findUnique({ where: { sku } });
+    const existing = await prisma.medicine.findUnique({ where: { sku } });
     if (existing) {
       return NextResponse.json(
-        { success: false, error: `Item with SKU "${sku}" already exists` },
+        { success: false, error: `Medicine with SKU "${sku}" already exists in catalog` },
         { status: 409 }
       );
     }
 
-    const item = await prisma.inventoryItem.create({
+    const item = await prisma.medicine.create({
       data: {
         sku,
         barcode: barcode || null,
-        type,
-        brand,
-        model: model || null,
-        color: color || null,
-        size: size || null,
-        lens_index: lens_index || null,
-        cost_price: parseFloat(cost_price) || 0,
-        selling_price: parseFloat(selling_price) || 0,
-        gst_rate: parseFloat(gst_rate) || 12.0,
-        stock_quantity: parseInt(stock_quantity, 10) || 0,
-        min_alert_threshold: parseInt(min_alert_threshold, 10) || 5,
+        name: medName,
+        genericSaltName: medSalt,
+        manufacturer,
+        packType,
+        tabletsPerStrip: medTabletsPerStrip,
+        hsnCode,
+        rackLocation,
+        minStockAlert: medMinStock,
+        scheduleType,
+        isScheduleH: isScheduleH || scheduleType === "SCHEDULE_H" || scheduleType === "SCHEDULE_H1",
+        batchNumber,
+        expiryDate,
+        mrp: medMrp,
+        purchaseRate: medPurchaseRate,
+        saleRate: medSaleRate,
+        stripQuantity: medStripQty,
+        looseTabletQuantity: medLooseQty,
+        gstRate: medGstRate,
         image_url: image_url || null,
       },
     });
 
-    return NextResponse.json({ success: true, data: item }, { status: 201 });
+    const mapped = {
+      ...item,
+      brand: item.name,
+      model: item.genericSaltName,
+      type: item.packType,
+      cost_price: item.purchaseRate,
+      selling_price: item.saleRate,
+      stock_quantity: item.stripQuantity,
+      min_alert_threshold: item.minStockAlert,
+    };
+
+    return NextResponse.json({ success: true, data: mapped }, { status: 201 });
   } catch (error: any) {
-    console.error("Error creating item:", error);
+    console.error("Error creating medicine item:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to create inventory item" },
+      { success: false, error: error.message || "Failed to create medicine item" },
       { status: 500 }
     );
   }
@@ -194,39 +314,43 @@ export async function DELETE(request: Request) {
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Array of item IDs is required for bulk deletion" },
+        { success: false, error: "Array of medicine IDs is required for bulk deletion" },
         { status: 400 }
       );
     }
 
     if (shopId !== "default") {
       const tenant = loadTenantState(shopId);
-      tenant.inventory = tenant.inventory.filter((item) => !ids.includes(item.id));
+      tenant.medicines = tenant.medicines.filter((item) => !ids.includes(item.id));
+      tenant.inventory = tenant.medicines;
       saveTenantState(tenant);
 
       return NextResponse.json({
         success: true,
-        message: `Successfully deleted ${ids.length} inventory item(s)`,
+        message: `Successfully deleted ${ids.length} medicine item(s)`,
       });
     }
 
     await prisma.$transaction(async (tx) => {
       await tx.orderItem.deleteMany({
-        where: { itemId: { in: ids } },
+        where: { medicineId: { in: ids } },
       });
-      await tx.inventoryItem.deleteMany({
+      await tx.batch.deleteMany({
+        where: { medicineId: { in: ids } },
+      });
+      await tx.medicine.deleteMany({
         where: { id: { in: ids } },
       });
     });
 
     return NextResponse.json({
       success: true,
-      message: `Successfully deleted ${ids.length} inventory item(s)`,
+      message: `Successfully deleted ${ids.length} medicine item(s)`,
     });
   } catch (error: any) {
     console.error("Error bulk deleting items:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to delete inventory items" },
+      { success: false, error: error.message || "Failed to delete medicine items" },
       { status: 500 }
     );
   }

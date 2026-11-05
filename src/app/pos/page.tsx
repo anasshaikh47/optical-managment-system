@@ -9,62 +9,42 @@ import {
   Trash2,
   Plus,
   Minus,
-  Glasses,
   User,
   UserPlus,
   CreditCard,
-  QrCode,
-  Wrench,
   CheckCircle2,
   AlertCircle,
   Package,
-  Layers,
-  Sparkles,
-  Award,
   Barcode,
   Printer,
   MessageSquare,
   Calendar,
-  RotateCcw,
-  Eye,
-  ArrowRight,
-  Clock,
-  Send,
   X,
   Phone,
   Check,
   ChevronDown,
   ChevronUp,
   Zap,
+  Pill,
+  FileText,
+  ShieldAlert,
+  Camera,
+  UploadCloud,
+  Sparkles,
 } from "lucide-react";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { CustomerHistoryModal } from "@/components/CustomerHistoryModal";
-import { formatCurrency, formatDate, formatDiopter } from "@/lib/utils";
-
-// Coating pricing presets
-const COATING_OPTIONS = [
-  { key: "NONE", label: "None (Standard Clear)", price: 0 },
-  { key: "BLUE_CUT", label: "Blue-Cut UV420 Filter (+₹500)", price: 500 },
-  { key: "ANTI_GLARE", label: "Anti-Glare ARC (+₹400)", price: 400 },
-  { key: "PHOTOCHROMIC", label: "Photochromic / Transitions (+₹1,200)", price: 1200 },
-  { key: "BLUE_PHOTO", label: "Blue-Cut + Photochromic (+₹1,600)", price: 1600 },
-];
-
-// Fitting charges presets
-const FITTING_OPTIONS = [
-  { key: "STANDARD", label: "Standard Lab Edging & Fitting (+₹200)", price: 200 },
-  { key: "RIMLESS", label: "Rimless Drill Mount (+₹400)", price: 400 },
-  { key: "FREE", label: "Free / Included Fitting (₹0)", price: 0 },
-];
+import { formatCurrency, formatDate, getExpiryStatus } from "@/lib/utils";
 
 export default function POSPage() {
   const { shopId, tenantFetch } = useAuth();
+
   // Inventory Items & Filtering
   const [items, setItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeType, setActiveType] = useState("ALL");
+  const [activePackType, setActivePackType] = useState("ALL");
 
   // Barcode Scanner Field
   const [barcodeInput, setBarcodeInput] = useState("");
@@ -74,7 +54,7 @@ export default function POSPage() {
   } | null>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
-  // Manual Live Product Search & Add to Cart
+  // Quick Cart Search Input
   const [cartSearchQuery, setCartSearchQuery] = useState("");
   const [isCartSearchFocused, setIsCartSearchFocused] = useState(false);
   const [cartSearchFeedback, setCartSearchFeedback] = useState<{
@@ -84,7 +64,7 @@ export default function POSPage() {
   const cartSearchInputRef = useRef<HTMLInputElement>(null);
   const cartSearchDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Mode toggles & collapsible sections
+  // Search Mode & UI toggles
   const [searchMode, setSearchMode] = useState<"SEARCH" | "BARCODE">("SEARCH");
   const [isRxAccordionOpen, setIsRxAccordionOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -104,32 +84,27 @@ export default function POSPage() {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<any | null>(null);
-  const [isCustomerLoading, setIsCustomerLoading] = useState(false);
 
-  // Optical Prescription Matrix
-  const [attachPrescription, setAttachPrescription] = useState(true);
+  // Doctor & Rx Details
+  const [attachPrescription, setAttachPrescription] = useState(false);
   const [rxData, setRxData] = useState({
-    optometristName: "Dr. Priya Nair, M.Opt",
-    od_sph: "",
-    od_cyl: "",
-    od_axis: "",
-    od_add: "",
-    os_sph: "",
-    os_cyl: "",
-    os_axis: "",
-    os_add: "",
-    pd_distance: "63.0",
-    pd_near: "60.0",
-    lens_type: "SINGLE_VISION",
+    patientName: "",
+    patientAge: "",
+    doctorName: "Dr. Sandeep Deshmukh, MD",
+    clinicOrHospital: "Apollo Clinic & Healthcare",
+    doctorRegNo: "MCI-48921",
+    dosageInstructions: "1-0-1 (After Meals)",
     notes: "",
+    prescriptionImage: "",
   });
   const [rxLoadedAlert, setRxLoadedAlert] = useState<string | null>(null);
+  const fileUploadRef = useRef<HTMLInputElement>(null);
 
   // Cart & Financials
   const [cart, setCart] = useState<any[]>([]);
   const [discountMode, setDiscountMode] = useState<"FLAT" | "PERCENT">("FLAT");
   const [discountValue, setDiscountValue] = useState<number>(0);
-  const [gstRate, setGstRate] = useState<number>(12.0); // Optical GST standard 12%
+  const [gstRate, setGstRate] = useState<number>(12.0); // Pharmacy GST standard 12%
 
   // Advance & Payments
   const [paymentMethod, setPaymentMethod] = useState("UPI");
@@ -137,11 +112,9 @@ export default function POSPage() {
   const [isAdvanceUserModified, setIsAdvanceUserModified] = useState(false);
   const [transactionRef, setTransactionRef] = useState("");
 
-  // Delivery Due Date (Default: +2 days)
+  // Delivery Due Date (Default: Today for Pharmacy counter)
   const [deliveryDate, setDeliveryDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 2);
-    return d.toISOString().split("T")[0];
+    return new Date().toISOString().split("T")[0];
   });
 
   // Modals & UI States
@@ -155,7 +128,6 @@ export default function POSPage() {
   useEffect(() => {
     fetchInventory();
     fetchCustomers();
-    // Auto-focus barcode scanner input
     if (barcodeInputRef.current) {
       barcodeInputRef.current.focus();
     }
@@ -208,62 +180,80 @@ export default function POSPage() {
   };
 
   const fetchCustomerDetails = async (id: string) => {
-    setIsCustomerLoading(true);
     try {
       const res = await tenantFetch(`/api/customers/${id}`);
       const data = await res.json();
       if (data.success) {
         setSelectedCustomerDetails(data.data);
-        // If customer has previous prescription and current rx is blank, we can notify them
+        if (data.data?.name) {
+          setRxData((prev) => ({
+            ...prev,
+            patientName: data.data.name,
+          }));
+        }
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      setIsCustomerLoading(false);
     }
   };
 
-  // Add Item to Cart
-  const addToCart = (item: any) => {
+  // Add Item to Cart (Supports Strip vs Loose Tablet)
+  const addToCart = (item: any, unitType: "STRIP" | "LOOSE_TABLET" = "STRIP") => {
+    const isLoose = unitType === "LOOSE_TABLET";
+    const tabletsPerStrip = item.tabletsPerStrip || 10;
+    const unitPrice = isLoose
+      ? Math.round(((item.saleRate || item.selling_price) / tabletsPerStrip) * 100) / 100
+      : item.saleRate || item.selling_price;
+
+    const cartKey = `${item.id}-${unitType}`;
+
     setCart((prev) => {
-      const existing = prev.find((i) => i.itemId === item.id);
+      const existing = prev.find((i) => i.cartKey === cartKey);
       if (existing) {
         return prev.map((i) =>
-          i.itemId === item.id
+          i.cartKey === cartKey
             ? {
                 ...i,
                 quantity: i.quantity + 1,
-                subtotal: (i.quantity + 1) * i.unit_price + i.coating_charges + i.fitting_charges,
+                subtotal: (i.quantity + 1) * i.unit_price,
               }
             : i
         );
       }
 
-      // Default fitting charge for lens vs frame
-      const defaultFitting = item.type === "LENS" ? 200 : 0;
       return [
         ...prev,
         {
+          cartKey,
           itemId: item.id,
+          medicineId: item.id,
           sku: item.sku,
-          brand: item.brand,
-          model: item.model || item.type,
-          name: `${item.brand} - ${item.model || item.type}`,
-          type: item.type,
-          unit_price: item.selling_price,
+          name: item.name || item.brand,
+          genericSaltName: item.genericSaltName || item.model || "",
+          manufacturer: item.manufacturer || "",
+          batchNumber: item.batchNumber || "BT-DEFAULT",
+          expiryDate: item.expiryDate || "12/2026",
+          rackLocation: item.rackLocation || "Rack A-01",
+          packType: item.packType || item.type || "Strip",
+          tabletsPerStrip,
+          unitType,
+          unit_price: unitPrice,
+          stripPrice: item.saleRate || item.selling_price,
           quantity: 1,
-          coating_key: "NONE",
-          coating_charges: 0,
-          fitting_key: item.type === "LENS" ? "STANDARD" : "FREE",
-          fitting_charges: defaultFitting,
-          subtotal: item.selling_price + defaultFitting,
+          subtotal: unitPrice,
+          isScheduleH: item.isScheduleH || item.scheduleType === "SCHEDULE_H",
           image_url: item.image_url,
         },
       ];
     });
+
+    if (item.isScheduleH || item.scheduleType === "SCHEDULE_H") {
+      setAttachPrescription(true);
+      setIsRxAccordionOpen(true);
+    }
   };
 
-  // Barcode Scanner Handler on Enter Key
+  // Barcode Scanner Handler
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -272,35 +262,35 @@ export default function POSPage() {
 
       const found = items.find(
         (i) =>
+          (i.barcode && i.barcode.toLowerCase() === query) ||
           i.sku.toLowerCase() === query ||
-          i.brand.toLowerCase() === query ||
-          (i.model && i.model.toLowerCase() === query)
+          (i.name && i.name.toLowerCase() === query) ||
+          (i.batchNumber && i.batchNumber.toLowerCase() === query)
       );
 
       if (found) {
-        if (found.stock_quantity <= 0) {
+        const qty = found.stripQuantity ?? found.stock_quantity ?? 0;
+        if (qty <= 0 && (found.looseTabletQuantity || 0) <= 0) {
           setBarcodeFeedback({
             type: "error",
-            message: `SKU ${found.sku} (${found.brand}) is Out of Stock!`,
+            message: `Batch ${found.batchNumber} of ${found.name} is Out of Stock!`,
           });
         } else {
-          addToCart(found);
+          addToCart(found, "STRIP");
           setBarcodeFeedback({
             type: "success",
-            message: `Scanned & Added: ${found.brand} - ${found.model || found.type} (${formatCurrency(found.selling_price)})`,
+            message: `Scanned: ${found.name} (Batch: ${found.batchNumber}) - ${formatCurrency(found.saleRate || found.selling_price)}`,
           });
         }
       } else {
         setBarcodeFeedback({
           type: "error",
-          message: `Barcode / SKU "${barcodeInput}" not found in inventory catalog.`,
+          message: `Barcode / SKU "${barcodeInput}" not found in pharmacy catalog.`,
         });
       }
 
       setBarcodeInput("");
-      setTimeout(() => {
-        setBarcodeFeedback(null);
-      }, 3500);
+      setTimeout(() => setBarcodeFeedback(null), 3500);
     }
   };
 
@@ -326,32 +316,34 @@ export default function POSPage() {
         .filter((item) => {
           const q = cartSearchQuery.toLowerCase().trim();
           return (
-            item.brand?.toLowerCase().includes(q) ||
-            item.model?.toLowerCase().includes(q) ||
+            item.name?.toLowerCase().includes(q) ||
+            item.genericSaltName?.toLowerCase().includes(q) ||
+            item.batchNumber?.toLowerCase().includes(q) ||
             item.sku?.toLowerCase().includes(q) ||
-            item.type?.toLowerCase().includes(q) ||
-            item.color?.toLowerCase().includes(q) ||
-            `${item.brand} ${item.model}`.toLowerCase().includes(q)
+            item.manufacturer?.toLowerCase().includes(q) ||
+            item.rackLocation?.toLowerCase().includes(q)
           );
         })
         .slice(0, 10)
     : [];
 
-  const handleAddFromSearch = (item: any) => {
-    if (item.stock_quantity <= 0) {
+  const handleAddFromSearch = (item: any, unitType: "STRIP" | "LOOSE_TABLET" = "STRIP") => {
+    const qty = item.stripQuantity ?? item.stock_quantity ?? 0;
+    if (qty <= 0 && (item.looseTabletQuantity || 0) <= 0) {
       setCartSearchFeedback({
         type: "error",
-        message: `${item.brand} - ${item.model || item.sku} is Out of Stock!`,
+        message: `${item.name} (Batch: ${item.batchNumber}) is Out of Stock!`,
       });
       setTimeout(() => setCartSearchFeedback(null), 3500);
       return;
     }
-    addToCart(item);
+
+    addToCart(item, unitType);
     setCartSearchQuery("");
     setIsCartSearchFocused(false);
     setCartSearchFeedback({
       type: "success",
-      message: `Added: ${item.brand} - ${item.model || item.type} (${formatCurrency(item.selling_price)})`,
+      message: `Added: ${item.name} (${unitType === "LOOSE_TABLET" ? "Loose Tablet" : "Strip"}) - ${formatCurrency(item.saleRate || item.selling_price)}`,
     });
     setTimeout(() => setCartSearchFeedback(null), 3000);
   };
@@ -362,22 +354,21 @@ export default function POSPage() {
       const q = cartSearchQuery.trim().toLowerCase();
       if (!q) return;
 
-      // Check exact SKU or model match first
       const exactMatch = items.find(
         (item) =>
           item.sku?.toLowerCase() === q ||
-          item.model?.toLowerCase() === q ||
-          `${item.brand} ${item.model}`.toLowerCase() === q
+          item.name?.toLowerCase() === q ||
+          item.batchNumber?.toLowerCase() === q
       );
 
       const targetItem = exactMatch || cartFilteredProducts[0];
 
       if (targetItem) {
-        handleAddFromSearch(targetItem);
+        handleAddFromSearch(targetItem, "STRIP");
       } else {
         setCartSearchFeedback({
           type: "error",
-          message: `No product found matching "${cartSearchQuery}"`,
+          message: `No medicine found matching "${cartSearchQuery}"`,
         });
         setTimeout(() => setCartSearchFeedback(null), 3000);
       }
@@ -386,17 +377,17 @@ export default function POSPage() {
     }
   };
 
-  const updateQuantity = (itemId: string, delta: number) => {
+  const updateQuantity = (cartKey: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) => {
-          if (item.itemId === itemId) {
+          if (item.cartKey === cartKey) {
             const newQty = item.quantity + delta;
             if (newQty <= 0) return null;
             return {
               ...item,
               quantity: newQty,
-              subtotal: newQty * item.unit_price + item.coating_charges + item.fitting_charges,
+              subtotal: newQty * item.unit_price,
             };
           }
           return item;
@@ -405,50 +396,31 @@ export default function POSPage() {
     );
   };
 
-  const updateCoating = (itemId: string, coatingKey: string) => {
-    const opt = COATING_OPTIONS.find((c) => c.key === coatingKey);
-    const charge = opt ? opt.price : 0;
-
+  const toggleUnitType = (cartKey: string) => {
     setCart((prev) =>
       prev.map((item) => {
-        if (item.itemId === itemId) {
-          const updated = {
+        if (item.cartKey === cartKey) {
+          const nextUnit = item.unitType === "STRIP" ? "LOOSE_TABLET" : "STRIP";
+          const newRate =
+            nextUnit === "LOOSE_TABLET"
+              ? Math.round((item.stripPrice / (item.tabletsPerStrip || 10)) * 100) / 100
+              : item.stripPrice;
+
+          return {
             ...item,
-            coating_key: coatingKey,
-            coating_charges: charge,
+            cartKey: `${item.itemId}-${nextUnit}`,
+            unitType: nextUnit,
+            unit_price: newRate,
+            subtotal: item.quantity * newRate,
           };
-          updated.subtotal =
-            updated.quantity * updated.unit_price + updated.coating_charges + updated.fitting_charges;
-          return updated;
         }
         return item;
       })
     );
   };
 
-  const updateFitting = (itemId: string, fittingKey: string) => {
-    const opt = FITTING_OPTIONS.find((f) => f.key === fittingKey);
-    const charge = opt ? opt.price : 0;
-
-    setCart((prev) =>
-      prev.map((item) => {
-        if (item.itemId === itemId) {
-          const updated = {
-            ...item,
-            fitting_key: fittingKey,
-            fitting_charges: charge,
-          };
-          updated.subtotal =
-            updated.quantity * updated.unit_price + updated.coating_charges + updated.fitting_charges;
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const removeFromCart = (itemId: string) => {
-    setCart((prev) => prev.filter((item) => item.itemId !== itemId));
+  const removeFromCart = (cartKey: string) => {
+    setCart((prev) => prev.filter((item) => item.cartKey !== cartKey));
   };
 
   const clearCart = () => {
@@ -460,37 +432,47 @@ export default function POSPage() {
     setCheckoutError(null);
   };
 
-  // Duplicate / Load previous prescription from customer history
+  // Copy previous prescription from patient record
   const loadPreviousRx = (customRx?: any) => {
     const targetRx = customRx || selectedCustomerDetails?.prescriptions?.[0];
     if (!targetRx) {
-      setRxLoadedAlert("No prior refraction prescription on record for this customer.");
+      setRxLoadedAlert("No prior prescription record found for this patient.");
       setTimeout(() => setRxLoadedAlert(null), 3000);
       return;
     }
 
     setRxData({
-      optometristName: targetRx.optometristName || "Dr. Staff Optometrist",
-      od_sph: targetRx.od_sph !== null && targetRx.od_sph !== undefined ? targetRx.od_sph.toString() : "",
-      od_cyl: targetRx.od_cyl !== null && targetRx.od_cyl !== undefined ? targetRx.od_cyl.toString() : "",
-      od_axis: targetRx.od_axis !== null && targetRx.od_axis !== undefined ? targetRx.od_axis.toString() : "",
-      od_add: targetRx.od_add !== null && targetRx.od_add !== undefined ? targetRx.od_add.toString() : "",
-      os_sph: targetRx.os_sph !== null && targetRx.os_sph !== undefined ? targetRx.os_sph.toString() : "",
-      os_cyl: targetRx.os_cyl !== null && targetRx.os_cyl !== undefined ? targetRx.os_cyl.toString() : "",
-      os_axis: targetRx.os_axis !== null && targetRx.os_axis !== undefined ? targetRx.os_axis.toString() : "",
-      os_add: targetRx.os_add !== null && targetRx.os_add !== undefined ? targetRx.os_add.toString() : "",
-      pd_distance: targetRx.pd_distance ? targetRx.pd_distance.toString() : "63.0",
-      pd_near: targetRx.pd_near ? targetRx.pd_near.toString() : "60.0",
-      lens_type: targetRx.lens_type || "SINGLE_VISION",
+      patientName: targetRx.patientName || selectedCustomerDetails?.name || "",
+      patientAge: targetRx.patientAge ? String(targetRx.patientAge) : "",
+      doctorName: targetRx.doctorName || "Dr. Sandeep Deshmukh, MD",
+      clinicOrHospital: targetRx.clinicOrHospital || "City Hospital",
+      doctorRegNo: targetRx.doctorRegNo || "MCI-48921",
+      dosageInstructions: targetRx.dosageInstructions || "1-0-1 (After Meals)",
       notes: targetRx.notes || "",
+      prescriptionImage: targetRx.prescriptionImage || "",
     });
 
     setAttachPrescription(true);
     setIsRxAccordionOpen(true);
     setRxLoadedAlert(
-      `Prescription copied from Dr. ${targetRx.optometristName || "Optometrist"} (${formatDate(targetRx.createdAt)})`
+      `Prescription copied: ${targetRx.doctorName || "Registered Doctor"} (${formatDate(targetRx.createdAt)})`
     );
     setTimeout(() => setRxLoadedAlert(null), 4000);
+  };
+
+  // Image Upload handler for prescription
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setRxData((prev) => ({
+          ...prev,
+          prescriptionImage: event.target?.result as string,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Financial Calculations
@@ -503,11 +485,8 @@ export default function POSPage() {
 
   const taxableAmount = Math.max(0, rawSubtotal - calculatedDiscount);
   const totalTax = (taxableAmount * gstRate) / 100;
-  const cgstAmount = totalTax / 2;
-  const sgstAmount = totalTax / 2;
   const finalPayable = Math.round(taxableAmount + totalTax);
 
-  // Auto-set advance paid to full unless user explicitly modified it
   useEffect(() => {
     if (!isAdvanceUserModified) {
       setAdvancePaid(finalPayable);
@@ -517,11 +496,6 @@ export default function POSPage() {
   const effectiveAdvancePaid = Math.min(finalPayable, Math.max(0, advancePaid || 0));
   const balanceRemaining = Math.max(0, finalPayable - effectiveAdvancePaid);
   const paymentStatus = balanceRemaining === 0 ? "PAID" : "PARTIAL";
-
-  // Calculate past unpaid dues of selected customer
-  const pastUnpaidDues = (selectedCustomerDetails?.orders || [])
-    .filter((o: any) => o.status !== "CANCELLED")
-    .reduce((sum: number, o: any) => sum + (o.balance_amount || 0), 0);
 
   // Customer Autocomplete Filter
   const filteredCustomers = customers.filter((c) => {
@@ -536,69 +510,57 @@ export default function POSPage() {
 
   // Filtered Catalog
   const filteredItems = items.filter((item) => {
-    const matchesType = activeType === "ALL" || item.type === activeType;
+    const matchesPack =
+      activePackType === "ALL" ||
+      (item.packType && item.packType.toUpperCase() === activePackType.toUpperCase());
+
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       q === "" ||
-      item.brand.toLowerCase().includes(q) ||
-      item.sku.toLowerCase().includes(q) ||
-      (item.model && item.model.toLowerCase().includes(q)) ||
-      (item.color && item.color.toLowerCase().includes(q));
-    return matchesType && matchesSearch;
+      item.name?.toLowerCase().includes(q) ||
+      item.genericSaltName?.toLowerCase().includes(q) ||
+      item.batchNumber?.toLowerCase().includes(q) ||
+      item.sku?.toLowerCase().includes(q) ||
+      item.manufacturer?.toLowerCase().includes(q) ||
+      item.rackLocation?.toLowerCase().includes(q);
+
+    return matchesPack && matchesSearch;
   });
 
   // Generate WhatsApp Direct URL
   const generateWhatsAppUrl = (order: any, customer: any) => {
     if (!customer?.phone) return null;
     let cleanPhone = customer.phone.replace(/[^0-9]/g, "");
-    if (cleanPhone.length === 10) {
-      cleanPhone = "91" + cleanPhone;
-    }
+    if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
 
     const itemsSummary = order.items
       ?.map(
         (it: any) =>
-          `• ${it.item ? `${it.item.brand} - ${it.item.model || it.item.type}` : "Eyewear Item"} (x${it.quantity}) - ₹${it.subtotal}`
+          `• ${it.name || "Medicine"} (${it.unitType === "LOOSE_TABLET" ? "Loose Tablets" : "Strip"} x${it.quantity}) - ₹${it.subtotal}`
       )
       .join("\n");
 
-    const deliveryFormatted = order.delivery_due_date
-      ? new Date(order.delivery_due_date).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "2 Days";
-
-    let rxSummary = "";
-    if (attachPrescription && (rxData.od_sph || rxData.os_sph)) {
-      rxSummary = `\n👁️ *Refraction Prescription*:
-• OD (Right): SPH ${rxData.od_sph || "0.00"} | CYL ${rxData.od_cyl || "0.00"} x ${rxData.od_axis || "0"}° ${rxData.od_add ? `| ADD +${rxData.od_add}` : ""}
-• OS (Left): SPH ${rxData.os_sph || "0.00"} | CYL ${rxData.os_cyl || "0.00"} x ${rxData.os_axis || "0"}° ${rxData.os_add ? `| ADD +${rxData.os_add}` : ""}
-• Lens Type: ${rxData.lens_type.replace("_", " ")} | PD: ${rxData.pd_distance}mm`;
-    }
-
-    const message = `👓 *VISIONPULSE EYEWEAR STUDIO*
-Precision Clinical Optometry & Premium Eyewear
+    const message = `💊 *PHARMAPULSE CHEMIST & DRUGGIST*
+High-Efficiency Pharmacy & Clinical Store ERP
 
 Dear *${customer.name}*,
-Thank you for choosing VisionPulse! Your order has been registered:
+Thank you for visiting PharmaPulse! Your medical bill has been generated:
 
-🧾 *Bill / Job Order*: #${order.bill_no}
-📅 *Ready for Pickup*: ${deliveryFormatted}
+🧾 *Bill No*: #${order.bill_no}
+📅 *Date*: ${formatDate(order.createdAt)}
 
-💰 *Payment Breakdown*:
+💰 *Bill Summary*:
 • Net Payable: ₹${order.final_payable}
-• Advance Paid: ₹${order.paid_amount} (${paymentMethod})
-• Balance Due at Delivery: ₹${order.balance_amount}
+• Paid Amount: ₹${order.paid_amount} (${paymentMethod})
+• Balance Remaining: ₹${order.balance_amount}
 
-📦 *Items*:
+📦 *Medicines Dispensed*:
 ${itemsSummary}
-${rxSummary}
 
-📍 *Store Location*: Galleria Arcade, Powai, Mumbai - 400076
-📞 *Helpline*: +91 98201 12345
-We will message you the moment your glasses pass optical lab inspection!`;
+${attachPrescription && rxData.doctorName ? `👨‍⚕️ *Prescribed by*: ${rxData.doctorName} (${rxData.dosageInstructions || "As directed"})` : ""}
+
+📍 *Location*: Shop 10 & 11, Central Avenue, Powai, Mumbai - 400076
+📞 *Helpline*: +91 98201 12345`;
 
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
@@ -611,12 +573,12 @@ We will message you the moment your glasses pass optical lab inspection!`;
     }
 
     if (cart.length === 0) {
-      setCheckoutError("Your cart is empty. Please add at least one frame or lens.");
+      setCheckoutError("Your cart is empty. Please add at least one medicine item.");
       return;
     }
 
     if (effectiveAdvancePaid < 0) {
-      setCheckoutError("Advance payment cannot be a negative value.");
+      setCheckoutError("Payment amount cannot be negative.");
       return;
     }
 
@@ -634,8 +596,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
       method: paymentMethod,
       transaction_ref: transactionRef,
       delivery_due_date: deliveryDate,
-      prescriptionData:
-        attachPrescription && (rxData.od_sph !== "" || rxData.os_sph !== "") ? rxData : null,
+      prescriptionData: attachPrescription ? rxData : null,
     };
 
     try {
@@ -650,7 +611,6 @@ We will message you the moment your glasses pass optical lab inspection!`;
         const orderData = data.data;
         setCompletedOrder(orderData);
 
-        // If WhatsApp requested, open chat window
         if (targetAction === "WHATSAPP") {
           const waUrl = generateWhatsAppUrl(orderData, selectedCustomerDetails);
           if (waUrl) {
@@ -671,36 +631,21 @@ We will message you the moment your glasses pass optical lab inspection!`;
     }
   };
 
-
-  const scrollToCheckout = () => {
-    const el = document.getElementById("pos-checkout-section");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
-  const scrollToCatalog = () => {
-    const el = document.getElementById("pos-catalog-section");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
   {/* ======================================================== */}
-  {/* SECTION 1: CUSTOMER SELECTION (Big touch targets)       */}
+  {/* SECTION 1: CUSTOMER / PATIENT SELECTION                  */}
   {/* ======================================================== */}
   const renderCustomerSection = () => (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-          <User className="w-5 h-5 text-cyan-600" />
-          <span>Customer / Patient Profile</span>
+          <User className="w-5 h-5 text-emerald-600" />
+          <span>Patient / Customer Profile</span>
           <span className="text-rose-500 font-bold">*</span>
         </span>
         <button
           type="button"
           onClick={() => setIsNewCustomerOpen(true)}
-          className="text-xs sm:text-sm font-bold text-cyan-700 hover:text-cyan-900 inline-flex items-center gap-1.5 bg-cyan-50 border border-cyan-200 px-3 py-1.5 rounded-xl hover:bg-cyan-100 transition-colors cursor-pointer active:scale-95"
+          className="text-xs sm:text-sm font-bold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer active:scale-95"
         >
           <UserPlus className="w-4 h-4" />
           <span>+ New Patient</span>
@@ -712,30 +657,30 @@ We will message you the moment your glasses pass optical lab inspection!`;
           <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search patient by phone number (9820...) or name..."
+            placeholder="Search patient by mobile number (9820...) or name..."
             value={customerSearch}
             onFocus={() => setShowCustomerDropdown(true)}
             onChange={(e) => {
               setCustomerSearch(e.target.value);
               setShowCustomerDropdown(true);
             }}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-sm sm:text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-2xs font-medium"
+            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-sm sm:text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs font-medium"
           />
 
           {showCustomerDropdown && (
             <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 max-h-64 overflow-y-auto z-40 divide-y divide-slate-100">
               {filteredCustomers.length === 0 ? (
                 <div className="p-4 text-center text-sm text-slate-500">
-                  <p>No customer found matching &ldquo;{customerSearch}&rdquo;</p>
+                  <p>No patient record found matching &ldquo;{customerSearch}&rdquo;</p>
                   <button
                     type="button"
                     onClick={() => {
                       setShowCustomerDropdown(false);
                       setIsNewCustomerOpen(true);
                     }}
-                    className="mt-2 text-cyan-700 font-bold hover:underline inline-block cursor-pointer"
+                    className="mt-2 text-emerald-700 font-bold hover:underline inline-block cursor-pointer"
                   >
-                    + Quick Register Patient
+                    + Register New Patient
                   </button>
                 </div>
               ) : (
@@ -748,7 +693,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
                       setShowCustomerDropdown(false);
                       setCustomerSearch("");
                     }}
-                    className="w-full text-left p-3 sm:p-3.5 hover:bg-cyan-50/70 transition-colors flex items-center justify-between cursor-pointer"
+                    className="w-full text-left p-3 sm:p-3.5 hover:bg-emerald-50/70 transition-colors flex items-center justify-between cursor-pointer"
                   >
                     <div>
                       <p className="font-bold text-slate-900 text-sm sm:text-base">{cust.name}</p>
@@ -773,15 +718,12 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 <h4 className="font-bold text-slate-900 text-base sm:text-lg flex items-center gap-2">
                   {selectedCustomerDetails.name}
                   <span className="text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
-                    <Award className="w-3 h-3" /> {selectedCustomerDetails.loyalty_points || 0} pts
+                    {selectedCustomerDetails.loyalty_points || 0} pts
                   </span>
                 </h4>
                 <p className="text-xs sm:text-sm text-slate-600 font-mono mt-0.5 flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-slate-400" />
                   <span>{selectedCustomerDetails.phone}</span>
-                  {selectedCustomerDetails.dob && (
-                    <span>• DOB: {formatDate(selectedCustomerDetails.dob)}</span>
-                  )}
                 </p>
               </div>
 
@@ -791,50 +733,29 @@ We will message you the moment your glasses pass optical lab inspection!`;
                   setSelectedCustomerId("");
                   setSelectedCustomerDetails(null);
                 }}
-                className="text-xs font-bold text-cyan-700 hover:text-cyan-900 bg-white border border-cyan-200 px-2.5 py-1 rounded-lg hover:bg-cyan-50 transition-colors cursor-pointer"
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-200 px-2.5 py-1 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
               >
                 Change Patient
               </button>
             </div>
 
-            {pastUnpaidDues > 0 ? (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-center justify-between">
-                <div className="flex items-center gap-2 font-bold">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>Previous Unpaid Dues:</span>
-                  <span className="text-rose-700 font-black">{formatCurrency(pastUnpaidDues)}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsHistoryOpen(true)}
-                  className="text-xs font-bold underline hover:text-rose-900 cursor-pointer"
-                >
-                  View
-                </button>
-              </div>
-            ) : (
-              <div className="text-xs text-emerald-700 flex items-center gap-1.5 font-medium">
-                <Check className="w-4 h-4 text-emerald-600" /> No outstanding past dues on account.
-              </div>
-            )}
-
             <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
               <button
                 type="button"
                 onClick={() => setIsHistoryOpen(true)}
-                className="text-cyan-700 hover:text-cyan-900 font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
+                className="text-emerald-700 hover:text-emerald-900 font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
               >
-                <Glasses className="w-4 h-4" /> Past Rx History ({selectedCustomerDetails.prescriptions?.length || 0})
+                <FileText className="w-4 h-4" /> Past Rx & Bills ({selectedCustomerDetails.orders?.length || 0})
               </button>
 
               {selectedCustomerDetails.prescriptions?.length > 0 && (
                 <button
                   type="button"
                   onClick={() => loadPreviousRx()}
-                  className="text-xs font-bold text-cyan-800 bg-cyan-100/70 hover:bg-cyan-200/80 px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  className="text-xs font-bold text-emerald-800 bg-emerald-100/70 hover:bg-emerald-200/80 px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-700" />
-                  <span>Copy Rx</span>
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Copy Last Rx</span>
                 </button>
               )}
             </div>
@@ -845,7 +766,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
   );
 
   {/* ======================================================== */}
-  {/* SECTION 2: BARCODE & SEARCH BAR (Clean & Visible)       */}
+  {/* SECTION 2: MEDICINE & SALT SEARCH + CATALOG              */}
   {/* ======================================================== */}
   const renderSearchBarAndCatalog = (isMobile?: boolean) => (
     <div id="pos-catalog-section" className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
@@ -861,8 +782,8 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Search className="w-3.5 h-3.5 text-cyan-600" />
-            <span>Search Catalog</span>
+            <Search className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Search Medicine & Salt</span>
           </button>
           <button
             type="button"
@@ -873,13 +794,13 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Barcode className="w-3.5 h-3.5 text-cyan-600" />
+            <Barcode className="w-3.5 h-3.5 text-emerald-600" />
             <span>Barcode Gun</span>
           </button>
         </div>
 
         <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-          {searchMode === "SEARCH" ? "Filter or scan" : "Ready for barcode gun"}
+          {searchMode === "SEARCH" ? "Instant Brand or Salt lookup" : "Ready for scanner gun"}
         </span>
       </div>
 
@@ -889,10 +810,10 @@ We will message you the moment your glasses pass optical lab inspection!`;
           <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search model, brand, SKU or code (e.g. Ray-Ban, RB3025, Zeiss)..."
+            placeholder="Search brand (Dolo, Augmentin), salt (Paracetamol), batch no, rack..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm sm:text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white font-medium"
+            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm sm:text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white font-medium"
           />
           {searchQuery && (
             <button
@@ -907,39 +828,40 @@ We will message you the moment your glasses pass optical lab inspection!`;
       ) : (
         /* Input Mode 2: Barcode Scanner Field */
         <div className="relative">
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-cyan-700 pointer-events-none">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-emerald-700 pointer-events-none">
             <Barcode className="w-5 h-5" />
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-100 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-100 px-1.5 py-0.5 rounded">
               SCAN
             </span>
           </div>
           <input
             ref={barcodeInputRef}
             type="text"
-            placeholder="Scan barcode / SKU and hit Enter..."
+            placeholder="Scan product barcode / batch number and hit Enter..."
             value={barcodeInput}
             onChange={(e) => setBarcodeInput(e.target.value)}
             onKeyDown={handleBarcodeKeyDown}
-            className="w-full pl-28 pr-4 py-3 bg-cyan-50/50 border-2 border-cyan-500 rounded-xl text-sm sm:text-base font-mono font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition-all shadow-xs"
+            className="w-full pl-28 pr-4 py-3 bg-emerald-50/50 border-2 border-emerald-500 rounded-xl text-sm sm:text-base font-mono font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-xs"
           />
         </div>
       )}
 
-      {/* Category Filter Pills */}
+      {/* Pack Type Filter Pills */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs sm:text-sm select-none scrollbar-none">
         {[
-          { label: "All Items", key: "ALL" },
-          { label: "Frames", key: "FRAME" },
-          { label: "Power Lenses", key: "LENS" },
-          { label: "Contact Lenses", key: "CONTACT_LENS" },
-          { label: "Accessories", key: "ACCESSORY" },
+          { label: "All Formulations", key: "ALL" },
+          { label: "Strips & Tablets", key: "STRIP" },
+          { label: "Bottles & Syrups", key: "BOTTLE" },
+          { label: "Boxes & Units", key: "BOX" },
+          { label: "Ointments", key: "OINTMENT" },
+          { label: "Syringes", key: "SYRINGE" },
         ].map((tab) => (
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveType(tab.key)}
+            onClick={() => setActivePackType(tab.key)}
             className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
-              activeType === tab.key
+              activePackType === tab.key
                 ? "bg-slate-900 text-white shadow-xs"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
@@ -949,32 +871,32 @@ We will message you the moment your glasses pass optical lab inspection!`;
         ))}
       </div>
 
-      {/* Available Optical Inventory Cards */}
+      {/* Available Medicine Cards */}
       <div className="pt-2">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Package className="w-4 h-4 text-cyan-600" />
-            Available Inventory ({filteredItems.length})
+            <Package className="w-4 h-4 text-emerald-600" />
+            Available Medicines ({filteredItems.length})
           </span>
-          <span className="text-xs text-slate-400 hidden sm:inline">Tap card or button to add</span>
+          <span className="text-xs text-slate-400 hidden sm:inline">Add Strip or Loose Tablets</span>
         </div>
 
         {loadingItems ? (
           <div className="flex items-center justify-center h-40 text-slate-400 text-sm">
-            Loading optical inventory...
+            Loading pharmacy catalog...
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            <Package className="w-10 h-10 mb-2 text-slate-300 stroke-[1.5]" />
+            <Pill className="w-10 h-10 mb-2 text-slate-300 stroke-[1.5]" />
             <p className="font-bold text-slate-800 text-sm">
               {items.length === 0
-                ? "Available Inventory: 0 items"
-                : `No items match "${searchQuery}"`}
+                ? "No medicines in inventory"
+                : `No medicines match "${searchQuery}"`}
             </p>
             <p className="text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
               {items.length === 0
-                ? "No products found in store inventory. Add frames or lenses to stock to enable counter sales."
-                : "Try searching another brand name or reset the category filter."}
+                ? "Your pharmacy catalog is empty. Add medicine batches to start counter sales."
+                : "Try searching with generic salt composition or brand name."}
             </p>
             {items.length === 0 && (
               <Link
@@ -982,73 +904,105 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Your First Product</span>
+                <span>+ Add First Medicine</span>
               </Link>
             )}
           </div>
         ) : (
-          <div className={`grid ${isMobile ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 md:grid-cols-3 xl:grid-cols-4"} gap-3`}>
+          <div className={`grid ${isMobile ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"} gap-3`}>
             {filteredItems.map((item) => {
-              const isOutOfStock = item.stock_quantity <= 0;
-              const isLowStock = item.stock_quantity <= item.min_alert_threshold && !isOutOfStock;
+              const stripQty = item.stripQuantity ?? item.stock_quantity ?? 0;
+              const looseQty = item.looseTabletQuantity || 0;
+              const minStock = item.minStockAlert ?? item.min_alert_threshold ?? 10;
+              const isOut = stripQty <= 0 && looseQty <= 0;
+              const isLow = stripQty <= minStock && !isOut;
+              const expStatus = getExpiryStatus(item.expiryDate);
+              const tabletsPerStrip = item.tabletsPerStrip || 10;
+              const pricePerStrip = item.saleRate || item.selling_price || 0;
+              const pricePerTablet = (pricePerStrip / tabletsPerStrip).toFixed(2);
+              const isStripPack = (item.packType || item.type || "Strip").toLowerCase() === "strip";
 
               return (
                 <div
                   key={item.id}
                   className={`flex flex-col justify-between p-3.5 rounded-2xl border bg-white shadow-xs transition-all ${
-                    isOutOfStock
+                    isOut
                       ? "opacity-60 border-slate-200"
-                      : "border-slate-200 hover:border-cyan-400 hover:shadow-md"
+                      : "border-slate-200 hover:border-emerald-400 hover:shadow-md"
                   }`}
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                        {item.type.replace("_", " ")}
+                    {/* Expiry Badge & Schedule H Tag */}
+                    <div className="flex items-center justify-between mb-1.5 gap-1.5 flex-wrap">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${expStatus.badgeClass}`}>
+                        Exp: {item.expiryDate} ({expStatus.label})
                       </span>
-                      {isOutOfStock ? (
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
-                          Out of stock
-                        </span>
-                      ) : isLowStock ? (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                          {item.stock_quantity} left
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          {item.stock_quantity} in stock
+                      {item.isScheduleH && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                          Schedule H
                         </span>
                       )}
                     </div>
 
-                    <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2">
-                      {item.brand} - {item.model || item.type}
+                    <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">
+                      {item.name || item.brand}
                     </h4>
-                    <p className="font-mono text-xs text-slate-400 mt-0.5 truncate">
-                      SKU: {item.sku}
+                    <p className="text-xs text-slate-600 font-medium line-clamp-1 mt-0.5">
+                      {item.genericSaltName || item.model}
                     </p>
-                    {item.color && (
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">Color: {item.color}</p>
-                    )}
+
+                    <div className="mt-2 text-[11px] text-slate-500 space-y-0.5 font-mono">
+                      <div className="flex justify-between">
+                        <span>Batch: <strong className="text-slate-800">{item.batchNumber}</strong></span>
+                        <span>Rack: <strong className="text-slate-800">{item.rackLocation || "Rack A-01"}</strong></span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Stock: <strong className="text-slate-900">{stripQty} Strips</strong> {looseQty > 0 ? `+ ${looseQty} Loose` : ""}</span>
+                        <span>{item.manufacturer?.split(" ")[0]}</span>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Actions & Pricing */}
                   <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <span className="font-mono font-black text-slate-900 text-base sm:text-lg">
-                      {formatCurrency(item.selling_price)}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={isOutOfStock}
-                      onClick={() => addToCart(item)}
-                      className={`py-2 px-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all cursor-pointer ${
-                        isOutOfStock
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                          : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs hover:scale-105 active:scale-95"
-                      }`}
-                    >
-                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Add</span>
-                    </button>
+                    <div>
+                      <span className="font-mono font-black text-slate-900 text-base sm:text-lg block leading-none">
+                        {formatCurrency(pricePerStrip)}
+                      </span>
+                      {isStripPack && tabletsPerStrip > 1 && (
+                        <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                          ₹{pricePerTablet} / tablet
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {isStripPack && tabletsPerStrip > 1 && (
+                        <button
+                          type="button"
+                          disabled={isOut}
+                          onClick={() => addToCart(item, "LOOSE_TABLET")}
+                          className="py-1.5 px-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all cursor-pointer active:scale-95 disabled:opacity-40"
+                          title="Add loose individual tablets"
+                        >
+                          + Loose
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={isOut}
+                        onClick={() => addToCart(item, "STRIP")}
+                        className={`py-1.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1 transition-all cursor-pointer ${
+                          isOut
+                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                            : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95"
+                        }`}
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>{isStripPack ? "Strip" : "Add"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1060,18 +1014,18 @@ We will message you the moment your glasses pass optical lab inspection!`;
   );
 
   {/* ======================================================== */}
-  {/* SECTION 3: CART & SELECTED ITEMS (Clean Stepper & Trash) */}
+  {/* SECTION 3: CART & STRIP VS LOOSE SELECTION               */}
   {/* ======================================================== */}
   const renderCartSection = () => (
     <div id="pos-cart-section" className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
-      {/* Live Search & Add Bar above Cart */}
+      {/* Search & Add input above cart */}
       <div className="relative">
         <div className="relative">
-          <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-600 pointer-events-none" />
+          <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none" />
           <input
             ref={cartSearchInputRef}
             type="text"
-            placeholder="Search product by Model / Name / SKU / Key Number..."
+            placeholder="Quick search medicine name, salt, batch..."
             value={cartSearchQuery}
             onChange={(e) => {
               setCartSearchQuery(e.target.value);
@@ -1079,7 +1033,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             }}
             onFocus={() => setIsCartSearchFocused(true)}
             onKeyDown={handleCartSearchKeyDown}
-            className="w-full pl-11 pr-14 py-3 bg-white border border-slate-300 hover:border-cyan-400 focus:border-cyan-500 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 shadow-2xs transition-all font-medium"
+            className="w-full pl-11 pr-14 py-3 bg-white border border-slate-300 hover:border-emerald-400 focus:border-emerald-500 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-2xs transition-all font-medium"
           />
           {cartSearchQuery ? (
             <button
@@ -1122,80 +1076,46 @@ We will message you the moment your glasses pass optical lab inspection!`;
             className="absolute left-0 right-0 top-full mt-2 z-40 bg-white rounded-2xl shadow-2xl border border-slate-200 max-h-72 overflow-y-auto divide-y divide-slate-100 text-sm animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs font-bold text-slate-500">
-              <span>Matching Products ({cartFilteredProducts.length})</span>
-              <span className="text-[11px] text-slate-400 font-normal">Press Enter or tap Add</span>
+              <span>Matching Medicines ({cartFilteredProducts.length})</span>
+              <span className="text-[11px] text-slate-400 font-normal">Press Enter or select</span>
             </div>
 
             {cartFilteredProducts.length === 0 ? (
               <div className="p-4 text-center text-slate-400">
-                <p className="font-semibold text-slate-600">No products found matching &ldquo;{cartSearchQuery}&rdquo;</p>
-                <p className="text-xs text-slate-400 mt-0.5">Try searching brand, model code (e.g. RB3025), or barcode SKU.</p>
+                <p className="font-semibold text-slate-600">No medicine found matching &ldquo;{cartSearchQuery}&rdquo;</p>
               </div>
             ) : (
-              cartFilteredProducts.map((prod) => {
-                const isOutOfStock = prod.stock_quantity <= 0;
-                return (
-                  <div
-                    key={prod.id}
-                    onClick={() => !isOutOfStock && handleAddFromSearch(prod)}
-                    className={`p-3 flex items-center justify-between gap-3 transition-colors cursor-pointer ${
-                      isOutOfStock
-                        ? "opacity-60 bg-slate-50 cursor-not-allowed"
-                        : "hover:bg-cyan-50/70"
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 font-mono">
-                          {prod.type}
-                        </span>
-                        <span className="font-mono text-xs text-slate-400 font-semibold truncate">
-                          {prod.sku}
-                        </span>
-                      </div>
-                      <h5 className="font-bold text-slate-900 truncate mt-0.5 text-sm sm:text-base">
-                        {prod.brand} - {prod.model || prod.type}
-                      </h5>
-                      <div className="flex items-center gap-2 text-xs mt-0.5">
-                        <span
-                          className={`font-semibold ${
-                            isOutOfStock
-                              ? "text-rose-600 font-bold"
-                              : prod.stock_quantity <= prod.min_alert_threshold
-                              ? "text-amber-600 font-bold"
-                              : "text-emerald-700"
-                          }`}
-                        >
-                          {isOutOfStock ? "Out of stock" : `${prod.stock_quantity} in stock`}
-                        </span>
-                        {prod.color && <span className="text-slate-400 truncate">• {prod.color}</span>}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="font-mono font-black text-slate-900 text-sm sm:text-base">
-                        {formatCurrency(prod.selling_price)}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={isOutOfStock}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddFromSearch(prod);
-                        }}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                          isOutOfStock
-                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs active:scale-95"
-                        }`}
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Add</span>
-                      </button>
-                    </div>
+              cartFilteredProducts.map((prod) => (
+                <div
+                  key={prod.id}
+                  onClick={() => handleAddFromSearch(prod, "STRIP")}
+                  className="p-3 flex items-center justify-between gap-3 hover:bg-emerald-50/70 transition-colors cursor-pointer"
+                >
+                  <div className="min-w-0 flex-1">
+                    <h5 className="font-bold text-slate-900 truncate text-sm sm:text-base">
+                      {prod.name}
+                    </h5>
+                    <p className="text-xs text-slate-500 truncate">
+                      {prod.genericSaltName} • Batch: {prod.batchNumber}
+                    </p>
                   </div>
-                );
-              })
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono font-black text-slate-900 text-sm">
+                      {formatCurrency(prod.saleRate || prod.selling_price)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddFromSearch(prod, "STRIP");
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-xs bg-emerald-600 text-white"
+                    >
+                      + Strip
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         )}
@@ -1204,8 +1124,8 @@ We will message you the moment your glasses pass optical lab inspection!`;
       {/* Cart Header */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-100">
         <span className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5 text-cyan-600" />
-          <span>Cart Items ({cart.length})</span>
+          <ShoppingCart className="w-5 h-5 text-emerald-600" />
+          <span>Billing Cart ({cart.length})</span>
         </span>
         {cart.length > 0 && (
           <button
@@ -1221,126 +1141,108 @@ We will message you the moment your glasses pass optical lab inspection!`;
       {/* Cart Items List */}
       {cart.length === 0 ? (
         <div className="py-10 flex flex-col items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-          <ShoppingCart className="w-8 h-8 mb-2 opacity-30" />
+          <Pill className="w-8 h-8 mb-2 opacity-30 text-emerald-600" />
           <p className="font-bold text-slate-600">Your billing cart is empty</p>
-          <p className="text-xs text-slate-400 mt-0.5">Scan a barcode or add frames & lenses above.</p>
+          <p className="text-xs text-slate-400 mt-0.5">Scan a barcode or add medicines from catalog.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {cart.map((item) => (
-            <div
-              key={item.itemId}
-              className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3 text-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {item.image_url ? (
-                    <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                    </div>
-                  ) : null}
-                  <div className="min-w-0">
+          {cart.map((item) => {
+            const exp = getExpiryStatus(item.expiryDate);
+            return (
+              <div
+                key={item.cartKey}
+                className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3 text-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono">
-                        {item.type}
+                      <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full border ${exp.badgeClass}`}>
+                        Exp: {item.expiryDate}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">{item.sku}</span>
+                      <span className="text-xs text-slate-400 font-mono">
+                        Batch: {item.batchNumber}
+                      </span>
+                      {item.isScheduleH && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-50 text-rose-700">
+                          Rx Only
+                        </span>
+                      )}
                     </div>
                     <h5 className="text-sm sm:text-base font-bold text-slate-900 leading-snug mt-0.5">
                       {item.name}
                     </h5>
+                    <p className="text-xs text-slate-500 truncate">
+                      {item.genericSaltName}
+                    </p>
                   </div>
-                </div>
-                <span className="font-black text-base sm:text-lg text-slate-900 font-mono shrink-0">
-                  {formatCurrency(item.subtotal)}
-                </span>
-              </div>
-
-              {/* Coating & Fitting Dropdowns for Lenses or Frames */}
-              {(item.type === "LENS" || item.type === "FRAME") && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-slate-100 text-xs">
-                  <div>
-                    <label className="block text-slate-600 font-bold mb-1">
-                      Coating Treatment:
-                    </label>
-                    <select
-                      value={item.coating_key || "NONE"}
-                      onChange={(e) => updateCoating(item.itemId, e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium"
-                    >
-                      {COATING_OPTIONS.map((c) => (
-                        <option key={c.key} value={c.key}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-600 font-bold mb-1">
-                      Fitting / Edging:
-                    </label>
-                    <select
-                      value={item.fitting_key || "FREE"}
-                      onChange={(e) => updateFitting(item.itemId, e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium"
-                    >
-                      {FITTING_OPTIONS.map((f) => (
-                        <option key={f.key} value={f.key}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* Quantity Stepper & Delete */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(item.itemId, -1)}
-                    className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-8 text-center font-black text-sm sm:text-base text-slate-900">
-                    {item.quantity}
+                  <span className="font-black text-base sm:text-lg text-slate-900 font-mono shrink-0">
+                    {formatCurrency(item.subtotal)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(item.itemId, 1)}
-                    className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-xs sm:text-sm text-slate-500 font-medium">
-                    Rate: {formatCurrency(item.unit_price)}
+                {/* Strip vs Loose Tablet Switcher */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-600 font-bold">Unit:</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleUnitType(item.cartKey)}
+                      className={`px-2.5 py-1 rounded-lg font-bold border transition-all cursor-pointer ${
+                        item.unitType === "STRIP"
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-emerald-50 text-emerald-800 border-emerald-300"
+                      }`}
+                    >
+                      {item.unitType === "STRIP" ? "📦 Whole Strip" : "💊 Loose Tablets"} (Click to Switch)
+                    </button>
+                  </div>
+                  <span className="text-slate-500 font-mono">
+                    Rate: {formatCurrency(item.unit_price)} / {item.unitType === "STRIP" ? "strip" : "tab"}
                   </span>
+                </div>
+
+                {/* Stepper & Delete */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.cartKey, -1)}
+                      className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-8 text-center font-black text-sm sm:text-base text-slate-900 font-mono">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.cartKey, 1)}
+                      className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => removeFromCart(item.itemId)}
+                    onClick={() => removeFromCart(item.cartKey)}
                     className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                    title="Remove item"
+                    title="Remove medicine"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 
   {/* ======================================================== */}
-  {/* SECTION 4: PRESCRIPTION (RX) MATRIX ACCORDION            */}
+  {/* SECTION 4: DOCTOR & RX DETAILS MODAL / ACCORDION         */}
   {/* ======================================================== */}
   const renderRxAccordion = () => (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -1350,27 +1252,27 @@ We will message you the moment your glasses pass optical lab inspection!`;
         className="w-full p-4 sm:p-5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer select-none"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0">
-            <Eye className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                Prescription (Rx) Refraction Matrix
+                Doctor & Prescription (Rx) Details
               </h3>
               {attachPrescription && (
-                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
                   Attached
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Diopter values (OD & OS), PD distance & lab glazing notes
+              Prescribing doctor, clinic, registration no. & dosage schedule
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-cyan-700 hidden sm:inline">
+          <span className="text-xs font-bold text-purple-700 hidden sm:inline">
             {isRxAccordionOpen ? "Collapse" : "Expand"}
           </span>
           <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
@@ -1388,258 +1290,152 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 type="checkbox"
                 checked={attachPrescription}
                 onChange={(e) => setAttachPrescription(e.target.checked)}
-                className="w-4 h-4 rounded text-cyan-600 focus:ring-cyan-500"
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
               />
-              <span>Attach Rx to Customer Invoice & Job Slip</span>
+              <span>Attach Doctor Rx to this Medical Bill (Schedule H Record)</span>
             </label>
 
             <button
               type="button"
               onClick={() => loadPreviousRx()}
               disabled={!selectedCustomerDetails?.prescriptions?.length}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
-              <span>Load Previous Rx</span>
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>Load Last Rx</span>
             </button>
           </div>
 
           {rxLoadedAlert && (
-            <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-xl text-cyan-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
-              <Sparkles className="w-4 h-4 text-cyan-600 shrink-0" />
+            <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-purple-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
               <span>{rxLoadedAlert}</span>
             </div>
           )}
 
           {attachPrescription ? (
             <div className="space-y-4 text-xs">
-              {/* OD & OS Diopter Matrix */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* OD Card: Right Eye */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
-                    <span className="font-bold text-xs sm:text-sm text-cyan-900 flex items-center gap-1.5">
-                      <Eye className="w-4 h-4 text-cyan-600" />
-                      Right Eye (OD - Oculus Dexter)
-                    </span>
-                    <span className="text-[10px] font-mono uppercase bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-bold">
-                      OD
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">SPH (D)</label>
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="-20.00"
-                        max="20.00"
-                        value={rxData.od_sph}
-                        onChange={(e) => setRxData({ ...rxData, od_sph: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">CYL (D)</label>
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="-6.00"
-                        max="6.00"
-                        value={rxData.od_cyl}
-                        onChange={(e) => setRxData({ ...rxData, od_cyl: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">AXIS (°)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="180"
-                        value={rxData.od_axis}
-                        onChange={(e) => setRxData({ ...rxData, od_axis: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="1-180"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">ADD</label>
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="0.75"
-                        max="4.00"
-                        value={rxData.od_add}
-                        onChange={(e) => setRxData({ ...rxData, od_add: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="+2.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* OS Card: Left Eye */}
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
-                    <span className="font-bold text-xs sm:text-sm text-cyan-900 flex items-center gap-1.5">
-                      <Eye className="w-4 h-4 text-cyan-600" />
-                      Left Eye (OS - Oculus Sinister)
-                    </span>
-                    <span className="text-[10px] font-mono uppercase bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-bold">
-                      OS
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">SPH (D)</label>
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="-20.00"
-                        max="20.00"
-                        value={rxData.os_sph}
-                        onChange={(e) => setRxData({ ...rxData, os_sph: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">CYL (D)</label>
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="-6.00"
-                        max="6.00"
-                        value={rxData.os_cyl}
-                        onChange={(e) => setRxData({ ...rxData, os_cyl: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">AXIS (°)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="180"
-                        value={rxData.os_axis}
-                        onChange={(e) => setRxData({ ...rxData, os_axis: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="1-180"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">ADD</label>
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="0.75"
-                        max="4.00"
-                        value={rxData.os_add}
-                        onChange={(e) => setRxData({ ...rxData, os_add: e.target.value })}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                        placeholder="+2.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* PD Distance & Near */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">PD Dist (mm)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="50"
-                      max="75"
-                      value={rxData.pd_distance}
-                      onChange={(e) => setRxData({ ...rxData, pd_distance: e.target.value })}
-                      className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                      placeholder="63"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">PD Near (mm)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="48"
-                      max="72"
-                      value={rxData.pd_near}
-                      onChange={(e) => setRxData({ ...rxData, pd_near: e.target.value })}
-                      className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-center font-bold text-slate-800"
-                      placeholder="60"
-                    />
-                  </div>
-                </div>
-
-                {/* Lens Optical Design Type */}
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-600 mb-1">Lens Optical Design Type</label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { key: "SINGLE_VISION", label: "Single Vision" },
-                      { key: "BIFOCAL", label: "Bifocal" },
-                      { key: "PROGRESSIVE", label: "Progressive" },
-                    ].map((lens) => (
-                      <label
-                        key={lens.key}
-                        className={`flex items-center gap-1.5 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                          rxData.lens_type === lens.key
-                            ? "bg-cyan-50 border-cyan-500 text-cyan-900"
-                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="lens_type"
-                          value={lens.key}
-                          checked={rxData.lens_type === lens.key}
-                          onChange={(e) => setRxData({ ...rxData, lens_type: e.target.value })}
-                          className="text-cyan-600 focus:ring-cyan-500"
-                        />
-                        <span className="truncate">{lens.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Optometrist & Lab Notes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Prescribing Optometrist</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Patient Name
+                  </label>
                   <input
                     type="text"
-                    value={rxData.optometristName}
-                    onChange={(e) => setRxData({ ...rxData, optometristName: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
-                    placeholder="Dr. Staff Optometrist"
+                    value={rxData.patientName}
+                    onChange={(e) => setRxData({ ...rxData, patientName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
+                    placeholder="Patient Name"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Lab Glazing Instructions</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Patient Age
+                  </label>
                   <input
-                    type="text"
-                    value={rxData.notes}
-                    onChange={(e) => setRxData({ ...rxData, notes: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
-                    placeholder="e.g., High index 1.67, anti-reflective coating"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={rxData.patientAge}
+                    onChange={(e) => setRxData({ ...rxData, patientAge: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
+                    placeholder="e.g. 34"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Doctor Name
+                  </label>
+                  <input
+                    type="text"
+                    value={rxData.doctorName}
+                    onChange={(e) => setRxData({ ...rxData, doctorName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
+                    placeholder="Dr. Name, MBBS / MD"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Clinic / Hospital
+                  </label>
+                  <input
+                    type="text"
+                    value={rxData.clinicOrHospital}
+                    onChange={(e) => setRxData({ ...rxData, clinicOrHospital: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
+                    placeholder="Apollo / Fortis / City Clinic"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Doctor Reg. No.
+                  </label>
+                  <input
+                    type="text"
+                    value={rxData.doctorRegNo}
+                    onChange={(e) => setRxData({ ...rxData, doctorRegNo: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-mono font-medium"
+                    placeholder="MCI-48921"
+                  />
+                </div>
+              </div>
+
+              {/* Dosage Instructions */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Dosage Schedule (Morning-Afternoon-Night e.g., 1-0-1, Before/After Meals)
+                </label>
+                <input
+                  type="text"
+                  value={rxData.dosageInstructions}
+                  onChange={(e) => setRxData({ ...rxData, dosageInstructions: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
+                  placeholder="e.g. 1-0-1 After Meals x 5 Days"
+                />
+              </div>
+
+              {/* Optional Prescription Image Upload */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileUploadRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 cursor-pointer"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Upload Prescription Photo</span>
+                  </button>
+                  <input
+                    ref={fileUploadRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  {rxData.prescriptionImage && (
+                    <span className="text-emerald-600 font-bold text-xs flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Image Attached
+                    </span>
+                  )}
+                </div>
+
+                {rxData.prescriptionImage && (
+                  <button
+                    type="button"
+                    onClick={() => setRxData({ ...rxData, prescriptionImage: "" })}
+                    className="text-xs text-rose-600 hover:underline cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
           ) : (
             <div className="p-3 text-center text-xs text-slate-400 italic">
-              Prescription attachment disabled for this bill (Retail OTC purchase).
+              OTC direct purchase without prescription attachment.
             </div>
           )}
         </div>
@@ -1662,7 +1458,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
       {/* Financial Breakdown */}
       <div className="space-y-2 text-xs sm:text-sm">
         <div className="flex justify-between text-slate-600">
-          <span>Subtotal (Items + Services):</span>
+          <span>Subtotal (Medicines):</span>
           <span className="font-semibold text-slate-900">{formatCurrency(rawSubtotal)}</span>
         </div>
 
@@ -1717,7 +1513,8 @@ We will message you the moment your glasses pass optical lab inspection!`;
               className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold"
             >
               <option value={12}>12% (CGST 6% + SGST 6%)</option>
-              <option value={18}>18% (CGST 9% + SGST 9%)</option>
+              <option value={5}>5% (Life Saving 2.5% + 2.5%)</option>
+              <option value={18}>18% (Supplements 9% + 9%)</option>
               <option value={0}>0% (Tax Exempt)</option>
             </select>
           </div>
@@ -1727,17 +1524,17 @@ We will message you the moment your glasses pass optical lab inspection!`;
         {/* Final Net Payable */}
         <div className="flex justify-between items-center text-base sm:text-lg font-bold text-slate-900 pt-2 border-t border-slate-200">
           <span>Net Final Payable:</span>
-          <span className="text-cyan-700 text-xl sm:text-2xl font-black font-mono">
+          <span className="text-emerald-700 text-xl sm:text-2xl font-black font-mono">
             {formatCurrency(finalPayable)}
           </span>
         </div>
       </div>
 
-      {/* Advance & Balance Payment Card */}
+      {/* Advance & Payment Mode Card */}
       <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs sm:text-sm">
         <div className="flex items-center justify-between">
           <span className="font-bold text-slate-800 flex items-center gap-1.5">
-            <CreditCard className="w-4 h-4 text-cyan-600" /> Advance & Settlement
+            <CreditCard className="w-4 h-4 text-emerald-600" /> Payment & Settlement
           </span>
           <span
             className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
@@ -1746,11 +1543,11 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 : "bg-amber-100 text-amber-800"
             }`}
           >
-            {paymentStatus === "PAID" ? "STATUS: PAID" : "STATUS: PARTIAL ADVANCE"}
+            {paymentStatus === "PAID" ? "STATUS: FULL PAID" : "STATUS: PARTIAL"}
           </span>
         </div>
 
-        {/* Quick Presets */}
+        {/* Presets */}
         <div className="grid grid-cols-4 gap-1.5 text-xs">
           <button
             type="button"
@@ -1770,17 +1567,17 @@ We will message you the moment your glasses pass optical lab inspection!`;
             }}
             className="py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 transition-colors cursor-pointer"
           >
-            50% Advance
+            50%
           </button>
           <button
             type="button"
             onClick={() => {
-              setAdvancePaid(Math.min(1000, finalPayable));
+              setAdvancePaid(Math.min(500, finalPayable));
               setIsAdvanceUserModified(true);
             }}
             className="py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 transition-colors cursor-pointer"
           >
-            ₹1,000
+            ₹500
           </button>
           <button
             type="button"
@@ -1790,14 +1587,14 @@ We will message you the moment your glasses pass optical lab inspection!`;
             }}
             className="py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 transition-colors cursor-pointer"
           >
-            Pay on Pickup
+            Pay Later
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-200/60">
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">
-              Advance Paid Now (₹)
+              Paid Amount Now (₹)
             </label>
             <input
               type="number"
@@ -1808,12 +1605,12 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 setAdvancePaid(parseFloat(e.target.value) || 0);
                 setIsAdvanceUserModified(true);
               }}
-              className="w-full px-3 py-2 bg-white border border-cyan-400 rounded-xl text-sm font-bold text-cyan-900"
+              className="w-full px-3 py-2 bg-white border border-emerald-400 rounded-xl text-sm font-bold text-emerald-900"
             />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">
-              Balance Remaining
+              Balance Due
             </label>
             <div
               className={`px-3 py-2 rounded-xl text-sm font-black font-mono ${
@@ -1827,7 +1624,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
 
         {/* Payment Mode Selector */}
         <div>
-          <label className="block text-xs font-bold text-slate-600 mb-1.5">Payment Method</label>
+          <label className="block text-xs font-bold text-slate-600 mb-1.5">Payment Mode</label>
           <div className="grid grid-cols-3 gap-2">
             {["UPI", "CASH", "CARD"].map((m) => (
               <button
@@ -1836,7 +1633,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
                 onClick={() => setPaymentMethod(m)}
                 className={`py-2 rounded-xl font-bold text-xs sm:text-sm border transition-all cursor-pointer ${
                   paymentMethod === m
-                    ? "bg-cyan-600 text-white border-cyan-600 shadow-2xs"
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                     : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                 }`}
               >
@@ -1849,61 +1646,12 @@ We will message you the moment your glasses pass optical lab inspection!`;
         {paymentMethod !== "CASH" && (
           <input
             type="text"
-            placeholder="UPI Ref ID / Card Auth Code..."
+            placeholder="UPI Ref ID / UTR / Card Auth Code..."
             value={transactionRef}
             onChange={(e) => setTransactionRef(e.target.value)}
             className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 font-medium"
           />
         )}
-
-        {/* Delivery Due Date */}
-        <div className="pt-2 border-t border-slate-200/60">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-cyan-600" /> Delivery Ready By:
-            </label>
-            <div className="flex gap-1 text-[10px] sm:text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + 2);
-                  setDeliveryDate(d.toISOString().split("T")[0]);
-                }}
-                className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:bg-slate-100 font-semibold cursor-pointer"
-              >
-                +2 Days
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + 1);
-                  setDeliveryDate(d.toISOString().split("T")[0]);
-                }}
-                className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:bg-slate-100 font-semibold cursor-pointer"
-              >
-                +1 Day
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const d = new Date();
-                  setDeliveryDate(d.toISOString().split("T")[0]);
-                }}
-                className="px-2 py-0.5 rounded-md bg-white border border-slate-200 hover:bg-slate-100 font-semibold cursor-pointer"
-              >
-                Today
-              </button>
-            </div>
-          </div>
-          <input
-            type="date"
-            value={deliveryDate}
-            onChange={(e) => setDeliveryDate(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800"
-          />
-        </div>
       </div>
 
       {/* Dual Action Buttons */}
@@ -1915,7 +1663,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
           className="w-full py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm text-white bg-slate-900 hover:bg-slate-800 shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
         >
           <Printer className="w-4 h-4" />
-          <span>Save & Print Slip</span>
+          <span>Save & Print Invoice</span>
         </button>
 
         <button
@@ -1933,7 +1681,6 @@ We will message you the moment your glasses pass optical lab inspection!`;
 
   {/* ======================================================== */}
   {/* SECTION 6: BOTTOM STICKY CHECKOUT BAR (Mobile & Tablet)  */}
-  {/* (Positioned at bottom-16 to sit cleanly above BottomNav) */}
   {/* ======================================================== */}
   const renderStickyCheckoutBar = () => (
     <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 lg:hidden">
@@ -1944,7 +1691,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             {cart.reduce((a, b) => a + b.quantity, 0)} items
           </span>
         </div>
-        <div className="text-xl sm:text-2xl font-black text-cyan-700 font-mono tracking-tight">
+        <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono tracking-tight">
           {formatCurrency(finalPayable)}
         </div>
       </div>
@@ -1953,8 +1700,11 @@ We will message you the moment your glasses pass optical lab inspection!`;
         {cart.length > 0 ? (
           <button
             type="button"
-            onClick={scrollToCheckout}
-            className="py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
+            onClick={() => {
+              const el = document.getElementById("pos-checkout-section");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 shadow-xs flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
           >
             <Zap className="w-4 h-4 text-white" />
             <span>Proceed to Bill</span>
@@ -1962,11 +1712,14 @@ We will message you the moment your glasses pass optical lab inspection!`;
         ) : (
           <button
             type="button"
-            onClick={scrollToCatalog}
-            className="py-2.5 px-4 rounded-xl font-bold text-xs text-cyan-800 bg-cyan-50 border border-cyan-200 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            onClick={() => {
+              const el = document.getElementById("pos-catalog-section");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="py-2.5 px-4 rounded-xl font-bold text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
           >
-            <Search className="w-3.5 h-3.5 text-cyan-600" />
-            <span>Browse Items</span>
+            <Search className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Browse Medicines</span>
           </button>
         )}
       </div>
@@ -1996,17 +1749,13 @@ We will message you the moment your glasses pass optical lab inspection!`;
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto w-full p-3 sm:p-4 lg:p-6">
         {isDesktop ? (
-          /* ======================================================== */
-          /* DESKTOP 2-COLUMN COCKPIT LAYOUT                          */
-          /* ======================================================== */
+          /* Desktop Cockpit Layout */
           <div className="flex gap-6 items-start">
-            {/* Left Column: Barcode & Product Catalog, Rx Accordion */}
             <div className="flex-1 min-w-0 space-y-6">
               {renderSearchBarAndCatalog(false)}
               {renderRxAccordion()}
             </div>
 
-            {/* Right Column: Customer Profile, Cart & Financial Ledger */}
             <div className="w-[440px] xl:w-[480px] space-y-6 shrink-0">
               {renderCustomerSection()}
               {renderCartSection()}
@@ -2014,32 +1763,19 @@ We will message you the moment your glasses pass optical lab inspection!`;
             </div>
           </div>
         ) : (
-          /* ======================================================== */
-          /* MOBILE 5-SECTION NATURAL FLOW LAYOUT                     */
-          /* ======================================================== */
+          /* Mobile Flow Layout */
           <div className="flex flex-col space-y-4">
-            {/* Section 1: Customer Selection */}
             {renderCustomerSection()}
-
-            {/* Section 2: Barcode & Search Bar + Catalog */}
             {renderSearchBarAndCatalog(true)}
-
-            {/* Section 3: Cart & Selected Items */}
             {renderCartSection()}
-
-            {/* Section 4: Prescription (Rx) Section (Accordion) */}
             {renderRxAccordion()}
-
-            {/* Section 5: Financial Ledger & Settlement */}
             {renderLedgerSection()}
-
-            {/* Section 6: Sticky Bottom Checkout Bar */}
             {renderStickyCheckoutBar()}
           </div>
         )}
       </div>
 
-      {/* Completed Order Receipt & Lab Job Slip Modal */}
+      {/* Completed Order Receipt Modal */}
       {completedOrder && (
         <ReceiptModal order={completedOrder} onClose={() => setCompletedOrder(null)} />
       )}
@@ -2054,7 +1790,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
         }}
       />
 
-      {/* Customer Prescriptions & Order History Modal */}
+      {/* Patient History Modal */}
       <CustomerHistoryModal
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}

@@ -18,10 +18,14 @@ export async function GET(request: Request) {
       let list = tenant.orders.map((o) => {
         const customer = tenant.customers.find((c) => c.id === o.customerId);
         const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
-        const items = o.items.map((it) => ({
-          ...it,
-          item: tenant.inventory.find((inv) => inv.id === it.itemId),
-        }));
+        const items = o.items.map((it) => {
+          const med = tenant.medicines.find((inv) => inv.id === (it.medicineId || it.itemId));
+          return {
+            ...it,
+            medicine: med,
+            item: med,
+          };
+        });
         const payments = tenant.payments.filter((p) => p.orderId === o.id);
 
         return {
@@ -46,6 +50,8 @@ export async function GET(request: Request) {
         list = list.filter(
           (o) =>
             o.bill_no.toLowerCase().includes(q) ||
+            (o.patientName && o.patientName.toLowerCase().includes(q)) ||
+            (o.doctorName && o.doctorName.toLowerCase().includes(q)) ||
             (o.customer && o.customer.name.toLowerCase().includes(q)) ||
             (o.customer && o.customer.phone.toLowerCase().includes(q))
         );
@@ -67,9 +73,11 @@ export async function GET(request: Request) {
 
       if (query) {
         where.OR = [
-          { bill_no: { contains: query } },
-          { customer: { name: { contains: query } } },
-          { customer: { phone: { contains: query } } },
+          { bill_no: { contains: query, mode: "insensitive" } },
+          { patientName: { contains: query, mode: "insensitive" } },
+          { doctorName: { contains: query, mode: "insensitive" } },
+          { customer: { name: { contains: query, mode: "insensitive" } } },
+          { customer: { phone: { contains: query, mode: "insensitive" } } },
         ];
       }
 
@@ -79,14 +87,22 @@ export async function GET(request: Request) {
           customer: true,
           prescription: true,
           items: {
-            include: { item: true },
+            include: { medicine: true },
           },
           payments: true,
         },
         orderBy: { createdAt: "desc" },
       });
 
-      return NextResponse.json({ success: true, data: orders });
+      const mapped = orders.map((o) => ({
+        ...o,
+        items: o.items.map((it) => ({
+          ...it,
+          item: it.medicine,
+        })),
+      }));
+
+      return NextResponse.json({ success: true, data: mapped });
     } catch {
       const tenant = loadTenantState("default");
       return NextResponse.json({ success: true, data: tenant.orders });

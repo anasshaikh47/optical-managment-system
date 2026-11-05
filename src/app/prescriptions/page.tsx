@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
-  Glasses,
+  FileText,
   Plus,
   Search,
   User,
@@ -11,10 +11,12 @@ import {
   CheckCircle2,
   ShoppingCart,
   ChevronRight,
-  Sparkles,
+  Stethoscope,
+  Building,
+  Pill,
 } from "lucide-react";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
-import { formatDate, formatDiopter } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 function PrescriptionsContent() {
@@ -52,11 +54,17 @@ function PrescriptionsContent() {
 
   const filtered = prescriptions.filter((rx) => {
     const q = searchQuery.toLowerCase();
+    const patientName = (rx.patientName || rx.customer?.name || "").toLowerCase();
+    const phone = rx.customer?.phone || "";
+    const doctor = (rx.doctorName || "").toLowerCase();
+    const clinic = (rx.clinicOrHospital || "").toLowerCase();
+    const regNo = (rx.doctorRegNo || "").toLowerCase();
     return (
-      (rx.customer?.name && rx.customer.name.toLowerCase().includes(q)) ||
-      (rx.customer?.phone && rx.customer.phone.includes(q)) ||
-      (rx.optometristName && rx.optometristName.toLowerCase().includes(q)) ||
-      (rx.lens_type && rx.lens_type.toLowerCase().includes(q))
+      patientName.includes(q) ||
+      phone.includes(q) ||
+      doctor.includes(q) ||
+      clinic.includes(q) ||
+      regNo.includes(q)
     );
   });
 
@@ -69,23 +77,23 @@ function PrescriptionsContent() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by patient name, phone, or optometrist..."
+              placeholder="Search by patient, phone, doctor, or clinic..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
           <div className="flex items-center gap-3 flex-wrap justify-between sm:justify-end w-full sm:w-auto">
             <span className="text-xs text-slate-500 font-medium">
-              Showing <strong className="text-slate-800">{filtered.length}</strong> clinical prescriptions
+              Showing <strong className="text-slate-800">{filtered.length}</strong> doctor prescriptions
             </span>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New Prescription</span>
+              <span>Record Doctor Rx</span>
             </button>
           </div>
         </div>
@@ -94,137 +102,123 @@ function PrescriptionsContent() {
         <div className="flex-1 overflow-y-auto space-y-3">
           {loading ? (
             <div className="flex items-center justify-center h-48 text-slate-400 text-xs">
-              Loading prescription database...
+              Loading doctor prescriptions registry...
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400 text-xs bg-white rounded-2xl border border-dashed border-slate-200">
-              <Glasses className="w-8 h-8 mb-2 opacity-40" />
-              <p>No prescriptions found.</p>
+              <FileText className="w-8 h-8 mb-2 opacity-40 text-teal-600" />
+              <p>No doctor prescriptions found.</p>
             </div>
           ) : (
-            filtered.map((rx) => (
-              <div
-                key={rx.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-cyan-300 transition-all space-y-4"
-              >
-                {/* Header Row */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center">
-                      <Glasses className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-900 text-sm">
-                          {rx.customer?.name}
-                        </h4>
-                        {rx.lens_type && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase">
-                            {rx.lens_type.replace("_", " ")}
+            filtered.map((rx) => {
+              const patientName = rx.patientName || rx.customer?.name || "Walk-in Patient";
+              const patientAge = rx.patientAge || rx.customer?.age;
+              const doctor = rx.doctorName ? `Dr. ${rx.doctorName}` : "Registered Physician";
+
+              return (
+                <div
+                  key={rx.id}
+                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-teal-300 transition-all space-y-4"
+                >
+                  {/* Header Row */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                        <Stethoscope className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-900 text-sm">
+                            {patientName}
+                          </h4>
+                          {patientAge && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                              {patientAge} Yrs
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200 uppercase">
+                            Doctor Rx
                           </span>
+                        </div>
+                        <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-0.5">
+                          <User className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Phone: <strong className="text-slate-800">{rx.customer?.phone || "—"}</strong></span>
+                          {rx.customer?.loyalty_points > 0 && (
+                            <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">
+                              {rx.customer.loyalty_points} pts
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="text-right">
+                        <p className="text-slate-400 text-[10px]">Prescribing Doctor</p>
+                        <p className="font-semibold text-slate-800 flex items-center gap-1 justify-end">
+                          <span>{doctor}</span>
+                          {rx.doctorRegNo && (
+                            <span className="text-[10px] text-teal-600 font-mono">({rx.doctorRegNo})</span>
+                          )}
+                        </p>
+                        {rx.clinicOrHospital && (
+                          <p className="text-[10px] text-slate-500">{rx.clinicOrHospital}</p>
                         )}
                       </div>
-                      <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-0.5">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Phone: <strong className="text-slate-800">{rx.customer?.phone}</strong></span>
-                        {rx.customer?.loyalty_points > 0 && (
-                          <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">
-                            {rx.customer.loyalty_points} pts
+                      <div className="text-right">
+                        <p className="text-slate-400 text-[10px]">Date Recorded</p>
+                        <p className="font-semibold text-slate-800">
+                          {formatDate(rx.createdAt)}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => router.push(`/pos?customerId=${rx.customerId || rx.customer?.id || ""}`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5 text-teal-400" />
+                        <span>Dispense Bill</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dosage Regimen & Instructions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 flex items-center gap-1">
+                        <Pill className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Dosage Schedule & Regimen</span>
+                      </p>
+                      <p className="font-semibold text-slate-800">
+                        {rx.dosageInstructions || "Standard therapeutic dosage as prescribed by doctor."}
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 mb-1 flex items-center gap-1">
+                        <Building className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Hospital / Clinic Reference</span>
+                      </p>
+                      <p className="font-semibold text-slate-800">
+                        {rx.clinicOrHospital || "Private Clinic Consultation"}
+                        {rx.doctorRegNo && (
+                          <span className="text-slate-500 font-mono text-[11px] block mt-0.5">
+                            Medical Council Reg: {rx.doctorRegNo}
                           </span>
                         )}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="text-right">
-                      <p className="text-slate-400 text-[10px]">Optometrist</p>
-                      <p className="font-semibold text-slate-800">
-                        {rx.optometristName || "Dr. Priya Nair"}
-                      </p>
+                  {/* Clinical Advice & Diagnosis Notes */}
+                  {rx.notes && (
+                    <div className="text-xs text-slate-600 bg-teal-50/50 p-2.5 rounded-xl border border-teal-100 italic">
+                      <strong className="text-teal-900 not-italic">Clinical Advice & Diagnosis: </strong> {rx.notes}
                     </div>
-                    <div className="text-right">
-                      <p className="text-slate-400 text-[10px]">Exam Date</p>
-                      <p className="font-semibold text-slate-800">
-                        {formatDate(rx.createdAt)}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => router.push(`/pos`)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors"
-                    >
-                      <ShoppingCart className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Order Eyewear</span>
-                    </button>
-                  </div>
+                  )}
                 </div>
-
-                {/* Optical Diopter Measurement Matrix */}
-                <div className="overflow-x-auto w-full">
-                  <table className="w-full min-w-[550px] text-xs text-center border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold">
-                        <th className="p-2 border border-slate-200 text-left">Eye Designation</th>
-                        <th className="p-2 border border-slate-200">Sphere (SPH)</th>
-                        <th className="p-2 border border-slate-200">Cylinder (CYL)</th>
-                        <th className="p-2 border border-slate-200">Axis (AXIS)</th>
-                        <th className="p-2 border border-slate-200">Addition (ADD)</th>
-                        <th className="p-2 border border-slate-200">PD Dist (mm)</th>
-                        <th className="p-2 border border-slate-200">PD Near (mm)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="font-mono text-slate-800">
-                      <tr className="border-b border-slate-200">
-                        <td className="p-2 border border-slate-200 font-sans font-bold text-left text-cyan-950 bg-cyan-50/40">
-                          OD (Right Eye)
-                        </td>
-                        <td className="p-2 border border-slate-200 font-bold">
-                          {formatDiopter(rx.od_sph)}
-                        </td>
-                        <td className="p-2 border border-slate-200">
-                          {formatDiopter(rx.od_cyl)}
-                        </td>
-                        <td className="p-2 border border-slate-200">
-                          {rx.od_axis !== null ? `${rx.od_axis}°` : "—"}
-                        </td>
-                        <td className="p-2 border border-slate-200 text-cyan-700 font-bold">
-                          {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
-                        </td>
-                        <td className="p-2 border border-slate-200">{rx.pd_distance || "—"}</td>
-                        <td className="p-2 border border-slate-200">{rx.pd_near || "—"}</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 border border-slate-200 font-sans font-bold text-left text-cyan-950 bg-cyan-50/40">
-                          OS (Left Eye)
-                        </td>
-                        <td className="p-2 border border-slate-200 font-bold">
-                          {formatDiopter(rx.os_sph)}
-                        </td>
-                        <td className="p-2 border border-slate-200">
-                          {formatDiopter(rx.os_cyl)}
-                        </td>
-                        <td className="p-2 border border-slate-200">
-                          {rx.os_axis !== null ? `${rx.os_axis}°` : "—"}
-                        </td>
-                        <td className="p-2 border border-slate-200 text-cyan-700 font-bold">
-                          {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
-                        </td>
-                        <td className="p-2 border border-slate-200">{rx.pd_distance || "—"}</td>
-                        <td className="p-2 border border-slate-200">{rx.pd_near || "—"}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Additional Clinical Notes & Binocular PD */}
-                {rx.notes && (
-                  <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 italic">
-                    <strong>Optometrist Advice:</strong> {rx.notes}
-                  </div>
-                )}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -240,7 +234,7 @@ function PrescriptionsContent() {
 
 export default function PrescriptionsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-slate-400 text-xs">Loading optical records...</div>}>
+    <Suspense fallback={<div className="p-8 text-slate-400 text-xs">Loading doctor prescription records...</div>}>
       <PrescriptionsContent />
     </Suspense>
   );

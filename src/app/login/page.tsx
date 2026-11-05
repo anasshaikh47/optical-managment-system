@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, Shield, Store, ArrowRight, Loader2, Mail, Lock, User, CheckCircle2, AlertCircle } from "lucide-react";
+import { Pill, Shield, Store, ArrowRight, Loader2, Mail, Lock, User, CheckCircle2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 
@@ -143,14 +143,14 @@ function LoginContent() {
       <div className="w-full max-w-md relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 text-cyan-400 mb-3 shadow-xs">
-            <Eye className="w-8 h-8 stroke-[2.2]" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-400 mb-3 shadow-xs">
+            <Pill className="w-8 h-8 stroke-[2.2]" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">
-            VisionPulse Optical ERP
+            PharmaPulse POS & ERP
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-medium">
-            Multi-Tenant Clinical Optometry & POS Terminal
+            Pharmacy Terminal & Medical Store Management System
           </p>
         </div>
 
@@ -354,17 +354,17 @@ function LoginContent() {
           {/* Quick Demo Access Bar */}
           <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
             <span className="flex items-center gap-1.5 text-slate-400">
-              <Shield className="w-3.5 h-3.5 text-cyan-400" />
+              <Shield className="w-3.5 h-3.5 text-teal-400" />
               <span>Multi-Tenant Data Isolated</span>
             </span>
             <button
               type="button"
               onClick={() => {
-                setEmail("owner@visionpulse.in");
+                setEmail("pharmacist@pharmapulse.in");
                 setPassword("password123");
                 setActiveTab("signin");
               }}
-              className="text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer underline underline-offset-2"
+              className="text-teal-400 hover:text-teal-300 font-semibold cursor-pointer underline underline-offset-2"
             >
               Fill Sample Credentials
             </button>
@@ -373,7 +373,7 @@ function LoginContent() {
 
         {/* Security badge footer */}
         <p className="text-center text-[11px] text-slate-500 mt-5">
-          VisionPulse Cloud • 256-bit Encrypted Session • Supabase Auth Verified
+          PharmaPulse Cloud • 256-bit Encrypted Session • Supabase Auth Verified
         </p>
       </div>
     </div>

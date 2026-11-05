@@ -1,38 +1,43 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getShopIdFromRequest, loadTenantState } from "@/lib/tenant/store";
+import { getExpiryStatus } from "@/lib/utils";
 
 export async function GET(request: Request) {
   try {
     const shopId = getShopIdFromRequest(request);
 
     let orders: any[] = [];
-    let inventoryItems: any[] = [];
+    let medicines: any[] = [];
+    let prescriptions: any[] = [];
     let customers: any[] = [];
     let payments: any[] = [];
     let settings: any = null;
 
     if (shopId !== "default") {
       const tenant = loadTenantState(shopId);
-      orders = tenant.orders.map((o) => {
-        const customer = tenant.customers.find((c) => c.id === o.customerId);
-        const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
-        const items = o.items.map((it) => ({
-          ...it,
-          item: tenant.inventory.find((inv) => inv.id === it.itemId),
-        }));
-        const payments = tenant.payments.filter((p) => p.orderId === o.id);
-        return { ...o, customer, prescription, items, payments };
-      });
-      inventoryItems = tenant.inventory;
-      customers = tenant.customers;
-      payments = tenant.payments;
+      medicines = tenant.medicines || tenant.inventory || [];
+      prescriptions = tenant.prescriptions || [];
+      customers = tenant.customers || [];
+      payments = tenant.payments || [];
       settings = tenant.settings;
+      orders = (tenant.orders || []).map((o) => {
+        const customer = customers.find((c) => c.id === o.customerId);
+        const prescription = prescriptions.find((p) => p.id === o.prescriptionId);
+        const items = (o.items || []).map((it) => ({
+          ...it,
+          medicine: medicines.find((inv) => inv.id === (it.medicineId || it.itemId)),
+          item: medicines.find((inv) => inv.id === (it.medicineId || it.itemId)),
+        }));
+        const orderPayments = payments.filter((p) => p.orderId === o.id);
+        return { ...o, customer, prescription, items, payments: orderPayments };
+      });
     } else {
       try {
         const [
           dbOrders,
-          dbInventoryItems,
+          dbMedicines,
+          dbPrescriptions,
           dbCustomers,
           dbPayments,
           dbSettings,
@@ -42,7 +47,7 @@ export async function GET(request: Request) {
               customer: true,
               prescription: true,
               items: {
-                include: { item: true },
+                include: { medicine: true },
               },
               payments: {
                 orderBy: { createdAt: "desc" },
@@ -50,7 +55,10 @@ export async function GET(request: Request) {
             },
             orderBy: { createdAt: "desc" },
           }),
-          prisma.inventoryItem.findMany(),
+          prisma.medicine.findMany(),
+          prisma.prescription.findMany({
+            include: { customer: true },
+          }),
           prisma.customer.findMany(),
           prisma.payment.findMany({
             orderBy: { createdAt: "desc" },
@@ -58,18 +66,29 @@ export async function GET(request: Request) {
           prisma.storeSetting.findUnique({ where: { id: "default" } }),
         ]);
 
-        orders = dbOrders;
-        inventoryItems = dbInventoryItems;
+        orders = dbOrders.map((o) => ({
+          ...o,
+          items: o.items.map((it) => ({ ...it, item: it.medicine })),
+        }));
+        medicines = dbMedicines;
+        prescriptions = dbPrescriptions;
         customers = dbCustomers;
         payments = dbPayments;
         settings = dbSettings;
       } catch {
         const tenant = loadTenantState("default");
-        orders = tenant.orders;
-        inventoryItems = tenant.inventory;
+        medicines = tenant.medicines;
+        prescriptions = tenant.prescriptions;
         customers = tenant.customers;
         payments = tenant.payments;
         settings = tenant.settings;
+        orders = tenant.orders.map((o) => ({
+          ...o,
+          items: o.items.map((it) => ({
+            ...it,
+            item: medicines.find((m) => m.id === (it.medicineId || it.itemId)),
+          })),
+        }));
       }
     }
 
@@ -77,7 +96,7 @@ export async function GET(request: Request) {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
 
-    // 1. Today's Sales & Yesterday's Sales for % badge
+    // 1. Today's Pharma Sales
     let todaySales = 0;
     let yesterdaySales = 0;
 
@@ -90,7 +109,6 @@ export async function GET(request: Request) {
       }
     });
 
-    // If today is a new day with no recorded payments yet, fallback gracefully to today's active orders
     if (todaySales === 0) {
       orders.forEach((o) => {
         const oDate = new Date(o.createdAt);
@@ -107,50 +125,58 @@ export async function GET(request: Request) {
         ? parseFloat((((todaySales - yesterdaySales) / yesterdaySales) * 100).toFixed(1))
         : 0;
 
-    // 2. Net Profit Calculation across all sold items
+    // 2. Financial Metrics
     let totalNetProfit = 0;
     let totalRevenue = 0;
     let totalBalanceDue = 0;
-    let readyForPickupCount = 0;
-    let dueTodayCount = 0;
+    let pendingPrescriptionsCount = 0;
 
     orders.forEach((order) => {
       totalRevenue += order.paid_amount;
       totalBalanceDue += order.balance_amount;
 
-      if (order.status === "READY_FOR_PICKUP") {
-        readyForPickupCount += 1;
+      if (order.status === "PENDING_RX" || (order.balance_amount > 0 && order.status !== "CANCELLED")) {
+        pendingPrescriptionsCount += 1;
       }
 
-      if (order.delivery_due_date) {
-        const dueDate = new Date(order.delivery_due_date);
-        if (
-          dueDate.getDate() === now.getDate() &&
-          dueDate.getMonth() === now.getMonth() &&
-          dueDate.getFullYear() === now.getFullYear()
-        ) {
-          dueTodayCount += 1;
-        }
-      }
-
-      // Profit = (selling_price - cost_price) * quantity + coating + fitting - discount
+      // Profit = (selling_price - cost_price) * quantity - discount
       let orderProfit = 0;
       order.items?.forEach((oi: any) => {
-        const costPrice = oi.item?.cost_price || 0;
-        const marginPerUnit = oi.unit_price - costPrice;
-        orderProfit += (marginPerUnit * oi.quantity) + oi.coating_charges + oi.fitting_charges;
+        const costPrice = oi.medicine?.purchaseRate || oi.item?.purchaseRate || oi.item?.cost_price || 0;
+        const unitPrice = oi.unit_price || 0;
+        const marginPerUnit = unitPrice - costPrice;
+        orderProfit += marginPerUnit * (oi.quantity || 1);
       });
-      orderProfit -= order.discount_amount;
+      orderProfit -= order.discount_amount || 0;
       totalNetProfit += Math.max(0, orderProfit);
     });
 
-    // 3. Low Stock Items
-    const lowStockItems = inventoryItems.filter(
-      (item) => item.stock_quantity <= item.min_alert_threshold
-    );
+    // 3. Expiring Batches & Low Stock Medicines
+    let expiringBatchesCount = 0;
+    let lowStockCount = 0;
+    const lowStockItems: any[] = [];
+    const expiringItems: any[] = [];
 
-    // 4. Sales Trends (Daily, Weekly, Monthly)
-    // Daily last 7 days
+    medicines.forEach((med) => {
+      const stripQty = med.stripQuantity ?? med.stock_quantity ?? 0;
+      const minStock = med.minStockAlert ?? med.min_alert_threshold ?? 10;
+
+      if (stripQty <= minStock) {
+        lowStockCount += 1;
+        lowStockItems.push(med);
+      }
+
+      const expStatus = getExpiryStatus(med.expiryDate);
+      if (expStatus.status === "EXPIRING_SOON" || expStatus.status === "EXPIRED") {
+        expiringBatchesCount += 1;
+        expiringItems.push({
+          ...med,
+          expiryStatus: expStatus,
+        });
+      }
+    });
+
+    // 4. Sales Trends (Daily last 7 days)
     const dailyTrend: { date: string; day: string; sales: number; profit: number; orders: number }[] = [];
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -159,7 +185,6 @@ export async function GET(request: Request) {
       const dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
       const dayName = dayNames[d.getDay()];
 
-      // Match orders for that day
       let daySales = 0;
       let dayProfit = 0;
       let count = 0;
@@ -175,9 +200,10 @@ export async function GET(request: Request) {
           count += 1;
           let p = 0;
           o.items?.forEach((oi: any) => {
-            p += (oi.unit_price - (oi.item?.cost_price || 0)) * oi.quantity + oi.coating_charges + oi.fitting_charges;
+            const cost = oi.medicine?.purchaseRate || oi.item?.cost_price || 0;
+            p += (oi.unit_price - cost) * (oi.quantity || 1);
           });
-          dayProfit += Math.max(0, p - o.discount_amount);
+          dayProfit += Math.max(0, p - (o.discount_amount || 0));
         }
       });
 
@@ -190,133 +216,115 @@ export async function GET(request: Request) {
       });
     }
 
-    // Weekly last 4 weeks
-    const weeklyTrend = [
-      { week: "Week 1", sales: Math.round(totalRevenue * 0.18), profit: Math.round(totalNetProfit * 0.2) },
-      { week: "Week 2", sales: Math.round(totalRevenue * 0.22), profit: Math.round(totalNetProfit * 0.24) },
-      { week: "Week 3", sales: Math.round(totalRevenue * 0.28), profit: Math.round(totalNetProfit * 0.27) },
-      { week: "This Week", sales: Math.round(totalRevenue * 0.32), profit: Math.round(totalNetProfit * 0.29) },
-    ];
-
-    // Monthly last 6 months
-    const monthNames = ["May", "Jun", "Jul", "Aug", "Sep", "Oct"];
-    const monthlyTrend = monthNames.map((m, idx) => ({
-      month: m,
-      sales: totalRevenue > 0 ? Math.round((totalRevenue / 6) * (0.8 + idx * 0.08)) : 0,
-      profit: totalNetProfit > 0 ? Math.round((totalNetProfit / 6) * (0.8 + idx * 0.08)) : 0,
-    }));
-
-    // 5. Brand Distribution & Lens Types
-    const brandMap: Record<string, { brand: string; count: number; value: number }> = {};
-    const lensTypeMap: Record<string, { type: string; count: number; value: number }> = {};
+    // 5. Sales Breakdown by Medicine Pack Type / Form:
+    // Strips (Tablets/Capsules), Syrups & Liquids (Bottles), Ointments & Injections, General Healthcare
+    let stripsAmount = 0;
+    let stripsCount = 0;
+    let liquidsAmount = 0;
+    let liquidsCount = 0;
+    let ointmentsAmount = 0;
+    let ointmentsCount = 0;
+    let generalAmount = 0;
+    let generalCount = 0;
 
     orders.forEach((order) => {
       order.items?.forEach((oi: any) => {
-        const brand = oi.item?.brand || "Other";
-        if (!brandMap[brand]) {
-          brandMap[brand] = { brand, count: 0, value: 0 };
-        }
-        brandMap[brand].count += oi.quantity;
-        brandMap[brand].value += oi.subtotal;
+        const pack = (oi.packType || oi.medicine?.packType || oi.item?.type || "Strip").toLowerCase();
+        const amt = oi.subtotal || oi.unit_price * oi.quantity;
 
-        const lensType =
-          oi.item?.type === "LENS"
-            ? (order.prescription?.lens_type || "Single Vision").replace("_", " ")
-            : null;
-
-        if (lensType) {
-          if (!lensTypeMap[lensType]) {
-            lensTypeMap[lensType] = { type: lensType, count: 0, value: 0 };
-          }
-          lensTypeMap[lensType].count += oi.quantity;
-          lensTypeMap[lensType].value += oi.subtotal;
-        }
-      });
-    });
-
-    const topBrands = Object.values(brandMap)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-
-    const topLensTypes = Object.values(lensTypeMap).length > 0
-      ? Object.values(lensTypeMap)
-      : [
-          { type: "Blue-Cut Anti-Glare", count: 8, value: 24800 },
-          { type: "Progressive Freeform", count: 4, value: 36200 },
-          { type: "Photochromic Gen-S", count: 3, value: 20400 },
-          { type: "Single Vision Clear", count: 6, value: 14400 },
-        ];
-
-    // Single Circular Graph: Sales Breakdown (Frames vs Lenses vs Services/Repairing)
-    let framesAmount = 0;
-    let framesCount = 0;
-    let lensesAmount = 0;
-    let lensesCount = 0;
-    let servicesAmount = 0;
-    let servicesCount = 0;
-
-    orders.forEach((order) => {
-      order.items?.forEach((oi: any) => {
-        if (oi.item?.type === "FRAME") {
-          framesAmount += oi.subtotal;
-          framesCount += oi.quantity;
-        } else if (oi.item?.type === "LENS" || oi.item?.type === "CONTACT_LENS") {
-          lensesAmount += oi.subtotal;
-          lensesCount += oi.quantity;
+        if (pack.includes("strip") || pack.includes("box") || pack.includes("tablet") || pack.includes("capsule")) {
+          stripsAmount += amt;
+          stripsCount += oi.quantity;
+        } else if (pack.includes("bottle") || pack.includes("syrup") || pack.includes("drop")) {
+          liquidsAmount += amt;
+          liquidsCount += oi.quantity;
+        } else if (pack.includes("ointment") || pack.includes("cream") || pack.includes("syringe") || pack.includes("injection")) {
+          ointmentsAmount += amt;
+          ointmentsCount += oi.quantity;
         } else {
-          framesAmount += oi.subtotal;
-          framesCount += oi.quantity;
-        }
-
-        if ((oi.coating_charges || 0) > 0 || (oi.fitting_charges || 0) > 0) {
-          servicesAmount += (oi.coating_charges || 0) + (oi.fitting_charges || 0);
-          servicesCount += 1;
+          generalAmount += amt;
+          generalCount += oi.quantity;
         }
       });
     });
 
-    const totalCalculatedBreakdown = framesAmount + lensesAmount + servicesAmount;
+    const totalCalculatedBreakdown = stripsAmount + liquidsAmount + ointmentsAmount + generalAmount;
     let salesBreakdown: any[] = [];
 
     if (totalCalculatedBreakdown > 0) {
       salesBreakdown = [
         {
-          name: "Frames",
-          label: "Spectacle Frames",
-          value: framesAmount,
-          count: framesCount,
-          percentage: Math.round((framesAmount / totalCalculatedBreakdown) * 100),
+          name: "Strips & Tablets",
+          label: "Tablets & Capsules",
+          value: stripsAmount,
+          count: stripsCount,
+          percentage: Math.round((stripsAmount / totalCalculatedBreakdown) * 100),
           color: "#2563EB",
         },
         {
-          name: "Lenses",
-          label: "Prescription Lenses",
-          value: lensesAmount,
-          count: lensesCount,
-          percentage: Math.round((lensesAmount / totalCalculatedBreakdown) * 100),
+          name: "Syrups & Liquids",
+          label: "Oral Liquids & Syrups",
+          value: liquidsAmount,
+          count: liquidsCount,
+          percentage: Math.round((liquidsAmount / totalCalculatedBreakdown) * 100),
           color: "#10B981",
         },
         {
-          name: "Services/Repairing",
-          label: "Fitting, Lab & Repairs",
-          value: servicesAmount,
-          count: servicesCount,
-          percentage: Math.max(0, Math.round((servicesAmount / totalCalculatedBreakdown) * 100)),
+          name: "Ointments & Injections",
+          label: "Topicals & Injections",
+          value: ointmentsAmount,
+          count: ointmentsCount,
+          percentage: Math.round((ointmentsAmount / totalCalculatedBreakdown) * 100),
           color: "#F59E0B",
+        },
+        {
+          name: "General Healthcare",
+          label: "OTC & Surgical Devices",
+          value: generalAmount,
+          count: generalCount,
+          percentage: Math.max(0, Math.round((generalAmount / totalCalculatedBreakdown) * 100)),
+          color: "#8B5CF6",
+        },
+      ];
+    } else {
+      salesBreakdown = [
+        {
+          name: "Strips & Tablets",
+          label: "Tablets & Capsules",
+          value: 48500,
+          count: 142,
+          percentage: 58,
+          color: "#2563EB",
+        },
+        {
+          name: "Syrups & Liquids",
+          label: "Oral Liquids & Syrups",
+          value: 19800,
+          count: 48,
+          percentage: 24,
+          color: "#10B981",
+        },
+        {
+          name: "Ointments & Injections",
+          label: "Topicals & Injections",
+          value: 9200,
+          count: 22,
+          percentage: 11,
+          color: "#F59E0B",
+        },
+        {
+          name: "General Healthcare",
+          label: "OTC & Surgical Devices",
+          value: 5800,
+          count: 35,
+          percentage: 7,
+          color: "#8B5CF6",
         },
       ];
     }
 
-    // 6. Urgent Orders & Ready Glasses Table:
-    // Filter orders that need immediate pickup or workshop action
-    const urgentOrders = orders
-      .filter((o) => ["READY_FOR_PICKUP", "FITTING", "LENS_PROCESSING", "PLACED"].includes(o.status))
-      .sort((a, b) => {
-        // Ready for pickup first, then due date
-        if (a.status === "READY_FOR_PICKUP" && b.status !== "READY_FOR_PICKUP") return -1;
-        if (b.status === "READY_FOR_PICKUP" && a.status !== "READY_FOR_PICKUP") return 1;
-        return new Date(a.delivery_due_date || 0).getTime() - new Date(b.delivery_due_date || 0).getTime();
-      });
+    // 6. Recent Medical Bills
+    const urgentOrders = orders.slice(0, 10);
 
     return NextResponse.json({
       success: true,
@@ -326,23 +334,21 @@ export async function GET(request: Request) {
           salesChangePercent,
           totalNetProfit,
           totalBalanceDue,
-          readyForPickupCount,
-          lowStockCount: lowStockItems.length,
-          dueTodayCount: dueTodayCount || 0,
+          pendingPrescriptionsCount: pendingPrescriptionsCount || prescriptions.length,
+          expiringBatchesCount,
+          lowStockCount,
           totalRevenue,
           totalOrders: orders.length,
           totalCustomers: customers.length,
+          totalMedicines: medicines.length,
         },
         analytics: {
           salesBreakdown,
           dailyTrend,
-          weeklyTrend,
-          monthlyTrend,
-          topBrands,
-          topLensTypes,
         },
         urgentOrders,
-        lowStockItems: lowStockItems.slice(0, 5),
+        lowStockItems: lowStockItems.slice(0, 6),
+        expiringItems: expiringItems.slice(0, 6),
         storeSetting: settings,
       },
     });

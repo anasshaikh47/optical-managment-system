@@ -119,7 +119,7 @@ export async function POST(
           customer: true,
           prescription: true,
           items: {
-            include: { item: true },
+            include: { medicine: true },
           },
           payments: true,
         },

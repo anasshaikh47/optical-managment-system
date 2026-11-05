@@ -9,7 +9,7 @@ import {
   Cell,
   Tooltip,
 } from "recharts";
-import { PieChart as PieChartIcon, Glasses, Layers, Wrench, Zap } from "lucide-react";
+import { PieChart as PieChartIcon, Pill, FlaskConical, Syringe, Package, Zap } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface DashboardChartsProps {
@@ -45,7 +45,6 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
   const handleSliceClick = (index: number) => {
     setActiveIndex((prev) => (prev === index ? null : index));
     if (touchTimeoutRef.current) clearTimeout(touchTimeoutRef.current);
-    // Auto-dismiss active touch selection after 2.5s so it never gets permanently stuck
     touchTimeoutRef.current = setTimeout(() => {
       setActiveIndex(null);
     }, 2500);
@@ -57,7 +56,6 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
     };
   }, []);
 
-  // Floating non-blocking tooltip badge
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -68,9 +66,9 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
               className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: data.color }}
             />
-            <p className="font-bold text-slate-100 text-xs truncate max-w-[140px]">{data.label || data.name}</p>
+            <p className="font-bold text-slate-100 text-xs truncate max-w-[160px]">{data.label || data.name}</p>
           </div>
-          <p className="font-black text-xs font-mono text-cyan-400">
+          <p className="font-black text-xs font-mono text-emerald-400">
             {formatCurrency(data.value)}{" "}
             <span className="text-[10px] text-slate-300 font-normal">({data.percentage}%)</span>
           </p>
@@ -81,13 +79,17 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
   };
 
   const getCategoryIcon = (name: string) => {
-    if (name.toLowerCase().includes("frame")) {
-      return <Glasses className="w-4 h-4 text-blue-600" />;
+    const n = name.toLowerCase();
+    if (n.includes("strip") || n.includes("tablet") || n.includes("capsule")) {
+      return <Pill className="w-4 h-4 text-blue-600" />;
     }
-    if (name.toLowerCase().includes("lens")) {
-      return <Layers className="w-4 h-4 text-emerald-600" />;
+    if (n.includes("syrup") || n.includes("liquid") || n.includes("bottle")) {
+      return <FlaskConical className="w-4 h-4 text-emerald-600" />;
     }
-    return <Wrench className="w-4 h-4 text-amber-600" />;
+    if (n.includes("ointment") || n.includes("injection") || n.includes("syringe")) {
+      return <Syringe className="w-4 h-4 text-amber-600" />;
+    }
+    return <Package className="w-4 h-4 text-purple-600" />;
   };
 
   const activeItem = activeIndex !== null ? breakdownData[activeIndex] : null;
@@ -97,178 +99,162 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
       {/* Chart Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
             <PieChartIcon className="w-5 h-5 stroke-[2.2]" />
           </div>
           <div>
-            <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">
-              Sales Breakdown
+            <h3 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+              Pharma Sales Breakdown by Category
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">
-              Revenue distribution across Frames vs Lenses vs Services & Repairing
+              Revenue distribution across tablets, oral liquids, topicals & general health
             </p>
           </div>
         </div>
 
-        <div className="text-left sm:text-right">
-          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-            Total Revenue Audited
-          </span>
-          <span className="font-black text-slate-900 text-base font-mono">
-            {formatCurrency(totalValue)}
-          </span>
-        </div>
+        <Link
+          href="/pos"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors self-start sm:self-auto cursor-pointer"
+        >
+          <Zap className="w-3.5 h-3.5" />
+          <span>New Medical Bill</span>
+        </Link>
       </div>
 
-      {/* Main Visual: Single Circular Donut Graph & Detailed Legend Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pt-5">
-        {/* The Circular Donut Visual with Responsive Aspect-Square Mobile Sizing */}
-        <div className="lg:col-span-5 relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[340px] mx-auto aspect-square select-none">
+      {/* Chart Content Area */}
+      <div className="pt-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        {/* Left Column: Interactive Donut Chart */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center relative min-h-[220px]">
           {hasData ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart style={{ outline: "none" }}>
-                <Tooltip
-                  content={<CustomTooltip />}
-                  cursor={false}
-                  wrapperStyle={{
-                    pointerEvents: "none",
-                    zIndex: 40,
-                    outline: "none",
-                  }}
-                />
-                <Pie
-                  data={breakdownData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="58%"
-                  outerRadius="82%"
-                  paddingAngle={4}
-                  cornerRadius={5}
-                  onMouseEnter={(_, index) => handleSliceHover(index)}
-                  onMouseLeave={handleSliceLeave}
-                  onClick={(_, index) => handleSliceClick(index)}
-                  style={{ outline: "none" }}
-                >
-                  {breakdownData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.color}
-                      stroke="#ffffff"
-                      strokeWidth={2}
-                      className="cursor-pointer transition-all duration-150"
-                      style={{
-                        outline: "none",
-                        WebkitTapHighlightColor: "transparent",
-                        opacity: activeIndex === null || activeIndex === index ? 1 : 0.6,
-                        filter: activeIndex === index ? "drop-shadow(0 2px 6px rgba(0,0,0,0.18))" : "none",
-                      }}
-                    />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <svg viewBox="0 0 200 200" className="w-full h-full text-slate-100">
-              <circle
-                cx="100"
-                cy="100"
-                r="70"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="24"
-              />
-            </svg>
-          )}
+            <>
+              <div className="w-full h-52 sm:h-56 relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Pie
+                      data={breakdownData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={85}
+                      paddingAngle={3}
+                      dataKey="value"
+                      onClick={(_, index) => handleSliceClick(index)}
+                      onMouseEnter={(_, index) => handleSliceHover(index)}
+                      onMouseLeave={handleSliceLeave}
+                      cursor="pointer"
+                    >
+                      {breakdownData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color}
+                          stroke="#ffffff"
+                          strokeWidth={activeIndex === index ? 3 : 1.5}
+                          style={{
+                            transition: "all 0.2s ease-in-out",
+                            transform: activeIndex === index ? "scale(1.05)" : "scale(1)",
+                            transformOrigin: "center center",
+                          }}
+                        />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
 
-          {/* Center Info in Donut (Always vertically & horizontally centered with clean backing and z-index) */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center z-10 select-none">
-            <div className="w-[124px] sm:w-[144px] aspect-square rounded-full bg-white/95 backdrop-blur-2xs flex flex-col items-center justify-center shadow-xs border border-slate-100/90 p-2 transition-all duration-200">
-              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[110px]">
-                {activeItem ? activeItem.name : "Total Sales"}
-              </span>
-              <span className="text-base sm:text-lg font-black text-slate-900 font-mono tracking-tight mt-0.5">
-                {formatCurrency(activeItem ? activeItem.value : totalValue)}
-              </span>
-              <span
-                className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 border transition-colors ${
-                  activeItem
-                    ? "bg-cyan-50 text-cyan-800 border-cyan-200"
-                    : hasData
-                    ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                    : "text-slate-500 bg-slate-100 border-slate-200"
-                }`}
-              >
-                {activeItem
-                  ? `${activeItem.percentage}% Share`
-                  : hasData
-                  ? "Active Counter"
-                  : "0 Orders"}
-              </span>
+                {/* Donut Center Display */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+                  {activeItem ? (
+                    <div className="text-center animate-in fade-in duration-150 px-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate max-w-[120px]">
+                        {activeItem.label || activeItem.name}
+                      </span>
+                      <span className="text-sm sm:text-base font-black text-slate-900 font-mono block">
+                        {formatCurrency(activeItem.value)}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-600 block">
+                        {activeItem.percentage}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Total Volume
+                      </span>
+                      <span className="text-sm sm:text-base font-black text-slate-900 font-mono block">
+                        {formatCurrency(totalValue)}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-500 block">
+                        Pharma Revenue
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-400 font-medium text-center mt-1">
+                Tap or hover segment to inspect category
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 text-xs text-center">
+              <Pill className="w-8 h-8 mb-2 opacity-30 text-emerald-600" />
+              <p className="font-semibold text-slate-600">No pharmacy sales recorded yet</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Billing records will plot category distribution here.</p>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Breakdown Legend Cards or Empty Zero-State (7 Cols on LG) */}
-        {hasData ? (
-          <div className="lg:col-span-7 space-y-3">
-            {breakdownData.map((item, idx) => (
+        {/* Right Column: Category Breakdown Cards */}
+        <div className="lg:col-span-7 space-y-2.5">
+          {breakdownData.map((item, idx) => {
+            const isSelected = activeIndex === idx;
+            return (
               <div
                 key={item.name}
+                onClick={() => handleSliceClick(idx)}
                 onMouseEnter={() => handleSliceHover(idx)}
                 onMouseLeave={handleSliceLeave}
-                onClick={() => handleSliceClick(idx)}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  activeIndex === idx
-                    ? "bg-slate-50 border-slate-300 shadow-xs ring-1 ring-slate-200"
-                    : "bg-white border-slate-100 hover:border-slate-200"
+                className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                  isSelected
+                    ? "bg-slate-50 border-emerald-500 shadow-xs"
+                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
                 }`}
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{
-                        backgroundColor: `${item.color}15`,
-                      }}
+                      style={{ backgroundColor: `${item.color}15` }}
                     >
                       {getCategoryIcon(item.name)}
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
-                        <span>{item.label || item.name}</span>
-                        <span
-                          className="text-[10px] font-bold px-1.5 py-0.2 rounded-full text-white"
-                          style={{ backgroundColor: item.color }}
-                        >
-                          {item.percentage}%
-                        </span>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm truncate">
+                        {item.label || item.name}
                       </h4>
-                      <p className="text-[11px] text-slate-500">
-                        {item.name === "Frames"
-                          ? "Prescription frames, sunglasses & designer eyewear"
-                          : item.name === "Lenses"
-                          ? "Single vision, bifocal & digital progressive lenses"
-                          : "Workshop edging, ARC coatings & frame repairs"}
+                      <p className="text-[10px] text-slate-500 font-medium truncate">
+                        {item.count ? `${item.count} units dispensed` : `${item.percentage}% of store turnover`}
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <p className="font-black text-sm font-mono text-slate-900">
+                  <div className="text-right shrink-0">
+                    <span className="font-mono font-black text-slate-900 text-xs sm:text-sm block">
                       {formatCurrency(item.value)}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-semibold">
-                      {item.count ? `${item.count} items recorded` : "Recorded in ledger"}
-                    </p>
+                    </span>
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.2 rounded inline-block"
+                      style={{ backgroundColor: `${item.color}20`, color: item.color }}
+                    >
+                      {item.percentage}%
+                    </span>
                   </div>
                 </div>
 
-                {/* Progress bar line */}
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-2">
+                {/* Visual Progress Bar */}
+                <div className="mt-2 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-300"
+                    className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${item.percentage}%`,
                       backgroundColor: item.color,
@@ -276,30 +262,9 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
                   />
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="lg:col-span-7 bg-slate-50/80 border border-dashed border-slate-200 rounded-2xl p-6 sm:p-7 flex flex-col items-center justify-center text-center space-y-3">
-            <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center shadow-2xs">
-              <PieChartIcon className="w-5 h-5 stroke-[2]" />
-            </div>
-            <div className="max-w-md">
-              <h4 className="font-extrabold text-slate-800 text-sm sm:text-base tracking-tight">
-                No Sales Recorded Yet
-              </h4>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Ring up your first optical sale on the POS Terminal. Your live revenue distribution across Frames, Prescription Lenses, and Workshop Services will calculate here automatically.
-              </p>
-            </div>
-            <Link
-              href="/pos"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Open POS Terminal</span>
-            </Link>
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

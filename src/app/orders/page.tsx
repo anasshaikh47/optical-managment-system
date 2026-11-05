@@ -17,13 +17,13 @@ import {
   MessageSquare,
   Clock,
   ArrowRight,
-  Glasses,
+  Pill,
   Phone,
   Calendar,
   Sparkles,
   Receipt,
   User,
-  Wrench,
+  Stethoscope,
   AlertTriangle,
   Send,
   ChevronDown,
@@ -31,22 +31,22 @@ import {
 } from "lucide-react";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
-import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
+import { formatDate, formatCurrency, getExpiryStatus } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 const STAGES = [
-  { key: "PLACED", label: "New Order Placed", color: "border-blue-400 bg-blue-50 text-blue-900", badge: "bg-blue-100 text-blue-800" },
-  { key: "LENS_PROCESSING", label: "Lens Lab Glazing", color: "border-cyan-400 bg-cyan-50 text-cyan-900", badge: "bg-cyan-100 text-cyan-800" },
-  { key: "FITTING", label: "Frame Fitting & Mount", color: "border-amber-400 bg-amber-50 text-amber-900", badge: "bg-amber-100 text-amber-800" },
-  { key: "READY_FOR_PICKUP", label: "Ready for Pickup", color: "border-purple-400 bg-purple-50 text-purple-900", badge: "bg-purple-100 text-purple-800" },
-  { key: "DELIVERED", label: "Delivered & Settled", color: "border-emerald-400 bg-emerald-50 text-emerald-900", badge: "bg-emerald-100 text-emerald-800" },
+  { key: "PLACED", label: "New Prescription Order", color: "border-blue-400 bg-blue-50 text-blue-900", badge: "bg-blue-100 text-blue-800" },
+  { key: "PROCESSING", label: "Rx Verification & Packing", color: "border-cyan-400 bg-cyan-50 text-cyan-900", badge: "bg-cyan-100 text-cyan-800" },
+  { key: "READY_FOR_PICKUP", label: "Ready at Counter", color: "border-purple-400 bg-purple-50 text-purple-900", badge: "bg-purple-100 text-purple-800" },
+  { key: "DELIVERED", label: "Dispensed & Settled", color: "border-emerald-400 bg-emerald-50 text-emerald-900", badge: "bg-emerald-100 text-emerald-800" },
 ];
 
 const NEXT_STAGE_MAP: Record<string, { key: string; label: string }> = {
-  PLACED: { key: "LENS_PROCESSING", label: "Start Lab Glazing" },
-  LENS_PROCESSING: { key: "FITTING", label: "Move to Fitting" },
-  FITTING: { key: "READY_FOR_PICKUP", label: "Mark QA Ready" },
-  READY_FOR_PICKUP: { key: "DELIVERED", label: "Deliver to Patient" },
+  PLACED: { key: "PROCESSING", label: "Start Verification" },
+  PROCESSING: { key: "READY_FOR_PICKUP", label: "Mark Ready at Counter" },
+  LENS_PROCESSING: { key: "READY_FOR_PICKUP", label: "Mark Ready at Counter" },
+  FITTING: { key: "READY_FOR_PICKUP", label: "Mark Ready at Counter" },
+  READY_FOR_PICKUP: { key: "DELIVERED", label: "Dispense to Patient" },
 };
 
 export default function OrdersPage() {
@@ -102,7 +102,7 @@ export default function OrdersPage() {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
 
-    // Intercept if moving to DELIVERED and there is pending balance!
+    // Intercept if moving to DELIVERED and there is pending balance
     if (targetStage === "DELIVERED" && order.balance_amount > 0) {
       setBalanceModalOrder(order);
       setPayAmount(order.balance_amount.toString());
@@ -122,7 +122,7 @@ export default function OrdersPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        fetchOrders(); // Revert on failure
+        fetchOrders();
       }
     } catch (e) {
       console.error(e);
@@ -150,7 +150,7 @@ export default function OrdersPage() {
       const data = await res.json();
       if (data.success) {
         setPaymentSuccessNotice(
-          `Payment of ${formatCurrency(parseFloat(payAmount))} received! Order #${balanceModalOrder.bill_no} marked as DELIVERED.`
+          `Payment of ${formatCurrency(parseFloat(payAmount))} received! Bill #${balanceModalOrder.bill_no} marked as DISPENSED.`
         );
         setTimeout(() => setPaymentSuccessNotice(null), 5000);
         setBalanceModalOrder(null);
@@ -173,70 +173,64 @@ export default function OrdersPage() {
     let cleanPhone = order.customer.phone.replace(/[^0-9]/g, "");
     if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
 
-    const promisedDate = order.delivery_due_date
-      ? new Date(order.delivery_due_date).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "2 Days";
-
     const itemsList = (order.items || [])
       .map(
-        (it: any) =>
-          `• ${it.item ? `${it.item.brand} - ${it.item.model || it.item.type}` : "Eyewear"} (x${it.quantity})`
+        (it: any) => {
+          const med = it.medicine || it.item || {};
+          return `• ${med.name || med.brand || "Medicine"} (x${it.quantity} ${it.unitType === "LOOSE_TABLET" ? "tabs" : "units"})`;
+        }
       )
       .join("\n");
 
     let message = "";
 
     if (type === "CONFIRMATION") {
-      message = `👓 *VISIONPULSE EYEWEAR STUDIO*
-*Booking Confirmation & Order Details*
+      message = `💊 *PHARMAPULSE MEDICAL & POS*
+*Medicine Bill Confirmation & Dispensing Slip*
 
 Namaste *${order.customer.name}*,
-Thank you for your order with VisionPulse!
+Thank you for your order with PharmaPulse Medical Store!
 
-📋 *Bill / Job No*: #${order.bill_no}
-📅 *Promised Ready Date*: ${promisedDate}
+📋 *Bill / Token No*: #${order.bill_no}
+📅 *Date*: ${formatDate(order.createdAt)}
 
 💰 *Payment Summary*:
-• Total Net Bill: ₹${order.final_payable}
+• Total Bill: ₹${order.final_payable}
 • Advance Received: ₹${order.paid_amount}
-• Balance at Pickup: ₹${order.balance_amount}
+• Balance at Counter: ₹${order.balance_amount}
 
-🔍 *Eyewear Specs*:
+🔍 *Prescribed Medicines*:
 ${itemsList}
 
-📍 *Store*: Galleria Arcade, Powai, Mumbai - 400076
+📍 *Store*: Main Hospital Road, Powai, Mumbai - 400076
 📞 *Helpline*: +91 98201 12345
-We will notify you the moment your lenses are edged and ready!`;
+Your medicines are being prepared and verified by our pharmacist!`;
     } else if (type === "READY_FOR_PICKUP") {
-      message = `👓 *VISIONPULSE EYEWEAR STUDIO*
-*Aapka Chashma Ready Hai!* 🎉
+      message = `💊 *PHARMAPULSE MEDICAL & POS*
+*Aapki Dawai Ready Hai!* 🎉
 
 Namaste *${order.customer.name}*,
-Good news! Your custom eyewear order *#${order.bill_no}* has passed our lab optical quality checks and is *READY FOR PICKUP*.
+Your prescription order *#${order.bill_no}* has been verified, packed, and is *READY FOR COUNTER PICKUP*.
 
 💵 *Balance Due*: ₹${order.balance_amount}
-🕒 *Store Timings*: 10:00 AM - 10:00 PM (Open All 7 Days)
-📍 *Address*: Galleria Arcade, Powai, Mumbai - 400076
+🕒 *Store Timings*: 8:00 AM - 11:00 PM (Emergency Desk 24/7)
+📍 *Address*: Main Hospital Road, Powai, Mumbai - 400076
 📞 *Store Tel*: +91 98201 12345
 
-Please visit us for final frame alignment and collection. See you soon!`;
+Please visit our counter to collect your medicines. Thank you!`;
     } else if (type === "PAYMENT_RECEIPT") {
-      message = `👓 *VISIONPULSE EYEWEAR STUDIO*
-*Payment Receipt & Delivery Confirmation*
+      message = `💊 *PHARMAPULSE MEDICAL & POS*
+*Pharmacy Tax Invoice & Payment Receipt*
 
 Namaste *${order.customer.name}*,
-Thank you for collecting your spectacles today!
+Thank you for collecting your medicines today!
 
 🧾 *Invoice No*: #${order.bill_no}
 💰 *Total Amount*: ₹${order.final_payable}
 ✅ *Payment Status*: Fully Settled (₹0 Balance)
-🛡️ *Warranty*: 1-Year Frame Warranty & 1-Year Coating Guarantee against peeling.
+🏥 *DL No*: DL-20B/21B-458920
 
-Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleaning, feel free to visit us anytime!`;
+Take medicines as advised by your doctor. Wish you a speedy recovery!`;
     }
 
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
@@ -253,13 +247,17 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
 
   // Filtered Orders
   const filtered = orders.filter((o) => {
-    const matchesStatus = statusFilter === "ALL" || o.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "ALL" ||
+      o.status === statusFilter ||
+      (statusFilter === "PROCESSING" && (o.status === "LENS_PROCESSING" || o.status === "FITTING"));
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       q === "" ||
       o.bill_no.toLowerCase().includes(q) ||
       (o.customer?.name && o.customer.name.toLowerCase().includes(q)) ||
-      (o.customer?.phone && o.customer.phone.includes(q));
+      (o.customer?.phone && o.customer.phone.includes(q)) ||
+      (o.prescription?.doctorName && o.prescription.doctorName.toLowerCase().includes(q));
 
     const orderDueStr = o.delivery_due_date
       ? new Date(o.delivery_due_date).toISOString().split("T")[0]
@@ -298,10 +296,10 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by Bill No (VP-), Patient Name, or Phone..."
+              placeholder="Search Bill #, Patient Name, Phone, Doctor..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
@@ -317,7 +315,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
-              <span>Due Today / Overdue</span>
+              <span>Pending Pickup</span>
               {dueTodayCount > 0 && (
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] ${
@@ -333,14 +331,13 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
-              <option value="ALL">All Stages ({orders.length})</option>
+              <option value="ALL">All Dispensing Stages ({orders.length})</option>
               <option value="PLACED">Placed</option>
-              <option value="LENS_PROCESSING">Lens Glazing / Lab</option>
-              <option value="FITTING">Frame Fitting</option>
-              <option value="READY_FOR_PICKUP">Ready for Pickup</option>
-              <option value="DELIVERED">Delivered</option>
+              <option value="PROCESSING">Rx Verification & Packing</option>
+              <option value="READY_FOR_PICKUP">Ready at Counter</option>
+              <option value="DELIVERED">Dispensed</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
 
@@ -369,7 +366,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                 }`}
               >
                 <Kanban className="w-3.5 h-3.5" />
-                <span>Kanban Pipeline</span>
+                <span>Kanban Queue</span>
               </button>
               <button
                 onClick={() => setViewMode("TABLE")}
@@ -386,14 +383,17 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
           </div>
         </div>
 
-        {/* ======================================================== */}
-        {/* VIEW 1: VISUAL ORDER PIPELINE (KANBAN BOARD)            */}
-        {/* ======================================================== */}
+        {/* VIEW 1: KANBAN PIPELINE */}
         {viewMode === "KANBAN" ? (
           <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2">
-            <div className="flex gap-3.5 h-full min-w-[1240px]">
+            <div className="flex gap-3.5 h-full min-w-[1050px]">
               {STAGES.map((stage) => {
-                const stageOrders = filtered.filter((o) => o.status === stage.key);
+                const stageOrders = filtered.filter((o) => {
+                  if (stage.key === "PROCESSING") {
+                    return o.status === "PROCESSING" || o.status === "LENS_PROCESSING" || o.status === "FITTING";
+                  }
+                  return o.status === stage.key;
+                });
                 const isDropTarget = dropTargetStage === stage.key;
 
                 return (
@@ -414,14 +414,14 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                     }}
                     className={`flex-1 flex flex-col rounded-2xl border transition-all duration-150 min-w-[240px] max-w-[290px] ${
                       isDropTarget
-                        ? "border-2 border-dashed border-cyan-500 bg-cyan-50/50 scale-[1.01]"
+                        ? "border-2 border-dashed border-teal-500 bg-teal-50/50 scale-[1.01]"
                         : "border-slate-200 bg-slate-50/60"
                     }`}
                   >
                     {/* Column Header */}
                     <div className="p-3 border-b border-slate-200 bg-white rounded-t-2xl flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-cyan-600" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-teal-600" />
                         <h4 className="font-bold text-slate-900 text-xs truncate">
                           {stage.label}
                         </h4>
@@ -436,7 +436,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                       {stageOrders.length === 0 ? (
                         <div className="h-32 flex flex-col items-center justify-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl bg-white/50">
                           <p className="text-[11px]">No orders in this stage</p>
-                          <p className="text-[9px] text-slate-400 mt-0.5">Drag & drop cards here</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5">Drag & drop bills here</p>
                         </div>
                       ) : (
                         stageOrders.map((ord) => {
@@ -446,7 +446,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                           const isDueToday = orderDueStr === todayStr;
                           const isOverdue =
                             orderDueStr && orderDueStr < todayStr && ord.status !== "DELIVERED";
-                          const nextAction = NEXT_STAGE_MAP[ord.status];
+                          const nextAction = NEXT_STAGE_MAP[ord.status] || NEXT_STAGE_MAP["PROCESSING"];
 
                           return (
                             <div
@@ -460,21 +460,20 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                                 setDraggedOrderId(null);
                                 setDropTargetStage(null);
                               }}
-                              className={`p-3 rounded-xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-cyan-400 transition-all cursor-grab active:cursor-grabbing space-y-2.5 ${
+                              className={`p-3 rounded-xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-teal-400 transition-all cursor-grab active:cursor-grabbing space-y-2.5 ${
                                 draggedOrderId === ord.id ? "opacity-50 scale-95" : ""
                               }`}
                             >
-                              {/* Card Header: Bill No & Link to Details */}
+                              {/* Card Header: Bill No & Link */}
                               <div className="flex items-center justify-between">
                                 <Link
                                   href={`/orders/${ord.id}`}
-                                  className="font-black text-xs font-mono text-cyan-800 hover:text-cyan-950 hover:underline flex items-center gap-1"
+                                  className="font-black text-xs font-mono text-teal-800 hover:text-teal-950 hover:underline flex items-center gap-1"
                                 >
                                   <span>{ord.bill_no}</span>
                                   <ArrowRight className="w-3 h-3 opacity-60" />
                                 </Link>
 
-                                {/* Promised Delivery Date Badge */}
                                 {ord.delivery_due_date && (
                                   <span
                                     className={`text-[9px] font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5 ${
@@ -491,10 +490,10 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                                 )}
                               </div>
 
-                              {/* Customer Details */}
+                              {/* Patient Details */}
                               <div>
                                 <p className="font-bold text-slate-900 text-xs leading-tight">
-                                  {ord.customer?.name || "Walk-in Guest"}
+                                  {ord.customer?.name || "Walk-in Patient"}
                                 </p>
                                 <p className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
                                   <Phone className="w-2.5 h-2.5 text-slate-400" />
@@ -502,21 +501,23 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                                 </p>
                               </div>
 
-                              {/* Eyewear Items Summary */}
+                              {/* Medicines Summary */}
                               <div className="text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-1">
                                 <p className="truncate font-semibold text-slate-800">
                                   {ord.items
                                     ?.map(
-                                      (i: any) =>
-                                        `${i.item?.brand} - ${i.item?.model || i.item?.type}`
+                                      (i: any) => {
+                                        const med = i.medicine || i.item || {};
+                                        return `${med.name || med.brand || "Medicine"}`;
+                                      }
                                     )
-                                    .join(", ") || "Eyewear Specs"}
+                                    .join(", ") || "Pharmacy Medicines"}
                                 </p>
                                 {ord.prescription && (
-                                  <div className="flex items-center gap-1 text-[9px] font-bold text-cyan-700">
-                                    <Glasses className="w-3 h-3" />
+                                  <div className="flex items-center gap-1 text-[9px] font-bold text-teal-700">
+                                    <Stethoscope className="w-3 h-3" />
                                     <span>
-                                      Rx: OD SPH {formatDiopter(ord.prescription.od_sph)} | OS SPH {formatDiopter(ord.prescription.os_sph)}
+                                      Dr. {ord.prescription.doctorName || "Staff"} • {ord.prescription.dosageInstructions || "Rx Attached"}
                                     </span>
                                   </div>
                                 )}
@@ -525,7 +526,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                               {/* Financial Summary */}
                               <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
                                 <div>
-                                  <span className="text-slate-400 text-[9px] block">Net Total</span>
+                                  <span className="text-slate-400 text-[9px] block">Net Bill</span>
                                   <span className="font-bold text-slate-900">
                                     {formatCurrency(ord.final_payable)}
                                   </span>
@@ -544,28 +545,26 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                                 </div>
                               </div>
 
-                              {/* Card Action Toolbar */}
+                              {/* Toolbar Actions */}
                               <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-slate-100">
                                 <div className="flex items-center gap-1">
-                                  {/* Thermal Slip Button */}
                                   <button
                                     onClick={() => setThermalSlipOrder(ord)}
-                                    className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
-                                    title="Workshop Thermal Slip (80mm)"
+                                    className="p-1 rounded text-slate-500 hover:text-teal-700 hover:bg-slate-100"
+                                    title="Pharmacy 80mm Dispensing Slip"
                                   >
                                     <Receipt className="w-3.5 h-3.5" />
                                   </button>
 
-                                  {/* Print Invoice Button */}
                                   <button
                                     onClick={() => setSelectedReceiptOrder(ord)}
-                                    className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
+                                    className="p-1 rounded text-slate-500 hover:text-teal-700 hover:bg-slate-100"
                                     title="GST Tax Invoice"
                                   >
                                     <Printer className="w-3.5 h-3.5" />
                                   </button>
 
-                                  {/* One-Click WhatsApp Dropdown Menu */}
+                                  {/* WhatsApp Dropdown */}
                                   <div className="relative">
                                     <button
                                       onClick={() =>
@@ -585,40 +584,39 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                                           onClick={() => sendWhatsApp("CONFIRMATION", ord)}
                                           className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold"
                                         >
-                                          1. Booking Confirmation
+                                          1. Bill Confirmation
                                         </button>
                                         <button
                                           onClick={() => sendWhatsApp("READY_FOR_PICKUP", ord)}
-                                          className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-purple-50 text-purple-700 font-semibold"
+                                          className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-teal-50 text-teal-700 font-semibold"
                                         >
-                                          2. Aapka Chashma Ready Hai!
+                                          2. Ready for Pickup
                                         </button>
                                         <button
                                           onClick={() => sendWhatsApp("PAYMENT_RECEIPT", ord)}
                                           className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 text-emerald-700 font-semibold"
                                         >
-                                          3. Final Payment Receipt
+                                          3. Final Tax Receipt
                                         </button>
                                       </div>
                                     )}
                                   </div>
                                 </div>
 
-                                {/* Next Stage Single-Click Action Button */}
                                 {nextAction ? (
                                   <button
                                     onClick={() => handleStageChange(ord.id, nextAction.key)}
                                     className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
                                       nextAction.key === "DELIVERED"
                                         ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
-                                        : "bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200"
+                                        : "bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200"
                                     }`}
                                   >
                                     {nextAction.label}
                                   </button>
                                 ) : (
                                   <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                    Completed
+                                    Dispensed
                                   </span>
                                 )}
                               </div>
@@ -633,9 +631,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
             </div>
           </div>
         ) : (
-          /* ======================================================== */
-          /* VIEW 2: DETAILED ORDERS TABLE VIEW                      */
-          /* ======================================================== */
+          /* VIEW 2: TABLE VIEW */
           <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto w-full">
               <table className="w-full min-w-[850px] text-xs text-left border-collapse">
@@ -643,36 +639,36 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                   <tr>
                     <th className="p-3.5">Bill / Order #</th>
                     <th className="p-3.5">Patient Details</th>
-                    <th className="p-3.5">Items & Prescription</th>
-                    <th className="p-3.5">Promised Delivery</th>
+                    <th className="p-3.5">Medicines & Doctor Rx</th>
+                    <th className="p-3.5">Promised Pickup</th>
                     <th className="p-3.5 text-right">Net Payable</th>
                     <th className="p-3.5 text-right">Paid</th>
                     <th className="p-3.5 text-right">Balance Due</th>
-                    <th className="p-3.5 text-center">Tracking Status</th>
-                    <th className="p-3.5 text-center">Workflow Actions</th>
+                    <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
                       <td colSpan={9} className="p-8 text-center text-slate-400">
-                        Loading orders...
+                        Loading medical orders...
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="p-12 text-center text-slate-500">
                         <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2.5">
-                          <Glasses className="w-10 h-10 text-slate-300 stroke-[1.5]" />
+                          <Pill className="w-10 h-10 text-slate-300 stroke-[1.5]" />
                           <h4 className="font-extrabold text-slate-800 text-sm">
                             {orders.length === 0
-                              ? "Orders: 0"
+                              ? "Bills: 0"
                               : "No orders match the selected filters"}
                           </h4>
                           <p className="text-xs text-slate-400 leading-relaxed">
                             {orders.length === 0
-                              ? "No optical orders or spectacle jobs recorded yet. Open the POS Terminal to register counter sales and track lens glazing."
-                              : "Try adjusting the status filter tabs or clear the search criteria."}
+                              ? "No medical bills recorded yet. Open the POS Terminal to start billing medicines."
+                              : "Try adjusting the status filter tabs or reset the search."}
                           </p>
                           {orders.length === 0 && (
                             <Link
@@ -680,7 +676,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                               className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-colors cursor-pointer"
                             >
                               <Plus className="w-4 h-4" />
-                              <span>Create First Bill / Sale</span>
+                              <span>Create First Medical Bill</span>
                             </Link>
                           )}
                         </div>
@@ -697,7 +693,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
 
                       return (
                         <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-3.5 font-bold font-mono text-cyan-800 text-xs">
+                          <td className="p-3.5 font-bold font-mono text-teal-800 text-xs">
                             <Link href={`/orders/${ord.id}`} className="hover:underline">
                               {ord.bill_no}
                             </Link>
@@ -705,7 +701,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
 
                           <td className="p-3.5">
                             <p className="font-semibold text-slate-800">
-                              {ord.customer?.name || "Walk-in Guest"}
+                              {ord.customer?.name || "Walk-in Patient"}
                             </p>
                             <p className="text-[10px] text-slate-500 font-mono">
                               {ord.customer?.phone}
@@ -716,14 +712,16 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                             <p className="text-xs truncate max-w-xs font-medium text-slate-800">
                               {ord.items
                                 ?.map(
-                                  (i: any) =>
-                                    `${i.quantity}x ${i.item?.brand} ${i.item?.model || i.item?.type}`
+                                  (i: any) => {
+                                    const med = i.medicine || i.item || {};
+                                    return `${i.quantity}x ${med.name || med.brand || "Medicine"}`;
+                                  }
                                 )
                                 .join(", ")}
                             </p>
                             {ord.prescription && (
-                              <span className="text-[9px] text-cyan-700 bg-cyan-50 px-1.5 py-0.2 rounded font-bold mt-0.5 inline-block">
-                                Rx Attached (OD SPH {formatDiopter(ord.prescription.od_sph)})
+                              <span className="text-[9px] text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded font-bold mt-0.5 inline-block">
+                                Rx: Dr. {ord.prescription.doctorName || "Physician"}
                               </span>
                             )}
                           </td>
@@ -768,64 +766,29 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                               className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-50 border border-slate-300 focus:outline-none"
                             >
                               <option value="PLACED">Placed</option>
-                              <option value="LENS_PROCESSING">Lens Glazing</option>
-                              <option value="FITTING">Fitting</option>
-                              <option value="READY_FOR_PICKUP">Ready for Pickup</option>
-                              <option value="DELIVERED">Delivered</option>
+                              <option value="PROCESSING">Verification</option>
+                              <option value="READY_FOR_PICKUP">Ready at Counter</option>
+                              <option value="DELIVERED">Dispensed</option>
                               <option value="CANCELLED">Cancelled</option>
                             </select>
                           </td>
 
                           <td className="p-3.5 text-center">
                             <div className="inline-flex items-center gap-1.5">
-                              {/* Thermal Slip */}
                               <button
                                 onClick={() => setThermalSlipOrder(ord)}
-                                className="p-1.5 rounded-lg text-slate-600 hover:text-cyan-700 hover:bg-slate-100"
-                                title="Print 80mm Workshop Thermal Slip"
+                                className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-200"
+                                title="Dispensing Slip"
                               >
                                 <Receipt className="w-3.5 h-3.5" />
                               </button>
-
-                              {/* Invoice Slip */}
                               <button
                                 onClick={() => setSelectedReceiptOrder(ord)}
-                                className="p-1.5 rounded-lg text-slate-600 hover:text-cyan-700 hover:bg-slate-100"
-                                title="Print GST Tax Invoice"
+                                className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-200"
+                                title="Tax Invoice"
                               >
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
-
-                              {/* Ready WhatsApp button */}
-                              <button
-                                onClick={() => sendWhatsApp("READY_FOR_PICKUP", ord)}
-                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
-                                title="Send 'Aapka Chashma Ready Hai' WhatsApp"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Balance Settlement Button */}
-                              {ord.balance_amount > 0 && (
-                                <button
-                                  onClick={() => {
-                                    setBalanceModalOrder(ord);
-                                    setPayAmount(ord.balance_amount.toString());
-                                  }}
-                                  className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] transition-colors"
-                                >
-                                  Collect ₹{ord.balance_amount}
-                                </button>
-                              )}
-
-                              {/* View Details Link */}
-                              <Link
-                                href={`/orders/${ord.id}`}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-700 hover:bg-slate-100"
-                                title="Open Full Details Card"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </Link>
                             </div>
                           </td>
                         </tr>
@@ -839,122 +802,73 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
         )}
       </div>
 
-      {/* ======================================================== */}
-      {/* BALANCE SETTLEMENT AT DELIVERY MODAL                    */}
-      {/* ======================================================== */}
+      {/* Balance Payment Modal */}
       {balanceModalOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-1.5">
-                <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-slate-900 text-sm">
-                  Balance Settlement at Delivery
-                </h3>
-              </div>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">
+                Settle Balance Before Dispensing
+              </h3>
               <button
                 onClick={() => setBalanceModalOrder(null)}
-                className="p-1 text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-
-            <p className="text-xs text-slate-600">
-              Collecting final balance for Order <strong>#{balanceModalOrder.bill_no}</strong> (Patient:{" "}
-              <strong>{balanceModalOrder.customer?.name}</strong>).
-            </p>
-
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span>Net Order Total:</span>
-                <span className="font-semibold">{formatCurrency(balanceModalOrder.final_payable)}</span>
-              </div>
-              <div className="flex justify-between text-emerald-700">
-                <span>Advance Paid Previously:</span>
-                <span className="font-semibold">{formatCurrency(balanceModalOrder.paid_amount)}</span>
-              </div>
-              <div className="flex justify-between text-rose-700 font-black text-sm pt-1 border-t border-slate-200">
-                <span>Pending Balance Due:</span>
-                <span>{formatCurrency(balanceModalOrder.balance_amount)}</span>
-              </div>
-            </div>
-
-            <form onSubmit={handleCollectPayment} className="space-y-3 text-xs">
+            <form onSubmit={handleCollectPayment} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  Amount Received (₹) *
-                </label>
+                <label className="font-bold text-slate-600 block mb-1">Bill Balance Due</label>
                 <input
                   type="number"
-                  step="1"
-                  min="1"
-                  max={balanceModalOrder.balance_amount}
-                  required
+                  step="0.01"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-black text-sm"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-900"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  Payment Method *
-                </label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {["UPI", "CASH", "CARD"].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setPayMethod(m)}
-                      className={`py-1.5 rounded-lg font-bold text-xs border transition-all ${
-                        payMethod === m
-                          ? "bg-cyan-600 text-white border-cyan-600"
-                          : "bg-white border-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
+                <label className="font-bold text-slate-600 block mb-1">Payment Method</label>
+                <select
+                  value={payMethod}
+                  onChange={(e) => setPayMethod(e.target.value)}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-semibold"
+                >
+                  <option value="UPI">UPI / QR Scan</option>
+                  <option value="CASH">Cash</option>
+                  <option value="CARD">Debit / Credit Card</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                </select>
               </div>
 
-              {payMethod !== "CASH" && (
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">
-                    Transaction / Auth Reference
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="UPI Ref ID / Card Txn Code"
-                    value={transactionRef}
-                    onChange={(e) => setTransactionRef(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="font-bold text-slate-600 block mb-1">Transaction Ref (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="UPI Ref ID, Card Last 4 digits..."
+                  value={transactionRef}
+                  onChange={(e) => setTransactionRef(e.target.value)}
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900"
+                />
+              </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setBalanceModalOrder(null)}
-                  className="px-3 py-2 rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200 font-semibold"
+                  className="px-3 py-1.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={paySubmitting}
-                  className="px-4 py-2 rounded-lg text-white font-bold bg-emerald-600 hover:bg-emerald-700 shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-xs"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>
-                    {paySubmitting
-                      ? "Recording..."
-                      : `Settle ₹${payAmount} & Mark Delivered`}
-                  </span>
+                  {paySubmitting ? "Settling..." : "Collect & Dispense"}
                 </button>
               </div>
             </form>
@@ -962,19 +876,17 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
         </div>
       )}
 
-      {/* Printable GST Tax Invoice Modal */}
-      {selectedReceiptOrder && (
-        <ReceiptModal
-          order={selectedReceiptOrder}
-          onClose={() => setSelectedReceiptOrder(null)}
-        />
-      )}
-
-      {/* Thermal Workshop Lab Ticket Slip Modal */}
       {thermalSlipOrder && (
         <ThermalJobSlipModal
           order={thermalSlipOrder}
           onClose={() => setThermalSlipOrder(null)}
+        />
+      )}
+
+      {selectedReceiptOrder && (
+        <ReceiptModal
+          order={selectedReceiptOrder}
+          onClose={() => setSelectedReceiptOrder(null)}
         />
       )}
     </div>

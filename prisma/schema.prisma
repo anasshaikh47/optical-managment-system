@@ -12,7 +12,7 @@ model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
-  role      String   @default("STAFF") // 'OWNER' | 'STAFF'
+  role      String   @default("STAFF") // 'OWNER' | 'PHARMACIST' | 'STAFF'
   pin_hash  String   // Quick 4-digit POS unlock PIN hash
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -33,91 +33,113 @@ model Customer {
 }
 
 model Prescription {
-  id              String    @id @default(uuid())
-  customerId      String
-  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  optometristName String?
+  id                 String    @id @default(uuid())
+  customerId         String
+  customer           Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   
-  // Right Eye (OD - Oculus Dexter)
-  od_sph          Float?    // Sphere
-  od_cyl          Float?    // Cylinder
-  od_axis         Int?      // Axis (1-180)
-  od_add          Float?    // Addition for presbyopia
-
-  // Left Eye (OS - Oculus Sinister)
-  os_sph          Float?    // Sphere
-  os_cyl          Float?    // Cylinder
-  os_axis         Int?      // Axis (1-180)
-  os_add          Float?    // Addition for presbyopia
-
-  // Pupillary Distance & Lens specs
-  pd_distance     Float?    // Distance PD (mm)
-  pd_near         Float?    // Near PD (mm)
-  lens_type       String?   // 'SINGLE_VISION' | 'BIFOCAL' | 'PROGRESSIVE' | 'BLUE_CUT' | 'PHOTOCHROMIC'
-  notes           String?
+  // Patient & Doctor Information
+  patientName        String?
+  patientAge         Int?
+  doctorName         String?
+  clinicOrHospital   String?
+  doctorRegNo        String?
+  prescriptionImage  String?   // optional upload (Base64 data URL / storage URL)
+  dosageInstructions String?   // Morning-Afternoon-Night e.g., "1-0-1", before/after meals
+  notes              String?   // Additional clinical notes or special instructions
   
-  orders          Order[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  orders             Order[]
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
-model InventoryItem {
+model Medicine {
   id                  String      @id @default(uuid())
-  sku                 String      @unique
+  sku                 String      @unique // e.g. "MED-001"
   barcode             String?     @unique
-  type                String      // 'FRAME' | 'LENS' | 'CONTACT_LENS' | 'ACCESSORY'
-  brand               String
-  model               String?
-  color               String?
-  size                String?     // e.g. "52-18-140"
-  lens_index          String?     // e.g. "1.56", "1.61", "1.67", "1.74"
-  cost_price          Float
-  selling_price       Float
-  gst_rate            Float       @default(12.0) // Indian GST % (typically 12% or 18%)
-  stock_quantity      Int         @default(0)
-  min_alert_threshold Int         @default(5)
+  name                String      // Brand name e.g. "Dolo 650", "Augmentin 625 Duo"
+  genericSaltName     String      // Composition e.g. "Paracetamol (650mg)"
+  manufacturer        String      // e.g. "Micro Labs Ltd", "GSK"
+  packType            String      @default("Strip") // Strip / Bottle / Box / Syringe / Ointment
+  tabletsPerStrip     Int         @default(10) // Units per pack for loose tablet conversion
+  hsnCode             String?     @default("3004")
+  rackLocation        String?     // e.g. "Rack A-12"
+  minStockAlert       Int         @default(10)
+  scheduleType        String      @default("GENERAL") // 'GENERAL' | 'SCHEDULE_H' | 'SCHEDULE_H1' | 'OTC'
+  isScheduleH         Boolean     @default(false)
   image_url           String?
   
+  // Default / Active primary batch details
+  batchNumber         String      @default("BT-001")
+  expiryDate          String      @default("12/2026") // MM/YYYY
+  mrp                 Float       @default(0)
+  purchaseRate        Float       @default(0)
+  saleRate            Float       @default(0)
+  stripQuantity       Int         @default(0)
+  looseTabletQuantity Int         @default(0)
+  gstRate             Float       @default(12.0) // 5%, 12%, 18%
+  
+  batches             Batch[]
   orderItems          OrderItem[]
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 }
 
+model Batch {
+  id                  String    @id @default(uuid())
+  medicineId          String
+  medicine            Medicine  @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  batchNumber         String
+  expiryDate          String    // MM/YYYY
+  mrp                 Float
+  purchaseRate        Float
+  saleRate            Float
+  stripQuantity       Int       @default(0)
+  looseTabletQuantity Int       @default(0)
+  gstRate             Float     @default(12.0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
 model Order {
-  id               String        @id @default(uuid())
-  bill_no          String        @unique // e.g. "VP-2026-0001"
-  customerId       String
-  customer         Customer      @relation(fields: [customerId], references: [id])
-  prescriptionId   String?
-  prescription     Prescription? @relation(fields: [prescriptionId], references: [id])
+  id                String        @id @default(uuid())
+  bill_no           String        @unique // e.g. "RX-2026-0001"
+  customerId        String
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  prescriptionId    String?
+  prescription      Prescription? @relation(fields: [prescriptionId], references: [id])
   
-  status           String        @default("PLACED") // 'PLACED' | 'LENS_PROCESSING' | 'FITTING' | 'READY_FOR_PICKUP' | 'DELIVERED' | 'CANCELLED'
-  total_amount     Float         // Subtotal before discount & tax
-  discount_amount  Float         @default(0)
-  tax_amount       Float         @default(0) // GST Amount
-  final_payable    Float         // total_amount - discount_amount + tax_amount
-  paid_amount      Float         @default(0)
-  balance_amount   Float         @default(0)
+  patientName       String?
+  doctorName        String?
+  status            String        @default("COMPLETED") // 'COMPLETED' | 'PENDING_RX' | 'READY_FOR_PICKUP' | 'CANCELLED'
+  total_amount      Float         // Subtotal before discount & tax
+  discount_amount   Float         @default(0)
+  tax_amount        Float         @default(0) // GST Amount
+  final_payable     Float         // total_amount - discount_amount + tax_amount
+  paid_amount       Float         @default(0)
+  balance_amount    Float         @default(0)
   delivery_due_date DateTime?
   
-  items            OrderItem[]
-  payments         Payment[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  items             OrderItem[]
+  payments          Payment[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 }
 
 model OrderItem {
-  id              String        @id @default(uuid())
+  id              String    @id @default(uuid())
   orderId         String
-  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  itemId          String
-  item            InventoryItem @relation(fields: [itemId], references: [id])
-  quantity        Int           @default(1)
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  medicineId      String
+  medicine        Medicine  @relation(fields: [medicineId], references: [id])
+  batchNumber     String?
+  expiryDate      String?
+  packType        String?   @default("Strip")
+  unitType        String    @default("STRIP") // 'STRIP' | 'LOOSE_TABLET' | 'UNIT'
+  quantity        Int       @default(1)
   unit_price      Float
-  coating_charges Float         @default(0)
-  fitting_charges Float         @default(0)
-  subtotal        Float         // (unit_price * quantity) + coating_charges + fitting_charges
-  createdAt       DateTime      @default(now())
+  subtotal        Float
+  gstRate         Float     @default(12.0)
+  createdAt       DateTime  @default(now())
 }
 
 model Payment {
@@ -133,15 +155,16 @@ model Payment {
 
 model StoreSetting {
   id             String   @id @default("default")
-  storeName      String   @default("VisionPulse Eyewear Studio")
-  tagline        String?  @default("Precision Optometry & Designer Eyewear")
-  gstin          String?  @default("27AABCV1234F1Z8")
+  storeName      String   @default("PharmaPulse Chemist & Druggist")
+  tagline        String?  @default("High-Efficiency Pharmacy & Clinical Store ERP")
+  gstin          String?  @default("27AABCP9876F1Z2")
+  dlNumber       String?  @default("DL-20B/21B-458920") // Drug License No.
   phone          String?  @default("+91 98201 12345")
-  email          String?  @default("care@visionpulse.in")
-  address        String?  @default("Shop 4 & 5, Galleria Arcade, Hiranandani Gardens, Powai, Mumbai - 400076")
+  email          String?  @default("care@pharmapulse.in")
+  address        String?  @default("Shop 10 & 11, Central Avenue, Powai, Mumbai - 400076")
   currencySymbol String   @default("₹")
   currencyCode   String   @default("INR")
   defaultGstRate Float    @default(12.0)
-  receiptFooter  String?  @default("1-Year warranty against frame manufacturing defects. Spectacle power adaptation guarantee for 14 days.")
+  receiptFooter  String?  @default("Medicines sold against valid registered Doctor Prescription. Please check batch number & expiry date before consumption.")
   updatedAt      DateTime @updatedAt
 }

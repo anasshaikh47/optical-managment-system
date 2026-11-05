@@ -60,33 +60,14 @@ export default function CustomersPage() {
     }
   };
 
-  // Helper to calculate checkup reminder status
-  const getCheckupStatus = (latestRx: any) => {
-    if (!latestRx) return { isDue: false, label: "No Rx on record", color: "bg-slate-100 text-slate-500" };
-    const rxDate = new Date(latestRx.createdAt);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - rxDate.getTime()) / (1000 * 60 * 60 * 24));
-    const diffMonths = Math.floor(diffDays / 30);
-
-    if (diffMonths >= 12) {
-      return {
-        isDue: true,
-        label: `⚠️ Annual Test Overdue (${diffMonths} mos)`,
-        color: "bg-rose-100 text-rose-800 font-bold",
-      };
-    } else if (diffMonths >= 10) {
-      return {
-        isDue: true,
-        label: `⚡ Annual Test Due Soon (${diffMonths} mos)`,
-        color: "bg-amber-100 text-amber-800 font-bold",
-      };
-    } else {
-      return {
-        isDue: false,
-        label: `🟢 Checkup Current (${diffMonths} mos ago)`,
-        color: "bg-emerald-100 text-emerald-800",
-      };
-    }
+  // Helper to calculate Rx status
+  const getRxStatus = (latestRx: any) => {
+    if (!latestRx) return { hasRx: false, label: "No Rx on record", color: "bg-slate-100 text-slate-500" };
+    return {
+      hasRx: true,
+      label: `Dr. ${latestRx.doctorName || "Physician"} (${formatDate(latestRx.createdAt)})`,
+      color: "bg-teal-50 text-teal-800 border border-teal-200 font-bold",
+    };
   };
 
   const filtered = customers.filter((c) => {
@@ -98,10 +79,10 @@ export default function CustomersPage() {
       (c.email && c.email.toLowerCase().includes(q));
 
     const latestRx = c.prescriptions?.[0];
-    const checkup = getCheckupStatus(latestRx);
-    const matchesCheckupDue = !filterCheckupDue || checkup.isDue;
+    const rxStatus = getRxStatus(latestRx);
+    const matchesRx = !filterCheckupDue || rxStatus.hasRx;
 
-    return matchesSearch && matchesCheckupDue;
+    return matchesSearch && matchesRx;
   });
 
   return (
@@ -125,20 +106,20 @@ export default function CustomersPage() {
               onClick={() => setFilterCheckupDue(!filterCheckupDue)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
                 filterCheckupDue
-                  ? "bg-amber-50 border-amber-300 text-amber-800"
+                  ? "bg-teal-50 border-teal-300 text-teal-800"
                   : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <Clock className="w-3.5 h-3.5 text-amber-600" />
-              <span>Annual Checkup Due</span>
+              <Clock className="w-3.5 h-3.5 text-teal-600" />
+              <span>With Doctor Rx</span>
             </button>
 
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-colors cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>+ Add Customer</span>
+              <span>+ Add Patient</span>
             </button>
           </div>
         </div>
@@ -155,8 +136,8 @@ export default function CustomersPage() {
                   <th className="p-3.5 text-right">Lifetime Spend</th>
                   <th className="p-3.5 text-right">Pending Balance</th>
                   <th className="p-3.5 text-center">Loyalty Points</th>
-                  <th className="p-3.5 text-center">1-Year Checkup Status</th>
-                  <th className="p-3.5 text-center">CRM Profile</th>
+                  <th className="p-3.5 text-center">Prescription on File</th>
+                  <th className="p-3.5 text-center">Patient Profile</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -178,7 +159,7 @@ export default function CustomersPage() {
                         </h4>
                         <p className="text-xs text-slate-400 leading-relaxed">
                           {customers.length === 0
-                            ? "No patient or customer records found in store directory. Register your first customer to manage optical prescriptions, visit history, and CRM alerts."
+                            ? "No patient records found in store directory. Register your first patient to manage doctor prescriptions, medication history, and billing."
                             : "Try searching by another phone number, full name, or clear the search input."}
                         </p>
                         {customers.length === 0 && (
@@ -188,7 +169,7 @@ export default function CustomersPage() {
                             className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-colors cursor-pointer"
                           >
                             <Plus className="w-4 h-4" />
-                            <span>Add First Customer</span>
+                            <span>Add First Patient</span>
                           </button>
                         )}
                       </div>
@@ -204,21 +185,21 @@ export default function CustomersPage() {
                       .filter((o: any) => o.status !== "CANCELLED")
                       .reduce((sum: number, o: any) => sum + (o.balance_amount || 0), 0);
                     const latestRx = c.prescriptions?.[0];
-                    const checkup = getCheckupStatus(latestRx);
+                    const rxStatus = getRxStatus(latestRx);
 
                     return (
                       <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="p-3.5">
                           <Link
                             href={`/customers/${c.id}`}
-                            className="font-bold text-slate-900 text-xs hover:text-cyan-700 hover:underline flex items-center gap-1.5"
+                            className="font-bold text-slate-900 text-xs hover:text-teal-700 hover:underline flex items-center gap-1.5"
                           >
                             <span>{c.name}</span>
                             <ChevronRight className="w-3 h-3 text-slate-400" />
                           </Link>
-                          {c.dob && (
+                          {c.age && (
                             <p className="text-[10px] text-slate-400 mt-0.5">
-                              DOB: {formatDate(c.dob)}
+                              Age: {c.age} Yrs
                             </p>
                           )}
                         </td>
@@ -257,18 +238,18 @@ export default function CustomersPage() {
                         </td>
 
                         <td className="p-3.5 text-center">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${checkup.color}`}>
-                            {checkup.label}
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${rxStatus.color}`}>
+                            {rxStatus.label}
                           </span>
                         </td>
 
                         <td className="p-3.5 text-center">
                           <Link
                             href={`/customers/${c.id}`}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors"
                           >
                             <Eye className="w-3 h-3" />
-                            <span>View CRM</span>
+                            <span>View Profile</span>
                           </Link>
                         </td>
                       </tr>

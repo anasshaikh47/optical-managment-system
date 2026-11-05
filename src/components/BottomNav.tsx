@@ -8,11 +8,10 @@ import {
   Zap,
   Package,
   Users,
-  User,
   Store,
   LogOut,
   Settings,
-  ShieldCheck,
+  ShieldPlus,
   X,
   ChevronRight,
   MessageCircle,
@@ -22,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { user, userDisplayName, userEmail, userAvatarUrl, signOut } = useAuth();
+  const { userDisplayName, userEmail, userAvatarUrl, signOut } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // If on login or auth callback, do not render bottom navigation
@@ -32,25 +31,25 @@ export function BottomNav() {
 
   const navItems = [
     {
-      name: "Home",
+      name: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
       isActive: pathname === "/" || pathname === "/dashboard",
     },
     {
-      name: "Billing",
+      name: "POS Billing",
       href: "/pos",
       icon: Zap,
       isActive: pathname.startsWith("/pos"),
     },
     {
-      name: "Stock",
+      name: "Medicines",
       href: "/inventory",
       icon: Package,
       isActive: pathname.startsWith("/inventory"),
     },
     {
-      name: "Customers",
+      name: "Patients",
       href: "/customers",
       icon: Users,
       isActive: pathname.startsWith("/customers"),
@@ -59,7 +58,7 @@ export function BottomNav() {
 
   const handleSupportClick = () => {
     window.open(
-      "https://wa.me/919820112345?text=Hello%20Optical%20ERP%20Support%2C%20I%20need%20accounting%20assistance.",
+      "https://wa.me/919820112345?text=Hello%20PharmaPulse%20ERP%20Support%2C%20I%20need%20pharmacy%20billing%20assistance.",
       "_blank"
     );
   };
@@ -87,7 +86,7 @@ export function BottomNav() {
               className={cn(
                 "flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all active:scale-90",
                 item.isActive
-                  ? "text-cyan-400 font-bold"
+                  ? "text-emerald-400 font-bold"
                   : "text-slate-400 hover:text-slate-200"
               )}
             >
@@ -99,7 +98,7 @@ export function BottomNav() {
                   )}
                 />
                 {item.isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
                 )}
               </div>
               <span className="text-[10px] mt-1 tracking-tight leading-none">
@@ -109,17 +108,17 @@ export function BottomNav() {
           );
         })}
 
-        {/* Tab 5: Profile / Store Account Button */}
+        {/* Tab 5: Profile / Pharmacy Account Button */}
         <button
           type="button"
           onClick={() => setIsProfileOpen(true)}
           className={cn(
             "flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all active:scale-90 cursor-pointer",
             isProfileOpen
-              ? "text-cyan-400 font-bold"
+              ? "text-emerald-400 font-bold"
               : "text-slate-400 hover:text-slate-200"
           )}
-          aria-label="Open User Profile"
+          aria-label="Open Pharmacy Profile"
         >
           <div className="relative">
             {userAvatarUrl ? (
@@ -128,7 +127,7 @@ export function BottomNav() {
                 alt={userDisplayName || "Avatar"}
                 className={cn(
                   "w-5 h-5 rounded-full object-cover border transition-all",
-                  isProfileOpen ? "border-cyan-400 scale-110" : "border-slate-600"
+                  isProfileOpen ? "border-emerald-400 scale-110" : "border-slate-600"
                 )}
               />
             ) : (
@@ -136,19 +135,17 @@ export function BottomNav() {
                 className={cn(
                   "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all",
                   isProfileOpen
-                    ? "bg-cyan-500/20 text-cyan-400 border-cyan-400 scale-110"
+                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-400 scale-110"
                     : "bg-slate-800 text-slate-300 border-slate-700"
                 )}
               >
                 {userDisplayName
                   ? userDisplayName[0].toUpperCase()
-                  : userEmail
-                  ? userEmail[0].toUpperCase()
-                  : "U"}
+                  : "Rx"}
               </div>
             )}
             {isProfileOpen && (
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
             )}
           </div>
           <span className="text-[10px] mt-1 tracking-tight leading-none">
@@ -158,110 +155,62 @@ export function BottomNav() {
       </nav>
 
       {/* ======================================================== */}
-      {/* 2. NATIVE PROFILE / STORE ACCOUNT BOTTOM SHEET MODAL     */}
+      {/* 2. MOBILE PROFILE DRAWER                                 */}
       {/* ======================================================== */}
       {isProfileOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
           {/* Backdrop */}
           <div
             onClick={() => setIsProfileOpen(false)}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200"
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs animate-in fade-in"
           />
 
-          {/* Sheet Container */}
-          <div className="relative bg-slate-900 border-t border-slate-800 rounded-t-3xl p-5 pb-8 shadow-2xl text-slate-200 max-h-[85vh] overflow-y-auto space-y-4 animate-in slide-in-from-bottom duration-250">
-            {/* Sheet Handle */}
-            <div className="w-12 h-1.5 rounded-full bg-slate-700 mx-auto -mt-1 mb-2" />
-
-            {/* Profile Header Card */}
+          {/* Drawer Sheet */}
+          <div className="relative bg-slate-900 border-t border-slate-800 rounded-t-3xl p-5 shadow-2xl z-10 space-y-4 animate-in slide-in-from-bottom duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-3 min-w-0">
-                {userAvatarUrl ? (
-                  <img
-                    src={userAvatarUrl}
-                    alt={userDisplayName || "Avatar"}
-                    className="w-12 h-12 rounded-2xl object-cover border border-slate-700 shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center justify-center font-bold text-base shrink-0">
-                    {userDisplayName
-                      ? userDisplayName
-                          .split(" ")
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join("")
-                          .toUpperCase()
-                      : userEmail
-                      ? userEmail[0].toUpperCase()
-                      : "OP"}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <h3 className="font-bold text-base text-white truncate leading-tight">
-                    {userDisplayName || userEmail?.split("@")[0] || "Store Owner"}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-950 text-emerald-400 border border-emerald-700/60 flex items-center justify-center font-bold text-sm">
+                  Rx
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">
+                    {userDisplayName || "Pharmacist In-Charge"}
                   </h3>
-                  <p className="text-xs text-slate-400 font-mono truncate mt-0.5">
-                    {userEmail || "owner@visionpulse.in"}
+                  <p className="text-xs text-slate-400 font-mono">
+                    {userEmail || "OWNER • Active Terminal"}
                   </p>
-                  <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span>Verified Owner • Active Counter</span>
-                  </div>
                 </div>
               </div>
-
               <button
                 type="button"
                 onClick={() => setIsProfileOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Store & Cloud Status Details */}
-            <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-800 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-medium">Store Profile</span>
-                <span className="text-white font-bold truncate max-w-[180px]">
-                  {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-medium">Database Ledger</span>
-                <span className="text-emerald-400 font-semibold font-mono flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Cloud Synced (Supabase)
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-medium">Branch</span>
-                <span className="text-slate-300 font-semibold">Main Branch - Live</span>
-              </div>
-            </div>
-
-            {/* Quick Action Navigation Links */}
-            <div className="space-y-1.5 text-xs font-semibold">
+            <div className="space-y-1.5 text-xs">
               <Link
                 href="/settings"
                 onClick={() => setIsProfileOpen(false)}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-200 font-semibold transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <Settings className="w-4 h-4 text-cyan-400" />
-                  <span>My Shop Profiles & Tax Settings</span>
+                  <Store className="w-4 h-4 text-emerald-400" />
+                  <span>Pharmacy Profile & Drug License</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
               </Link>
 
               <Link
-                href="/staff"
+                href="/prescriptions"
                 onClick={() => setIsProfileOpen(false)}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-200 font-semibold transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <Store className="w-4 h-4 text-indigo-400" />
-                  <span>Staff & Counter Terminals</span>
+                  <ShieldPlus className="w-4 h-4 text-cyan-400" />
+                  <span>Prescription Records & Refills</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
               </Link>
@@ -269,24 +218,23 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={handleSupportClick}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors cursor-pointer text-left"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#25D366]/10 border border-[#25D366]/30 hover:bg-[#25D366]/20 text-[#25D366] font-bold transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                  <span>Accounting & WhatsApp Support</span>
+                  <MessageCircle className="w-4 h-4 fill-[#25D366]/20 stroke-[#25D366]" />
+                  <span>Pharmacist Support Helpline</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-500" />
+                <ChevronRight className="w-4 h-4 text-[#25D366]/60" />
               </button>
             </div>
 
-            {/* Sign Out Action Button */}
             <button
               type="button"
               onClick={handleSignOut}
-              className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sign Out of Account</span>
+              <span>Sign Out Terminal</span>
             </button>
           </div>
         </div>

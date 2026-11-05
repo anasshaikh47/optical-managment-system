@@ -34,10 +34,12 @@ export async function GET(request: Request) {
         const q = query.toLowerCase();
         list = list.filter(
           (p) =>
+            (p.patientName && p.patientName.toLowerCase().includes(q)) ||
             (p.customer && p.customer.name.toLowerCase().includes(q)) ||
             (p.customer && p.customer.phone.toLowerCase().includes(q)) ||
-            (p.optometristName && p.optometristName.toLowerCase().includes(q)) ||
-            (p.lens_type && p.lens_type.toLowerCase().includes(q))
+            (p.doctorName && p.doctorName.toLowerCase().includes(q)) ||
+            (p.clinicOrHospital && p.clinicOrHospital.toLowerCase().includes(q)) ||
+            (p.dosageInstructions && p.dosageInstructions.toLowerCase().includes(q))
         );
       }
 
@@ -52,10 +54,12 @@ export async function GET(request: Request) {
 
       if (query) {
         where.OR = [
-          { customer: { name: { contains: query } } },
-          { customer: { phone: { contains: query } } },
-          { optometristName: { contains: query } },
-          { lens_type: { contains: query } },
+          { patientName: { contains: query, mode: "insensitive" } },
+          { customer: { name: { contains: query, mode: "insensitive" } } },
+          { customer: { phone: { contains: query, mode: "insensitive" } } },
+          { doctorName: { contains: query, mode: "insensitive" } },
+          { clinicOrHospital: { contains: query, mode: "insensitive" } },
+          { dosageInstructions: { contains: query, mode: "insensitive" } },
         ];
       }
 
@@ -90,77 +94,68 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       customerId,
-      optometristName,
-      od_sph,
-      od_cyl,
-      od_axis,
-      od_add,
-      os_sph,
-      os_cyl,
-      os_axis,
-      os_add,
-      pd_distance,
-      pd_near,
-      lens_type = "SINGLE_VISION",
+      patientName,
+      patientAge,
+      doctorName,
+      optometristName, // fallback
+      clinicOrHospital,
+      doctorRegNo,
+      prescriptionImage,
+      dosageInstructions,
       notes,
     } = body;
 
     if (!customerId) {
       return NextResponse.json(
-        { success: false, error: "Customer ID is required" },
+        { success: false, error: "Patient / Customer is required" },
         { status: 400 }
       );
     }
 
+    const docName = doctorName || optometristName || "Dr. Registered Medical Practitioner";
+    const parsedAge = patientAge !== undefined && patientAge !== "" ? parseInt(patientAge, 10) : null;
+
     if (shopId !== "default") {
       const tenant = loadTenantState(shopId);
-      const now = new Date().toISOString();
+      const customer = tenant.customers.find((c) => c.id === customerId);
+      const resolvedPatientName = patientName || customer?.name || "Patient";
+
       const newRx: TenantPrescription = {
         id: `rx-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
         customerId,
-        optometristName: optometristName || "Dr. Staff Optometrist",
-        od_sph: od_sph !== undefined && od_sph !== "" ? parseFloat(od_sph) : null,
-        od_cyl: od_cyl !== undefined && od_cyl !== "" ? parseFloat(od_cyl) : null,
-        od_axis: od_axis !== undefined && od_axis !== "" ? parseInt(od_axis, 10) : null,
-        od_add: od_add !== undefined && od_add !== "" ? parseFloat(od_add) : null,
-        os_sph: os_sph !== undefined && os_sph !== "" ? parseFloat(os_sph) : null,
-        os_cyl: os_cyl !== undefined && os_cyl !== "" ? parseFloat(os_cyl) : null,
-        os_axis: os_axis !== undefined && os_axis !== "" ? parseInt(os_axis, 10) : null,
-        os_add: os_add !== undefined && os_add !== "" ? parseFloat(os_add) : null,
-        pd_distance: pd_distance !== undefined && pd_distance !== "" ? parseFloat(pd_distance) : null,
-        pd_near: pd_near !== undefined && pd_near !== "" ? parseFloat(pd_near) : null,
-        lens_type,
+        patientName: resolvedPatientName,
+        patientAge: parsedAge,
+        doctorName: docName,
+        clinicOrHospital: clinicOrHospital || null,
+        doctorRegNo: doctorRegNo || null,
+        prescriptionImage: prescriptionImage || null,
+        dosageInstructions: dosageInstructions || null,
         notes: notes || null,
+        optometristName: docName,
         shopId,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       tenant.prescriptions.unshift(newRx);
       saveTenantState(tenant);
 
-      const customer = tenant.customers.find((c) => c.id === customerId);
-      return NextResponse.json(
-        { success: true, data: { ...newRx, customer } },
-        { status: 201 }
-      );
+      return NextResponse.json({ success: true, data: newRx }, { status: 201 });
     }
+
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    const resolvedPatientName = patientName || customer?.name || "Patient";
 
     const prescription = await prisma.prescription.create({
       data: {
         customerId,
-        optometristName: optometristName || null,
-        od_sph: od_sph !== undefined && od_sph !== "" ? parseFloat(od_sph) : null,
-        od_cyl: od_cyl !== undefined && od_cyl !== "" ? parseFloat(od_cyl) : null,
-        od_axis: od_axis !== undefined && od_axis !== "" ? parseInt(od_axis, 10) : null,
-        od_add: od_add !== undefined && od_add !== "" ? parseFloat(od_add) : null,
-        os_sph: os_sph !== undefined && os_sph !== "" ? parseFloat(os_sph) : null,
-        os_cyl: os_cyl !== undefined && os_cyl !== "" ? parseFloat(os_cyl) : null,
-        os_axis: os_axis !== undefined && os_axis !== "" ? parseInt(os_axis, 10) : null,
-        os_add: os_add !== undefined && os_add !== "" ? parseFloat(os_add) : null,
-        pd_distance: pd_distance !== undefined && pd_distance !== "" ? parseFloat(pd_distance) : null,
-        pd_near: pd_near !== undefined && pd_near !== "" ? parseFloat(pd_near) : null,
-        lens_type,
+        patientName: resolvedPatientName,
+        patientAge: parsedAge,
+        doctorName: docName,
+        clinicOrHospital: clinicOrHospital || null,
+        doctorRegNo: doctorRegNo || null,
+        prescriptionImage: prescriptionImage || null,
+        dosageInstructions: dosageInstructions || null,
         notes: notes || null,
       },
       include: {

@@ -34,10 +34,14 @@ export async function PATCH(
 
       const customer = tenant.customers.find((c) => c.id === order.customerId);
       const prescription = tenant.prescriptions.find((p) => p.id === order.prescriptionId);
-      const items = order.items.map((it) => ({
-        ...it,
-        item: tenant.inventory.find((inv) => inv.id === it.itemId),
-      }));
+      const items = order.items.map((it) => {
+        const med = tenant.medicines.find((inv) => inv.id === (it.medicineId || it.itemId));
+        return {
+          ...it,
+          medicine: med,
+          item: med,
+        };
+      });
 
       return NextResponse.json({
         success: true,
@@ -60,13 +64,21 @@ export async function PATCH(
         customer: true,
         prescription: true,
         items: {
-          include: { item: true },
+          include: { medicine: true },
         },
         payments: true,
       },
     });
 
-    return NextResponse.json({ success: true, data: updated });
+    const mapped = {
+      ...updated,
+      items: updated.items.map((it) => ({
+        ...it,
+        item: it.medicine,
+      })),
+    };
+
+    return NextResponse.json({ success: true, data: mapped });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },

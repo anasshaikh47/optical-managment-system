@@ -47,7 +47,7 @@ export async function GET(
           orders: {
             include: {
               items: {
-                include: { item: true },
+                include: { medicine: true },
               },
               payments: true,
             },

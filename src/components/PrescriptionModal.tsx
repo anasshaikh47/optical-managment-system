@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Glasses, Check, User, Stethoscope } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, FileText, Check, Camera, User, Stethoscope, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 interface PrescriptionModalProps {
@@ -21,22 +21,18 @@ export function PrescriptionModal({
   const [customers, setCustomers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     customerId: preselectedCustomerId || "",
-    optometristName: "Dr. Priya Nair, M.Opt",
-    od_sph: "",
-    od_cyl: "",
-    od_axis: "",
-    od_add: "",
-    os_sph: "",
-    os_cyl: "",
-    os_axis: "",
-    os_add: "",
-    pd_distance: "63.0",
-    pd_near: "60.0",
-    lens_type: "BLUE_CUT",
-    notes: "",
+    patientName: "",
+    patientAge: "34",
+    doctorName: "Dr. Sandeep Deshmukh, MD",
+    clinicOrHospital: "Apollo Clinic & Diagnostic Center",
+    doctorRegNo: "MCI-48921",
+    dosageInstructions: "Augmentin 625 (1-0-1 After Meals), Dolo 650 (1-0-1 as needed)",
+    notes: "Take after meals. Complete full 5-day antibiotic course.",
+    prescriptionImage: "",
   });
 
   useEffect(() => {
@@ -58,6 +54,21 @@ export function PrescriptionModal({
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setFormData((prev) => ({
+        ...prev,
+        prescriptionImage: e.target?.result as string,
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   if (!isOpen) return null;
@@ -99,15 +110,15 @@ export function PrescriptionModal({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center">
-              <Glasses className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                New Optical Prescription (Rx)
+                New Doctor Prescription (Rx)
               </h3>
               <p className="text-[11px] text-slate-500">
-                Record OD/OS diopter refraction and Pupillary Distance
+                Log registered doctor prescription, dosage regimen & Schedule H compliance
               </p>
             </div>
           </div>
@@ -120,23 +131,32 @@ export function PrescriptionModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 text-xs">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-medium">
-              {error}
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          {/* Patient and Optometrist Selection */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+          {/* Patient Selection & Age */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="sm:col-span-2">
               <label className="block text-slate-700 font-semibold mb-1">
                 Select Patient / Customer *
               </label>
               <select
                 value={formData.customerId}
-                onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+                onChange={(e) => {
+                  const selId = e.target.value;
+                  const c = customers.find((cust) => cust.id === selId);
+                  setFormData({
+                    ...formData,
+                    customerId: selId,
+                    patientName: c ? c.name : "",
+                  });
+                }}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 required
               >
                 <option value="">-- Choose Patient --</option>
@@ -150,217 +170,127 @@ export function PrescriptionModal({
 
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Prescribing Optometrist / Doctor
+                Patient Age (Yrs)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="120"
+                value={formData.patientAge}
+                onChange={(e) => setFormData({ ...formData, patientAge: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-mono"
+                placeholder="e.g. 34"
+              />
+            </div>
+          </div>
+
+          {/* Doctor Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-3.5 bg-purple-50/50 border border-purple-200 rounded-xl">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">
+                Prescribing Doctor Name *
               </label>
               <input
                 type="text"
-                placeholder="Dr. Priya Nair, M.Opt"
-                value={formData.optometristName}
-                onChange={(e) => setFormData({ ...formData, optometristName: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+                required
+                value={formData.doctorName}
+                onChange={(e) => setFormData({ ...formData, doctorName: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                placeholder="Dr. Sandeep Deshmukh, MD"
               />
             </div>
-          </div>
-
-          {/* Diopter Refraction Grid */}
-          <div className="border border-cyan-200 bg-cyan-50/40 rounded-xl p-4 space-y-3">
-            <h4 className="text-cyan-900 font-bold text-xs uppercase tracking-wide">
-              Refraction Measurements (OD / OS)
-            </h4>
-
-            {/* Right Eye (OD) */}
-            <div className="bg-white p-3 rounded-lg border border-cyan-100 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-cyan-950 text-xs">
-                  OD — Oculus Dexter (Right Eye)
-                </span>
-                <span className="text-[10px] text-cyan-700 font-semibold">Right Eye</span>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Sphere (SPH)</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    placeholder="-2.50"
-                    value={formData.od_sph}
-                    onChange={(e) => setFormData({ ...formData, od_sph: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Cylinder (CYL)</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    placeholder="-0.75"
-                    value={formData.od_cyl}
-                    onChange={(e) => setFormData({ ...formData, od_cyl: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Axis (1-180°)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="180"
-                    placeholder="90"
-                    value={formData.od_axis}
-                    onChange={(e) => setFormData({ ...formData, od_axis: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Addition (ADD)</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    placeholder="+1.50"
-                    value={formData.od_add}
-                    onChange={(e) => setFormData({ ...formData, od_add: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono text-cyan-700 font-bold"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Left Eye (OS) */}
-            <div className="bg-white p-3 rounded-lg border border-cyan-100 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-cyan-950 text-xs">
-                  OS — Oculus Sinister (Left Eye)
-                </span>
-                <span className="text-[10px] text-cyan-700 font-semibold">Left Eye</span>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Sphere (SPH)</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    placeholder="-2.25"
-                    value={formData.os_sph}
-                    onChange={(e) => setFormData({ ...formData, os_sph: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Cylinder (CYL)</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    placeholder="-0.50"
-                    value={formData.os_cyl}
-                    onChange={(e) => setFormData({ ...formData, os_cyl: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Axis (1-180°)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="180"
-                    placeholder="85"
-                    value={formData.os_axis}
-                    onChange={(e) => setFormData({ ...formData, os_axis: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-500 font-semibold mb-0.5">Addition (ADD)</label>
-                  <input
-                    type="number"
-                    step="0.25"
-                    placeholder="+1.50"
-                    value={formData.os_add}
-                    onChange={(e) => setFormData({ ...formData, os_add: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded text-xs font-mono text-cyan-700 font-bold"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Pupillary Distance (Distance & Near) & Lens Type */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                PD Distance (mm)
+              <label className="block text-slate-700 font-bold mb-1">
+                Clinic / Hospital Name
               </label>
               <input
-                type="number"
-                step="0.5"
-                placeholder="63.0"
-                value={formData.pd_distance}
-                onChange={(e) => setFormData({ ...formData, pd_distance: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+                type="text"
+                value={formData.clinicOrHospital}
+                onChange={(e) => setFormData({ ...formData, clinicOrHospital: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                placeholder="Apollo Diagnostic Clinic"
               />
             </div>
-
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                PD Near (mm)
+              <label className="block text-slate-700 font-bold mb-1">
+                Doctor Reg. No. (MCI / State)
               </label>
               <input
-                type="number"
-                step="0.5"
-                placeholder="60.0"
-                value={formData.pd_near}
-                onChange={(e) => setFormData({ ...formData, pd_near: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+                type="text"
+                value={formData.doctorRegNo}
+                onChange={(e) => setFormData({ ...formData, doctorRegNo: e.target.value })}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono"
+                placeholder="MCI-48921"
               />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                Lens Recommendation
-              </label>
-              <select
-                value={formData.lens_type}
-                onChange={(e) => setFormData({ ...formData, lens_type: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-semibold"
-              >
-                <option value="BLUE_CUT">Blue-Cut Anti-Glare</option>
-                <option value="SINGLE_VISION">Single Vision (Distance/Near)</option>
-                <option value="PROGRESSIVE">Progressive Freeform</option>
-                <option value="BIFOCAL">Bifocal (D-Segment/Kryptok)</option>
-                <option value="PHOTOCHROMIC">Photochromic / Transitions</option>
-              </select>
             </div>
           </div>
 
-          {/* Clinical Notes */}
+          {/* Dosage Schedule */}
           <div>
             <label className="block text-slate-700 font-semibold mb-1">
-              Clinical Advice / Glazing Guidance
+              Dosage Instructions (Morning - Afternoon - Night e.g. 1-0-1, Before/After Meals)
             </label>
-            <textarea
-              rows={2}
-              placeholder="e.g., Patient has computer strain. Fit with 1.67 index blue-defense coating."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            <input
+              type="text"
+              value={formData.dosageInstructions}
+              onChange={(e) => setFormData({ ...formData, dosageInstructions: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+              placeholder="e.g. 1-0-1 After Meals (Morning & Night)"
             />
           </div>
 
+          {/* Notes */}
+          <div>
+            <label className="block text-slate-700 font-semibold mb-1">
+              Pharmacist Instructions & Clinical Advice
+            </label>
+            <textarea
+              rows={2}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+              placeholder="e.g. Complete 5-day course. Do not consume alcohol during medication."
+            />
+          </div>
+
+          {/* Photo Upload */}
+          <div>
+            <label className="block text-slate-700 font-semibold mb-1">
+              Prescription Document / Photo (Upload)
+            </label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-slate-300 hover:border-purple-500 rounded-xl p-3 text-center cursor-pointer bg-slate-50"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => e.target.files && handleImageFile(e.target.files[0])}
+                className="hidden"
+              />
+              <p className="text-xs text-slate-600 font-medium">Click to upload prescription image</p>
+              {formData.prescriptionImage && (
+                <p className="text-[10px] text-emerald-600 font-bold mt-1">Image loaded successfully</p>
+              )}
+            </div>
+          </div>
+
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition-colors"
+              className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 font-semibold"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-semibold bg-cyan-600 hover:bg-cyan-700 shadow-sm transition-colors disabled:opacity-60"
+              className="px-5 py-2 rounded-lg font-bold text-white bg-purple-700 hover:bg-purple-800 shadow-xs"
             >
-              <Check className="w-4 h-4" />
-              <span>{submitting ? "Saving Rx..." : "Save Prescription"}</span>
+              {submitting ? "Saving..." : "Save Prescription"}
             </button>
           </div>
         </form>

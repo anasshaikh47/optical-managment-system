@@ -10,15 +10,15 @@ import {
   Package,
   ArrowRight,
   Loader2,
-  Glasses,
+  Pill,
   Receipt,
-  Eye,
   MapPin,
   Calendar,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { CustomerHistoryModal } from "@/components/CustomerHistoryModal";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, getExpiryStatus } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 interface QuickSearchModalProps {
@@ -105,11 +105,15 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
 
         const filteredItems = allItems.filter(
           (i: any) =>
+            i.name?.toLowerCase().includes(q) ||
             i.brand?.toLowerCase().includes(q) ||
+            i.genericSaltName?.toLowerCase().includes(q) ||
             i.model?.toLowerCase().includes(q) ||
+            i.batchNumber?.toLowerCase().includes(q) ||
+            i.rackLocation?.toLowerCase().includes(q) ||
             i.barcode?.toLowerCase().includes(q) ||
-            i.type?.toLowerCase().includes(q)
-        ).slice(0, 5);
+            i.packType?.toLowerCase().includes(q)
+        ).slice(0, 6);
 
         setResults({
           customers: filteredCustomers,
@@ -166,7 +170,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
               type="text"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder="Search by customer phone number, name, bill #, frame model, or barcode SKU..."
+              placeholder="Search by patient phone, medicine brand, generic salt, batch #, bill #, or rack..."
               className="flex-1 bg-transparent border-none outline-none text-slate-900 text-sm font-semibold placeholder-slate-400"
             />
             {loading && <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />}
@@ -191,7 +195,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
                 <Search className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm font-bold text-slate-600">No records found for &ldquo;{query}&rdquo;</p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Search by 10-digit mobile number, customer name, bill # (e.g. VP-2026-0001), or frame SKU.
+                  Search by 10-digit mobile number, patient name, bill #, medicine brand, or salt composition.
                 </p>
               </div>
             )}
@@ -202,7 +206,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
                 <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2.5 px-1">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Customers / Patients ({results.customers.length})</span>
+                    <span>Patients & Customers ({results.customers.length})</span>
                   </div>
                   <span className="text-[10px] text-slate-400 font-normal lowercase">
                     click record to open full prescription & order history
@@ -211,7 +215,6 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
                 <div className="space-y-2">
                   {results.customers.map((c) => {
                     const latestRx = c.prescriptions?.[0];
-                    const ordersCount = c.orders?.length || c._count?.orders || 0;
 
                     return (
                       <div
@@ -242,11 +245,11 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
                                 </p>
                               )}
                               {latestRx && (
-                                <div className="mt-1.5 inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-cyan-50 border border-cyan-200 text-[11px] text-cyan-900 font-mono">
-                                  <Glasses className="w-3 h-3 text-cyan-700" />
+                                <div className="mt-1.5 inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-teal-50 border border-teal-200 text-[11px] text-teal-900 font-mono">
+                                  <Pill className="w-3 h-3 text-teal-700" />
                                   <span>
-                                    Latest Rx: OD ({latestRx.od_sph || "0.00"} SPH / {latestRx.od_cyl || "0.00"} CYL) •{" "}
-                                    {latestRx.lens_type?.replace("_", " ") || "Single Vision"}
+                                    Latest Rx: {latestRx.doctorName ? `Dr. ${latestRx.doctorName}` : "Doctor Rx"} •{" "}
+                                    {latestRx.dosageInstructions || "Prescription on file"}
                                   </span>
                                 </div>
                               )}
@@ -259,16 +262,16 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
                               type="button"
                               onClick={() => handleOpenCustomerHistory(c)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-100/70 hover:bg-blue-200 border border-blue-300 transition-colors cursor-pointer"
-                              title="Open Optical Prescription & Past Orders History"
+                              title="Open Patient Prescription & Past Bills History"
                             >
-                              <Glasses className="w-3.5 h-3.5" />
-                              <span>Prescription & Orders</span>
+                              <Pill className="w-3.5 h-3.5" />
+                              <span>Prescription & History</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleNavigate(`/pos?customerId=${c.id}`)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-500 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-teal-950 bg-teal-400 hover:bg-teal-500 transition-colors cursor-pointer"
                               title="Create New Bill in POS"
                             >
                               <Receipt className="w-3.5 h-3.5" />
@@ -279,7 +282,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
                               type="button"
                               onClick={() => handleNavigate(`/customers/${c.id}`)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-                              title="View Full Customer Directory Profile"
+                              title="View Full Patient Profile"
                             >
                               <ArrowRight className="w-4 h-4" />
                             </button>
@@ -297,7 +300,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
               <div>
                 <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2 px-1">
                   <FileText className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Store Spectacle Orders ({results.orders.length})</span>
+                  <span>Medical Bills & Orders ({results.orders.length})</span>
                 </div>
                 <div className="space-y-1.5">
                   {results.orders.map((o) => (
@@ -309,7 +312,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                          <Glasses className="w-4 h-4" />
+                          <Receipt className="w-4 h-4" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -346,50 +349,63 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
               </div>
             )}
 
-            {/* Inventory Matches */}
+            {/* Medicine Inventory Matches */}
             {results.items.length > 0 && (
               <div>
                 <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2 px-1">
                   <Package className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Optical Inventory & Products ({results.items.length})</span>
+                  <span>Medicines & Pharmacy Inventory ({results.items.length})</span>
                 </div>
                 <div className="space-y-1.5">
-                  {results.items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handleNavigate(`/inventory?search=${encodeURIComponent(item.model)}`)}
-                      className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-emerald-50/80 transition-colors group text-left border border-slate-200 hover:border-emerald-200 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                          <Package className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-700">
-                              {item.brand} {item.model}
-                            </p>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-slate-100 text-slate-700">
-                              {item.barcode}
-                            </span>
+                  {results.items.map((item) => {
+                    const expiry = getExpiryStatus(item.expiryDate);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleNavigate(`/inventory?search=${encodeURIComponent(item.name || item.brand)}`)}
+                        className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-emerald-50/80 transition-colors group text-left border border-slate-200 hover:border-emerald-200 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                            <Pill className="w-4 h-4" />
                           </div>
-                          <p className="text-[11px] text-slate-500">
-                            Type: {item.type} • Stock:{" "}
-                            <span className={item.stock_quantity <= item.min_alert_threshold ? "text-rose-600 font-bold" : "font-semibold text-slate-700"}>
-                              {item.stock_quantity} units
-                            </span>
-                          </p>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-700">
+                                {item.name || item.brand}
+                              </p>
+                              {item.batchNumber && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-slate-100 text-slate-700">
+                                  B: {item.batchNumber}
+                                </span>
+                              )}
+                              {item.expiryDate && (
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold border ${expiry.badgeClass}`}>
+                                  Exp: {item.expiryDate}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {item.genericSaltName && (
+                                <span className="font-medium text-slate-600 mr-2">{item.genericSaltName}</span>
+                              )}
+                              Rack: <span className="font-bold text-slate-700">{item.rackLocation || "General"}</span> • Stock:{" "}
+                              <span className={(item.stripQuantity || item.stock_quantity) <= (item.minStockAlert || item.min_alert_threshold) ? "text-rose-600 font-bold" : "font-semibold text-slate-700"}>
+                                {item.stripQuantity || item.stock_quantity} {item.packType || item.type || "strips"}
+                              </span>
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-right">
-                        <p className="text-xs font-bold font-mono text-emerald-700">
-                          {formatCurrency(item.selling_price)}
-                        </p>
-                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
-                      </div>
-                    </button>
-                  ))}
+                        <div className="flex items-center gap-2 text-right">
+                          <p className="text-xs font-bold font-mono text-emerald-700">
+                            {formatCurrency(item.saleRate || item.selling_price)}
+                          </p>
+                          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -398,7 +414,7 @@ export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
           {/* Footer Shortcuts */}
           <div className="px-5 py-3 bg-slate-100 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center gap-2">
-              <span>Quick Search: Type name or phone to find records immediately</span>
+              <span>Quick Search: Type patient name, mobile, or salt name to find records immediately</span>
             </div>
             <button
               type="button"

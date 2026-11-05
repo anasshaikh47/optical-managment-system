@@ -1,23 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Save, Check, Store, Receipt } from "lucide-react";
+import { Settings, Save, Check, Store, Receipt, Pill, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SettingsPage() {
   const { shopId, tenantFetch } = useAuth();
   const [settings, setSettings] = useState<any>({
-    storeName: "VisionPulse Eyewear Studio",
-    tagline: "Precision Clinical Optometry & Premium Eyewear",
+    storeName: "PharmaPulse Medical & POS",
+    tagline: "High-Efficiency Pharmacy & Prescription Dispensing ERP",
     phone: "+91 98201 12345",
-    email: "care@visionpulse.in",
-    address: "Shop 4 & 5, Galleria Arcade, Hiranandani Gardens, Powai, Mumbai - 400076",
+    email: "care@pharmapulse.in",
+    address: "Shop 4 & 5, Medical Arcade, Main Hospital Road, Powai, Mumbai - 400076",
     gstin: "27AABCV1234F1Z8",
+    dlNumber: "DL-20B/21B-458920",
+    pharmacistName: "Dr. Ramesh Joshi (Reg: RPh-98421)",
     currencySymbol: "₹",
     currencyCode: "INR",
     defaultGstRate: 12.0,
     receiptFooter:
-      "1-Year warranty against frame manufacturing defects. Spectacle power adaptation guarantee for 14 days. Thank you for choosing VisionPulse!",
+      "Medicines once sold will be exchanged within 7 days in original sealed pack with bill. Refrigerated products & loose tablets non-returnable. Store below 25°C. Keep out of reach of children.",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,29 +68,28 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-
       <div className="flex-1 overflow-y-auto p-3 sm:p-6 max-w-4xl w-full mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           {savedSuccess && (
             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600" />
-              <span>VisionPulse studio configuration successfully saved!</span>
+              <span>PharmaPulse pharmacy terminal settings successfully saved!</span>
             </div>
           )}
 
-          {/* Optical Studio Profile */}
+          {/* Pharmacy Identity & Drug License */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Store className="w-4 h-4 text-cyan-600" />
+              <Pill className="w-4 h-4 text-teal-600" />
               <h3 className="font-bold text-slate-800 text-sm">
-                Optical Studio Identity & GST Profile
+                Pharmacy Identity & Drug License Profile
               </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Optical Store Name
+                  Pharmacy / Store Name
                 </label>
                 <input
                   type="text"
@@ -115,7 +116,35 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Phone (WhatsApp / Call)
+                  Drug License Number (DL No)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. DL-20B/21B-458920"
+                  value={settings.dlNumber || ""}
+                  onChange={(e) => setSettings({ ...settings, dlNumber: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Pharmacist In-Charge & Reg No
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Dr. Ramesh Joshi (RPh-98421)"
+                  value={settings.pharmacistName || ""}
+                  onChange={(e) => setSettings({ ...settings, pharmacistName: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Phone (Helpline / WhatsApp)
                 </label>
                 <input
                   type="text"
@@ -140,7 +169,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Store Location / Physical Studio Address
+                Store Location / Physical Pharmacy Address
               </label>
               <input
                 type="text"
@@ -154,9 +183,9 @@ export default function SettingsPage() {
           {/* Tax & GST Settings */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Receipt className="w-4 h-4 text-blue-600" />
+              <Receipt className="w-4 h-4 text-teal-600" />
               <h3 className="font-bold text-slate-800 text-sm">
-                Financials, GST Rates & Invoice Terms
+                Financials, Pharma GST Rates & Invoice Terms
               </h3>
             </div>
 
@@ -175,11 +204,11 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
-                  Default Optical GST Rate (%)
+                  Default Medicine GST Rate (%)
                 </label>
                 <input
                   type="number"
-                  step="0.5"
+                  step="1"
                   value={settings.defaultGstRate ?? 12.0}
                   onChange={(e) =>
                     setSettings({ ...settings, defaultGstRate: parseFloat(e.target.value) || 0 })
@@ -203,7 +232,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Receipt & Job Slip Warranty Notes
+                Medical Bill & Cash Memo Disclaimer Terms
               </label>
               <textarea
                 rows={3}
@@ -219,10 +248,10 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs transition-all disabled:opacity-50 active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-xs transition-all disabled:opacity-50 active:scale-[0.98] cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>{saving ? "Saving Changes..." : "Save Store Configuration"}</span>
+              <span>{saving ? "Saving Changes..." : "Save Pharmacy Configuration"}</span>
             </button>
           </div>
         </form>

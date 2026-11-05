@@ -15,14 +15,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Optical Store ERP & POS | VisionPulse",
+  title: "PharmaPulse POS & ERP - Pharmacy Terminal",
   description:
-    "Optical Store Management, Billing & POS System - Precision Optometry, Lab Jobs, Stock Control & Tax Invoicing",
+    "PharmaPulse Medical & Pharmacy Store Management System - Rapid Salt & Brand Search, Expiry Management, Strip vs Loose Tablet POS Billing, and Doctor Rx Registry.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "OpticalPOS",
+    title: "PharmaPulse",
   },
   icons: {
     icon: [

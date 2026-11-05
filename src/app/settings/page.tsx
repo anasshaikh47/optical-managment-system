@@ -219,7 +219,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-md shadow-cyan-600/20 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs transition-all disabled:opacity-50 active:scale-[0.98] cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>{saving ? "Saving Changes..." : "Save Store Configuration"}</span>

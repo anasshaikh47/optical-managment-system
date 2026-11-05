@@ -25,16 +25,16 @@ interface HeaderProps {
 
 export function Header({ children }: HeaderProps) {
   const { openNewCustomerModal, openQuickSearchModal, openMobileSyncModal, toggleSidebar } = useAppUi();
-  const { userDisplayName } = useAuth();
+  const { userDisplayName, userAvatarUrl } = useAuth();
 
   return (
     <header className="bg-white border-b border-slate-200 flex flex-col flex-shrink-0 z-20 shadow-xs select-none">
       {/* ======================================================== */}
-      {/* 1. UPPER ROW - PRIMARY PROMINENT LARGE ACTION BUTTONS    */}
+      {/* 1. UPPER ROW - CLEAN MOBILE & DESKTOP HEADER             */}
       {/* ======================================================== */}
-      <div className="px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+      <div className="px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3">
         {/* Left Side: Hamburger Menu (Mobile) + Shop Branding */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           {/* Mobile Hamburger Menu Button */}
           <button
             type="button"
@@ -46,47 +46,60 @@ export function Header({ children }: HeaderProps) {
             <Menu className="w-5 h-5 stroke-[2.2]" />
           </button>
 
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-slate-950 via-slate-900 to-cyan-950 text-cyan-400 flex items-center justify-center shadow-sm border border-slate-700/60 shrink-0">
-            <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 stroke-[2.4]" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900 text-cyan-400 flex items-center justify-center border border-slate-800 shrink-0">
+            <Eye className="w-5 h-5 text-cyan-400 stroke-[2.4]" />
           </div>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-none truncate">
-                {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
-              </h2>
-            </div>
+            <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-none truncate">
+              {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
+            </h2>
             <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate mt-0.5 hidden xs:block">
-              {userDisplayName ? `Welcome, ${userDisplayName}! Counter Active` : "Welcome back! Manage your shop efficiently"}
+              {userDisplayName ? `Active Counter • ${userDisplayName}` : "Counter Terminal Active"}
             </p>
           </div>
         </div>
 
-        {/* Center / Right: 4 Action Buttons with Responsive Padding & Wrapping */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 flex-wrap">
+        {/* Mobile-Only Avatar Quick Indicator */}
+        <div className="md:hidden flex items-center gap-2">
+          {userAvatarUrl ? (
+            <img
+              src={userAvatarUrl}
+              alt={userDisplayName || "Avatar"}
+              className="w-8 h-8 rounded-full border border-slate-200 object-cover"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-slate-900 text-cyan-400 flex items-center justify-center font-bold text-xs border border-slate-800">
+              {userDisplayName
+                ? userDisplayName[0].toUpperCase()
+                : "V"}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop-Only Action Buttons */}
+        <div className="hidden md:flex items-center gap-2 lg:gap-2.5">
           {/* [ + New Customer ] */}
           <button
             type="button"
             onClick={openNewCustomerModal}
-            className="px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-bold text-xs sm:text-sm text-slate-800 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-blue-500 shadow-xs flex items-center gap-1.5 sm:gap-2.5 transition-all hover:shadow-sm active:scale-[0.98] cursor-pointer"
+            className="px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 shadow-xs flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
             title="Register new patient / customer immediately"
           >
-            <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 stroke-[2.4]" />
-            <span className="hidden sm:inline">+ New Customer</span>
-            <span className="sm:hidden font-bold">+ Customer</span>
+            <UserPlus className="w-4 h-4 text-blue-600 stroke-[2.2]" />
+            <span>+ New Customer</span>
           </button>
 
           {/* [ 🔍 Search Record (Ctrl+K) ] */}
           <button
             type="button"
             onClick={openQuickSearchModal}
-            className="px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-bold text-xs sm:text-sm text-slate-700 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 hover:border-slate-300 shadow-xs flex items-center gap-1.5 sm:gap-2.5 transition-all active:scale-[0.98] cursor-pointer group"
+            className="px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 shadow-xs flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer group"
             title="Search customer phone, name, or bill no (Ctrl+K)"
           >
-            <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 group-hover:text-slate-800 stroke-[2.2]" />
-            <span className="hidden sm:inline">Search Record</span>
-            <span className="sm:hidden">Search</span>
-            <kbd className="hidden lg:inline-block px-2 py-0.5 text-[11px] font-mono font-bold bg-white border border-slate-300 rounded text-slate-600 shadow-2xs">
+            <Search className="w-4 h-4 text-slate-500 group-hover:text-slate-800 stroke-[2.2]" />
+            <span>Search Record</span>
+            <kbd className="hidden lg:inline-block px-1.5 py-0.2 text-[10px] font-mono font-bold bg-white border border-slate-300 rounded text-slate-600 shadow-2xs">
               Ctrl+K
             </kbd>
           </button>
@@ -94,22 +107,21 @@ export function Header({ children }: HeaderProps) {
           {/* [ 📦 Inventory ] */}
           <Link
             href="/inventory"
-            className="hidden sm:flex px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-bold text-xs sm:text-sm text-slate-800 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-indigo-400 shadow-xs items-center gap-1.5 sm:gap-2.5 transition-all hover:shadow-sm active:scale-[0.98] cursor-pointer"
+            className="px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 shadow-xs flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
             title="Manage Frames, Lenses & Barcodes"
           >
-            <Package className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 stroke-[2.4]" />
-            <span className="hidden xs:inline">Inventory</span>
+            <Package className="w-4 h-4 text-indigo-600 stroke-[2.2]" />
+            <span>Inventory</span>
           </Link>
 
           {/* [ ⚡ POS Terminal / New Bill ] */}
           <Link
             href="/pos"
-            className="hidden sm:flex px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-3.5 rounded-xl font-black text-xs sm:text-sm text-amber-950 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 border-2 border-amber-500/50 shadow-md shadow-amber-400/25 items-center gap-1.5 sm:gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
             title="Open Optical POS Billing Screen"
           >
-            <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-amber-950 text-amber-950 stroke-[2.5]" />
-            <span className="hidden sm:inline tracking-tight">⚡ POS Terminal / New Bill</span>
-            <span className="sm:hidden tracking-tight font-black">POS</span>
+            <Zap className="w-4 h-4 text-white stroke-[2.4]" />
+            <span>POS Billing</span>
           </Link>
         </div>
       </div>

@@ -125,7 +125,7 @@ export function InstallPwaModal({
               <button
                 type="button"
                 onClick={onInstall}
-                className="w-full py-3 rounded-xl font-black text-xs text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-md shadow-cyan-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                className="w-full py-3 rounded-xl font-bold text-xs text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
               >
                 <Download className="w-4 h-4 stroke-[2.5]" />
                 <span>Install Native Optical POS App</span>

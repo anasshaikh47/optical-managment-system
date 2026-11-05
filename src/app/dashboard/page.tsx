@@ -16,14 +16,19 @@ import {
   Package,
   Layers,
   Sparkles,
+  UserPlus,
+  Search,
+  Zap,
 } from "lucide-react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useAppUi } from "@/context/AppUiContext";
 
 export default function DashboardPage() {
   const { shopId, tenantFetch } = useAuth();
+  const { openNewCustomerModal, openQuickSearchModal } = useAppUi();
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
@@ -89,7 +94,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50 p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50 p-3 sm:p-4 lg:p-6 pb-28 sm:pb-32 lg:pb-12 space-y-4 sm:space-y-6">
       {/* Toast Feedback */}
       {whatsappToast && (
         <div className="fixed top-20 right-4 sm:right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xl animate-in slide-in-from-top-2">
@@ -99,7 +104,96 @@ export default function DashboardPage() {
       )}
 
       {/* ======================================================== */}
-      {/* 1. TOP 4 CLEAR METRIC CARDS                              */}
+      {/* SECTION 1: 4 QUICK ACTION CARDS (2x2 Grid)              */}
+      {/* ======================================================== */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Card 1: + Add Customer */}
+        <button
+          type="button"
+          onClick={openNewCustomerModal}
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
+        >
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 mb-3 group-hover:scale-105 transition-transform">
+            <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+              + Add Customer
+            </h4>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
+              Patient checkup & Rx
+            </p>
+          </div>
+        </button>
+
+        {/* Card 2: Search Record */}
+        <button
+          type="button"
+          onClick={openQuickSearchModal}
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
+        >
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200 mb-3 group-hover:scale-105 transition-transform">
+            <Search className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+              Search Record
+            </h4>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
+              Find bills & past Rx
+            </p>
+          </div>
+        </button>
+
+        {/* Card 3: Inventory Stock */}
+        <Link
+          href="/inventory"
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
+        >
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 mb-3 group-hover:scale-105 transition-transform">
+            <Package className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+              Inventory Stock
+            </h4>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
+              Frames & power lenses
+            </p>
+          </div>
+        </Link>
+
+        {/* Card 4: Create Bill / POS (Highlighted active accent) */}
+        <Link
+          href="/pos"
+          className="bg-cyan-700 hover:bg-cyan-800 text-white p-4 sm:p-5 rounded-2xl border border-cyan-600 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
+        >
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/15 text-white flex items-center justify-center border border-white/20 mb-3 group-hover:scale-105 transition-transform">
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.4]" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <h4 className="font-black text-white text-sm sm:text-base leading-tight">
+                Create Bill / POS
+              </h4>
+              <span className="text-[9px] font-mono font-bold uppercase bg-white/20 text-white px-1.5 py-0.5 rounded">
+                Instant
+              </span>
+            </div>
+            <p className="text-[11px] sm:text-xs text-cyan-100 font-medium mt-0.5">
+              Fast counter billing
+            </p>
+          </div>
+        </Link>
+      </div>
+
+      {/* ======================================================== */}
+      {/* SECTION 2: SALES BREAKDOWN DONUT CHART                   */}
+      {/* ======================================================== */}
+      <DashboardCharts analytics={data?.analytics} />
+
+      {/* ======================================================== */}
+      {/* SECTION 3: METRIC SUMMARY CARDS                          */}
       {/* ======================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Today's Sales */}
@@ -178,11 +272,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* ======================================================== */}
-      {/* 2. CENTER VISUAL: SINGLE CIRCULAR DONUT GRAPH           */}
-      {/* ======================================================== */}
-      <DashboardCharts analytics={data?.analytics} />
 
       {/* ======================================================== */}
       {/* 3. RECENT CUSTOMER ORDERS & GLASSES STATUS TABLE         */}

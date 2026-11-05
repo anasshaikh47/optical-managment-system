@@ -124,16 +124,12 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#070D1E] flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden select-none">
-      {/* Ambient background glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-tr from-cyan-600/15 via-blue-600/10 to-indigo-600/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
+    <div className="min-h-screen w-full bg-slate-950 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden select-none">
       {/* Main Container */}
       <div className="w-full max-w-md relative z-10">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-slate-900 via-slate-800 to-cyan-900 border border-cyan-500/30 text-cyan-400 shadow-xl shadow-cyan-950/50 mb-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 text-cyan-400 mb-3 shadow-xs">
             <Eye className="w-8 h-8 stroke-[2.2]" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">
@@ -145,9 +141,9 @@ function LoginContent() {
         </div>
 
         {/* Auth Card */}
-        <div className="bg-[#0D152D]/90 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-2xl p-6 sm:p-7">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6 sm:p-7">
           {/* Sign In / Sign Up Tab Switcher */}
-          <div className="grid grid-cols-2 p-1 bg-[#080E21] border border-slate-800/80 rounded-xl mb-6">
+          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-xl mb-6">
             <button
               type="button"
               onClick={() => {
@@ -157,7 +153,7 @@ function LoginContent() {
               }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 activeTab === "signin"
-                  ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/25"
+                  ? "bg-slate-800 text-white border border-slate-700/80 shadow-xs"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -172,7 +168,7 @@ function LoginContent() {
               }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 activeTab === "signup"
-                  ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/25"
+                  ? "bg-slate-800 text-white border border-slate-700/80 shadow-xs"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -218,7 +214,7 @@ function LoginContent() {
               <div className="w-full border-t border-slate-800" />
             </div>
             <div className="relative flex justify-center text-[10px] uppercase">
-              <span className="bg-[#0D152D] px-2 text-slate-500 font-semibold tracking-wider">
+              <span className="bg-slate-900 px-2 text-slate-500 font-semibold tracking-wider">
                 or continue with email
               </span>
             </div>
@@ -321,7 +317,7 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isSubmitting || googleLoading}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-cyan-600/30 transition-all active:scale-[0.99] cursor-pointer disabled:opacity-70 disabled:pointer-events-none"
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-xs sm:text-sm border border-cyan-600 shadow-xs transition-all active:scale-[0.99] cursor-pointer disabled:opacity-70 disabled:pointer-events-none"
             >
               {isSubmitting ? (
                 <>

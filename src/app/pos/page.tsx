@@ -1915,9 +1915,10 @@ We will message you the moment your glasses pass optical lab inspection!`;
 
   {/* ======================================================== */}
   {/* SECTION 6: BOTTOM STICKY CHECKOUT BAR (Mobile & Tablet)  */}
+  {/* (Positioned at bottom-16 to sit cleanly above BottomNav) */}
   {/* ======================================================== */}
   const renderStickyCheckoutBar = () => (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3 lg:hidden">
+    <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 lg:hidden">
       <div className="min-w-0">
         <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
           <span>Net Payable</span>
@@ -1935,9 +1936,9 @@ We will message you the moment your glasses pass optical lab inspection!`;
           <button
             type="button"
             onClick={scrollToCheckout}
-            className="py-2.5 px-5 rounded-xl font-black text-xs sm:text-sm text-amber-950 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-500 hover:to-yellow-500 border border-amber-500/50 shadow-md shadow-amber-400/25 flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
+            className="py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
           >
-            <Zap className="w-4 h-4 fill-amber-950 text-amber-950" />
+            <Zap className="w-4 h-4 text-white" />
             <span>Proceed to Bill</span>
           </button>
         ) : (
@@ -1955,7 +1956,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
   );
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 flex flex-col pb-32 sm:pb-36 lg:pb-16 overflow-y-auto">
+    <div className="min-h-screen w-full bg-slate-100 flex flex-col pb-36 sm:pb-40 lg:pb-16 overflow-y-auto">
       {/* Barcode Flash Toast Feedback */}
       {barcodeFeedback && (
         <div

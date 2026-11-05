@@ -63,8 +63,9 @@ model Prescription {
 
 model InventoryItem {
   id                  String      @id @default(uuid())
-  sku                 String      @unique
-  barcode             String?     @unique
+  shopId              String      @default("default")
+  sku                 String
+  barcode             String?
   type                String      // 'FRAME' | 'LENS' | 'CONTACT_LENS' | 'ACCESSORY'
   brand               String
   model               String?
@@ -81,11 +82,14 @@ model InventoryItem {
   orderItems          OrderItem[]
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
+
+  @@index([shopId])
 }
 
 model Order {
   id               String        @id @default(uuid())
   bill_no          String        @unique // e.g. "VP-2026-0001"
+  shopId           String        @default("default")
   customerId       String
   customer         Customer      @relation(fields: [customerId], references: [id])
   prescriptionId   String?
@@ -104,20 +108,22 @@ model Order {
   payments         Payment[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+
+  @@index([shopId])
 }
 
 model OrderItem {
-  id              String        @id @default(uuid())
+  id              String         @id @default(uuid())
   orderId         String
-  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  itemId          String
-  item            InventoryItem @relation(fields: [itemId], references: [id])
-  quantity        Int           @default(1)
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId          String?
+  item            InventoryItem? @relation(fields: [itemId], references: [id])
+  quantity        Int            @default(1)
   unit_price      Float
-  coating_charges Float         @default(0)
-  fitting_charges Float         @default(0)
-  subtotal        Float         // (unit_price * quantity) + coating_charges + fitting_charges
-  createdAt       DateTime      @default(now())
+  coating_charges Float          @default(0)
+  fitting_charges Float          @default(0)
+  subtotal        Float          // (unit_price * quantity) + coating_charges + fitting_charges
+  createdAt       DateTime       @default(now())
 }
 
 model Payment {

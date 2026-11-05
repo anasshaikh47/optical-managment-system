@@ -28,7 +28,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 export default function InventoryPage() {
-  const { shopId, tenantFetch } = useAuth();
+  const { shopId, tenantFetch, loading: authLoading } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState("ALL");
@@ -59,19 +59,26 @@ export default function InventoryPage() {
   const [bulkDeleteSubmitting, setBulkDeleteSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchItems();
-  }, [shopId]);
+    if (!authLoading) {
+      fetchItems();
+    }
+  }, [shopId, authLoading]);
 
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const res = await tenantFetch("/api/products");
+      const res = await tenantFetch("/api/inventory");
       const json = await res.json();
       if (json.success) {
-        setItems(json.data);
+        console.log("Fetched persisted inventory count:", json.data?.length);
+        setItems(json.data || []);
+      } else {
+        console.error("Failed to fetch persisted inventory:", json.error);
+        setItems([]);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching inventory items:", e);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -91,13 +98,13 @@ export default function InventoryPage() {
     setAdjustSubmitting(true);
 
     try {
-      const res = await tenantFetch(`/api/products/${adjustingItem.id}`, {
+      const res = await tenantFetch(`/api/inventory/${adjustingItem.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stock_quantity: newStock }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setItems((prev) =>
           prev.map((p) => (p.id === adjustingItem.id ? { ...p, stock_quantity: newStock } : p))
         );
@@ -106,9 +113,12 @@ export default function InventoryPage() {
         );
         setTimeout(() => setAdjustmentToast(null), 4000);
         setAdjustingItem(null);
+      } else {
+        alert(data.error || "Failed to update stock in database");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e.message || "Failed to update stock in database");
     } finally {
       setAdjustSubmitting(false);
     }
@@ -120,11 +130,11 @@ export default function InventoryPage() {
     setDeleteSubmitting(true);
 
     try {
-      const res = await tenantFetch(`/api/products/${deletingItem.id}`, {
+      const res = await tenantFetch(`/api/inventory/${deletingItem.id}`, {
         method: "DELETE",
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setAdjustmentToast(
           `Item "${deletingItem.brand} - ${deletingItem.model || deletingItem.sku}" removed from catalog.`
         );
@@ -132,9 +142,12 @@ export default function InventoryPage() {
         setSelectedItemIds((prev) => prev.filter((id) => id !== deletingItem.id));
         setDeletingItem(null);
         fetchItems();
+      } else {
+        alert(data.error || "Failed to delete item from database");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e.message || "Failed to delete item from database");
     } finally {
       setDeleteSubmitting(false);
     }
@@ -146,21 +159,24 @@ export default function InventoryPage() {
     setBulkDeleteSubmitting(true);
 
     try {
-      const res = await tenantFetch("/api/products", {
+      const res = await tenantFetch("/api/inventory", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedItemIds }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setAdjustmentToast(`Successfully deleted ${selectedItemIds.length} item(s) from inventory.`);
         setTimeout(() => setAdjustmentToast(null), 4000);
         setSelectedItemIds([]);
         setIsBulkDeleteModalOpen(false);
         fetchItems();
+      } else {
+        alert(data.error || "Failed to delete items from database");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(e.message || "Failed to delete items from database");
     } finally {
       setBulkDeleteSubmitting(false);
     }
@@ -345,12 +361,49 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr>
-                    <td colSpan={11} className="p-8 text-center text-slate-400">
-                      Loading inventory records...
-                    </td>
-                  </tr>
+                {authLoading || loading ? (
+                  <>
+                    {[...Array(6)].map((_, i) => (
+                      <tr key={`skeleton-${i}`} className="animate-pulse">
+                        <td className="p-3.5 text-center">
+                          <div className="w-4 h-4 bg-slate-200 rounded mx-auto" />
+                        </td>
+                        <td className="p-3.5">
+                          <div className="w-10 h-10 bg-slate-200 rounded-lg" />
+                        </td>
+                        <td className="p-3.5 space-y-1.5">
+                          <div className="w-24 h-3.5 bg-slate-200 rounded" />
+                          <div className="w-16 h-2.5 bg-slate-100 rounded" />
+                        </td>
+                        <td className="p-3.5 space-y-1.5">
+                          <div className="w-32 h-3.5 bg-slate-200 rounded" />
+                          <div className="w-20 h-2.5 bg-slate-100 rounded" />
+                        </td>
+                        <td className="p-3.5 space-y-1.5">
+                          <div className="w-24 h-3.5 bg-slate-200 rounded" />
+                          <div className="w-16 h-2.5 bg-slate-100 rounded" />
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <div className="w-16 h-3.5 bg-slate-200 rounded ml-auto" />
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <div className="w-16 h-3.5 bg-slate-200 rounded ml-auto" />
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <div className="w-12 h-3.5 bg-slate-200 rounded ml-auto" />
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <div className="w-14 h-5 bg-slate-200 rounded-full mx-auto" />
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <div className="w-16 h-6 bg-slate-200 rounded mx-auto" />
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <div className="w-16 h-6 bg-slate-200 rounded mx-auto" />
+                        </td>
+                      </tr>
+                    ))}
+                  </>
                 ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="p-12 text-center text-slate-500">

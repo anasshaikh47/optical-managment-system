@@ -1,23 +1,36 @@
 import { NextResponse } from "next/server";
 import { getShopIdFromRequest, loadTenantState } from "@/lib/tenant/store";
+import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
   try {
     const shopId = getShopIdFromRequest(request);
     const tenant = loadTenantState(shopId);
 
+    let inventoryItems = tenant.inventory;
+    try {
+      const dbItems = await prisma.inventoryItem.findMany({ where: { shopId } });
+      if (dbItems.length > 0 || inventoryItems.length === 0) {
+        inventoryItems = dbItems.map((it) => ({
+          ...it,
+          createdAt: it.createdAt.toISOString(),
+          updatedAt: it.updatedAt.toISOString(),
+        }));
+      }
+    } catch {
+      // fallback to memory
+    }
+
     const orders = tenant.orders.map((o) => {
       const customer = tenant.customers.find((c) => c.id === o.customerId);
       const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
       const items = o.items.map((it) => ({
         ...it,
-        item: tenant.inventory.find((inv) => inv.id === it.itemId),
+        item: inventoryItems.find((inv) => inv.id === it.itemId) || tenant.inventory.find((inv) => inv.id === it.itemId),
       }));
       const payments = tenant.payments.filter((p) => p.orderId === o.id);
       return { ...o, customer, prescription, items, payments };
     });
-
-    const inventoryItems = tenant.inventory;
     const customers = tenant.customers;
     const payments = tenant.payments;
     const settings = tenant.settings;

@@ -27,7 +27,7 @@ export function EditProductModal({
   onClose,
   onSuccess,
 }: EditProductModalProps) {
-  const { tenantFetch } = useAuth();
+  const { shopId, tenantFetch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -181,7 +181,7 @@ export function EditProductModal({
     setError(null);
 
     try {
-      const res = await tenantFetch(`/api/products/${product.id}`, {
+      const res = await tenantFetch(`/api/inventory/${product.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -198,18 +198,20 @@ export function EditProductModal({
           gst_rate: parseFloat(formData.gst_rate) || 12.0,
           image_url: formData.image_url || null,
           barcode: formData.barcode.trim() || null,
+          shopId,
+          userId: shopId,
         }),
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         onSuccess(data.data);
         onClose();
       } else {
-        setError(data.error || "Failed to update inventory item");
+        setError(data.error || "Failed to permanently update inventory item in database");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred while updating product");
+      setError(err.message || "An error occurred while communicating with the database");
     } finally {
       setSubmitting(false);
     }

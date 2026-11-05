@@ -180,21 +180,21 @@ export function AddProductModal({
     setError(null);
 
     try {
-      const res = await tenantFetch("/api/products", {
+      const res = await tenantFetch("/api/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, shopId, userId: shopId }),
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         onSuccess(data.data);
         onClose();
       } else {
-        setError(data.error || "Failed to add inventory item");
+        setError(data.error || "Failed to permanently save inventory item to database.");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred");
+      setError(err.message || "An error occurred while connecting to the database.");
     } finally {
       setSubmitting(false);
     }

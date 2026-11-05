@@ -5,6 +5,7 @@ import {
   saveTenantState,
   TenantInventoryItem,
 } from "@/lib/tenant/store";
+import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
   try {
@@ -14,30 +15,67 @@ export async function GET(request: Request) {
     const lowStock = searchParams.get("lowStock");
     const shopId = getShopIdFromRequest(request);
 
-    const tenant = loadTenantState(shopId);
-    let items = [...tenant.inventory];
+    try {
+      const where: any = { shopId };
 
-    if (type && type !== "ALL") {
-      items = items.filter((p) => p.type === type);
+      if (type && type !== "ALL") {
+        where.type = type;
+      }
+
+      if (query && query.trim()) {
+        const q = query.trim();
+        where.OR = [
+          { brand: { contains: q, mode: "insensitive" } },
+          { model: { contains: q, mode: "insensitive" } },
+          { sku: { contains: q, mode: "insensitive" } },
+          { barcode: { contains: q, mode: "insensitive" } },
+          { color: { contains: q, mode: "insensitive" } },
+        ];
+      }
+
+      const dbItems = await prisma.inventoryItem.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+      });
+
+      let items: any[] = dbItems.map((item) => ({
+        ...item,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+      }));
+
+      if (lowStock === "true") {
+        items = items.filter((p) => p.stock_quantity <= p.min_alert_threshold);
+      }
+
+      return NextResponse.json({ success: true, data: items });
+    } catch (dbError: any) {
+      console.warn("Prisma GET inventory error, using cache fallback:", dbError.message);
+      const tenant = loadTenantState(shopId);
+      let items = [...tenant.inventory];
+
+      if (type && type !== "ALL") {
+        items = items.filter((p) => p.type === type);
+      }
+
+      if (query) {
+        const q = query.toLowerCase();
+        items = items.filter(
+          (p) =>
+            p.brand.toLowerCase().includes(q) ||
+            (p.model && p.model.toLowerCase().includes(q)) ||
+            p.sku.toLowerCase().includes(q) ||
+            (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+            (p.color && p.color.toLowerCase().includes(q))
+        );
+      }
+
+      if (lowStock === "true") {
+        items = items.filter((p) => p.stock_quantity <= p.min_alert_threshold);
+      }
+
+      return NextResponse.json({ success: true, data: items });
     }
-
-    if (query) {
-      const q = query.toLowerCase();
-      items = items.filter(
-        (p) =>
-          p.brand.toLowerCase().includes(q) ||
-          (p.model && p.model.toLowerCase().includes(q)) ||
-          p.sku.toLowerCase().includes(q) ||
-          (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-          (p.color && p.color.toLowerCase().includes(q))
-      );
-    }
-
-    if (lowStock === "true") {
-      items = items.filter((p) => p.stock_quantity <= p.min_alert_threshold);
-    }
-
-    return NextResponse.json({ success: true, data: items });
   } catch (error: any) {
     console.error("Error fetching inventory items:", error);
     return NextResponse.json(
@@ -68,52 +106,72 @@ export async function POST(request: Request) {
       image_url,
     } = body;
 
-    if (!sku || !brand || !selling_price) {
+    if (!sku || !brand || selling_price === undefined || selling_price === "") {
       return NextResponse.json(
         { success: false, error: "SKU, Brand, and Selling Price are required" },
         { status: 400 }
       );
     }
 
-    const tenant = loadTenantState(shopId);
-    const existing = tenant.inventory.find((i) => i.sku.toLowerCase() === sku.toLowerCase());
+    const cleanSku = String(sku).trim();
+    const cleanBrand = String(brand).trim();
+
+    // Check duplicate SKU for this shop in database
+    const existing = await prisma.inventoryItem.findFirst({
+      where: {
+        shopId,
+        sku: { equals: cleanSku, mode: "insensitive" },
+      },
+    });
+
     if (existing) {
       return NextResponse.json(
-        { success: false, error: `Item with SKU "${sku}" already exists` },
+        { success: false, error: `Item with SKU "${cleanSku}" already exists in your store inventory.` },
         { status: 409 }
       );
     }
 
-    const now = new Date().toISOString();
-    const newItem: TenantInventoryItem = {
-      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-      sku,
-      barcode: barcode || null,
-      type,
-      brand,
-      model: model || null,
-      color: color || null,
-      size: size || null,
-      lens_index: lens_index || null,
-      cost_price: parseFloat(cost_price) || 0,
-      selling_price: parseFloat(selling_price) || 0,
-      gst_rate: parseFloat(gst_rate) || 12.0,
-      stock_quantity: parseInt(stock_quantity, 10) || 0,
-      min_alert_threshold: parseInt(min_alert_threshold, 10) || 5,
-      image_url: image_url || null,
-      shopId,
-      createdAt: now,
-      updatedAt: now,
+    const newItem = await prisma.inventoryItem.create({
+      data: {
+        sku: cleanSku,
+        barcode: barcode ? String(barcode).trim() : null,
+        type: type || "FRAME",
+        brand: cleanBrand,
+        model: model ? String(model).trim() : null,
+        color: color ? String(color).trim() : null,
+        size: size ? String(size).trim() : null,
+        lens_index: lens_index ? String(lens_index).trim() : null,
+        cost_price: parseFloat(cost_price) || 0,
+        selling_price: parseFloat(selling_price) || 0,
+        gst_rate: parseFloat(gst_rate) || 12.0,
+        stock_quantity: parseInt(stock_quantity, 10) || 0,
+        min_alert_threshold: parseInt(min_alert_threshold, 10) || 5,
+        image_url: image_url || null,
+        shopId,
+      },
+    });
+
+    const serializedItem = {
+      ...newItem,
+      createdAt: newItem.createdAt.toISOString(),
+      updatedAt: newItem.updatedAt.toISOString(),
     };
 
-    tenant.inventory.unshift(newItem);
-    saveTenantState(tenant);
+    // Keep tenant cache synced
+    try {
+      const tenant = loadTenantState(shopId);
+      tenant.inventory = tenant.inventory.filter((i) => i.id !== newItem.id && i.sku !== newItem.sku);
+      tenant.inventory.unshift(serializedItem);
+      saveTenantState(tenant);
+    } catch {
+      // cache sync only
+    }
 
-    return NextResponse.json({ success: true, data: newItem }, { status: 201 });
+    return NextResponse.json({ success: true, data: serializedItem }, { status: 201 });
   } catch (error: any) {
-    console.error("Error creating item:", error);
+    console.error("Error creating inventory item:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to create inventory item" },
+      { success: false, error: error.message || "Failed to create inventory item in database" },
       { status: 500 }
     );
   }
@@ -132,18 +190,28 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const tenant = loadTenantState(shopId);
-    tenant.inventory = tenant.inventory.filter((item) => !ids.includes(item.id));
-    saveTenantState(tenant);
+    await prisma.inventoryItem.deleteMany({
+      where: {
+        id: { in: ids },
+        shopId,
+      },
+    });
+
+    // Update tenant cache
+    try {
+      const tenant = loadTenantState(shopId);
+      tenant.inventory = tenant.inventory.filter((item) => !ids.includes(item.id));
+      saveTenantState(tenant);
+    } catch {}
 
     return NextResponse.json({
       success: true,
-      message: `Successfully deleted ${ids.length} inventory item(s)`,
+      message: `Successfully deleted ${ids.length} inventory item(s) from database`,
     });
   } catch (error: any) {
     console.error("Error bulk deleting items:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to delete inventory items" },
+      { success: false, error: error.message || "Failed to delete inventory items from database" },
       { status: 500 }
     );
   }

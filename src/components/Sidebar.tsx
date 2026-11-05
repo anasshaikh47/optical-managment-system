@@ -98,7 +98,7 @@ export function Sidebar() {
       {isSidebarOpen && (
         <div
           onClick={closeSidebar}
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-[60] md:hidden animate-in fade-in duration-200"
           aria-hidden="true"
         />
       )}
@@ -106,11 +106,11 @@ export function Sidebar() {
       {/* Sidebar Container: Off-canvas drawer on mobile, static on desktop */}
       <aside
         className={cn(
-          "bg-slate-900 text-slate-200 flex flex-col border-r border-slate-800 select-none shadow-xl transition-transform duration-300 ease-in-out",
-          // Mobile Drawer styling
-          "fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw]",
+          "bg-slate-900 text-slate-200 flex flex-col border-r border-slate-800 select-none shadow-2xl transition-transform duration-300 ease-in-out",
+          // Mobile Drawer styling: z-[60], full viewport height
+          "fixed inset-y-0 left-0 z-[60] w-72 max-w-[85vw] h-screen h-[100dvh] overflow-hidden",
           // Desktop styling
-          "md:static md:w-64 md:translate-x-0 md:z-30 md:flex-shrink-0",
+          "md:static md:w-64 md:translate-x-0 md:z-30 md:flex-shrink-0 md:h-full",
           // State transition
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
@@ -118,7 +118,7 @@ export function Sidebar() {
         {/* ======================================================== */}
         {/* TOP CARD: Shop logo with "Workspace Live" badge          */}
         {/* ======================================================== */}
-        <div className="p-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 shrink-0">
               <Eye className="w-5 h-5 stroke-[2.2]" />
@@ -204,7 +204,7 @@ export function Sidebar() {
         {/* ======================================================== */}
         {/* BOTTOM SECTION                                           */}
         {/* ======================================================== */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/90 space-y-2.5">
+        <div className="p-3 pb-8 md:pb-3 border-t border-slate-800 bg-slate-950/90 space-y-2.5 shrink-0">
           {/* Native PWA Install App Action */}
           <InstallPwaButton variant="sidebar" />
 

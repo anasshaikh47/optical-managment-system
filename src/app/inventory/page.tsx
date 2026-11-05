@@ -260,7 +260,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 pb-16 md:pb-6 space-y-4">
+      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 pb-24 md:pb-6 space-y-4">
         {/* Controls Bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="relative w-full md:w-80">
@@ -315,7 +315,7 @@ export default function InventoryPage() {
 
         {/* Inventory Table */}
         <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto w-full">
+          <div className="flex-1 overflow-auto w-full pb-24 md:pb-0">
             <table className="w-full min-w-[850px] text-xs text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold sticky top-0 z-10">
                 <tr>

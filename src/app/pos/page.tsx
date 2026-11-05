@@ -1933,10 +1933,10 @@ We will message you the moment your glasses pass optical lab inspection!`;
 
   {/* ======================================================== */}
   {/* SECTION 6: BOTTOM STICKY CHECKOUT BAR (Mobile & Tablet)  */}
-  {/* (Positioned at bottom-14 to sit cleanly above BottomNav) */}
+  {/* (Positioned at bottom-16 to sit cleanly above BottomNav) */}
   {/* ======================================================== */}
   const renderStickyCheckoutBar = () => (
-    <div className="fixed bottom-14 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 lg:hidden">
+    <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 lg:hidden">
       <div className="min-w-0">
         <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
           <span>Net Payable</span>
@@ -1974,7 +1974,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
   );
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 flex flex-col pb-32 sm:pb-36 lg:pb-16 overflow-y-auto">
+    <div className="min-h-screen w-full bg-slate-100 flex flex-col pb-36 sm:pb-40 lg:pb-24 overflow-y-auto">
       {/* Barcode Flash Toast Feedback */}
       {barcodeFeedback && (
         <div

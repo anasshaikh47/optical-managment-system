@@ -18,11 +18,13 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useAppUi } from "@/context/AppUiContext";
 import { cn } from "@/lib/utils";
 
 export function BottomNav() {
   const pathname = usePathname();
   const { user, userDisplayName, userEmail, userAvatarUrl, signOut } = useAuth();
+  const { isSidebarOpen } = useAppUi();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // If on login or auth callback, do not render bottom navigation
@@ -76,7 +78,10 @@ export function BottomNav() {
       {/* ======================================================== */}
       <nav
         aria-label="Mobile Navigation"
-        className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 h-14 md:hidden flex items-center justify-around px-2 py-1.5 shadow-2xl select-none"
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-lg border-t border-slate-800/80 h-16 pb-1 pt-1.5 md:hidden items-center justify-around px-2 shadow-2xl select-none transition-all duration-200",
+          isSidebarOpen ? "hidden" : "flex"
+        )}
       >
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -85,24 +90,19 @@ export function BottomNav() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center py-0.5 rounded-lg transition-all active:scale-90",
+                "flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all active:scale-95",
                 item.isActive
-                  ? "text-cyan-400 font-bold"
+                  ? "text-sky-400 font-semibold"
                   : "text-slate-400 hover:text-slate-200"
               )}
             >
-              <div className="relative">
-                <Icon
-                  className={cn(
-                    "w-5 h-5 transition-transform",
-                    item.isActive ? "scale-105 stroke-[2.2]" : "stroke-[1.8]"
-                  )}
-                />
-                {item.isActive && (
-                  <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
+              <Icon
+                className={cn(
+                  "w-5 h-5 transition-transform",
+                  item.isActive ? "scale-105 stroke-[2.2] text-sky-400" : "stroke-[1.8] text-slate-400"
                 )}
-              </div>
-              <span className="text-[10px] mt-0.5 tracking-tight leading-none">
+              />
+              <span className="text-[11px] font-medium tracking-tight leading-tight mt-1">
                 {item.name}
               </span>
             </Link>
@@ -114,44 +114,39 @@ export function BottomNav() {
           type="button"
           onClick={() => setIsProfileOpen(true)}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center py-0.5 rounded-lg transition-all active:scale-90 cursor-pointer",
+            "flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all active:scale-95 cursor-pointer",
             isProfileOpen
-              ? "text-cyan-400 font-bold"
+              ? "text-sky-400 font-semibold"
               : "text-slate-400 hover:text-slate-200"
           )}
           aria-label="Open User Profile"
         >
-          <div className="relative">
-            {userAvatarUrl ? (
-              <img
-                src={userAvatarUrl}
-                alt={userDisplayName || "Avatar"}
-                className={cn(
-                  "w-5 h-5 rounded-full object-cover border transition-all",
-                  isProfileOpen ? "border-cyan-400 scale-105" : "border-slate-600"
-                )}
-              />
-            ) : (
-              <div
-                className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border transition-all",
-                  isProfileOpen
-                    ? "bg-cyan-500/20 text-cyan-400 border-cyan-400 scale-105"
-                    : "bg-slate-800 text-slate-300 border-slate-700"
-                )}
-              >
-                {userDisplayName
-                  ? userDisplayName[0].toUpperCase()
-                  : userEmail
-                  ? userEmail[0].toUpperCase()
-                  : "U"}
-              </div>
-            )}
-            {isProfileOpen && (
-              <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
-            )}
-          </div>
-          <span className="text-[10px] mt-0.5 tracking-tight leading-none">
+          {userAvatarUrl ? (
+            <img
+              src={userAvatarUrl}
+              alt={userDisplayName || "Avatar"}
+              className={cn(
+                "w-5 h-5 rounded-full object-cover border transition-all",
+                isProfileOpen ? "border-sky-400 scale-105" : "border-slate-600"
+              )}
+            />
+          ) : (
+            <div
+              className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all",
+                isProfileOpen
+                  ? "bg-sky-500/20 text-sky-400 border-sky-400 scale-105"
+                  : "bg-slate-800 text-slate-300 border-slate-700"
+              )}
+            >
+              {userDisplayName
+                ? userDisplayName[0].toUpperCase()
+                : userEmail
+                ? userEmail[0].toUpperCase()
+                : "U"}
+            </div>
+          )}
+          <span className="text-[11px] font-medium tracking-tight leading-tight mt-1">
             Profile
           </span>
         </button>
@@ -161,7 +156,7 @@ export function BottomNav() {
       {/* 2. NATIVE PROFILE / STORE ACCOUNT BOTTOM SHEET MODAL     */}
       {/* ======================================================== */}
       {isProfileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+        <div className="fixed inset-0 z-[70] md:hidden flex flex-col justify-end">
           {/* Backdrop */}
           <div
             onClick={() => setIsProfileOpen(false)}

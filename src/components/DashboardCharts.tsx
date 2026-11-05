@@ -204,7 +204,7 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
                   ? `${activeItem.percentage}% Share`
                   : hasData
                   ? "Active Counter"
-                  : "0 Orders"}
+                  : "0% / Empty State"}
               </span>
             </div>
           </div>

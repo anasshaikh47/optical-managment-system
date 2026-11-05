@@ -76,7 +76,7 @@ export function BottomNav() {
       {/* ======================================================== */}
       <nav
         aria-label="Mobile Navigation"
-        className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 h-16 md:hidden flex items-center justify-around px-2 shadow-2xl select-none"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 h-14 md:hidden flex items-center justify-around px-2 py-1.5 shadow-2xl select-none"
       >
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -85,7 +85,7 @@ export function BottomNav() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all active:scale-90",
+                "flex-1 flex flex-col items-center justify-center py-0.5 rounded-lg transition-all active:scale-90",
                 item.isActive
                   ? "text-cyan-400 font-bold"
                   : "text-slate-400 hover:text-slate-200"
@@ -95,14 +95,14 @@ export function BottomNav() {
                 <Icon
                   className={cn(
                     "w-5 h-5 transition-transform",
-                    item.isActive ? "scale-110 stroke-[2.4]" : "stroke-[2]"
+                    item.isActive ? "scale-105 stroke-[2.2]" : "stroke-[1.8]"
                   )}
                 />
                 {item.isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
+                  <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
                 )}
               </div>
-              <span className="text-[10px] mt-1 tracking-tight leading-none">
+              <span className="text-[10px] mt-0.5 tracking-tight leading-none">
                 {item.name}
               </span>
             </Link>
@@ -114,7 +114,7 @@ export function BottomNav() {
           type="button"
           onClick={() => setIsProfileOpen(true)}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition-all active:scale-90 cursor-pointer",
+            "flex-1 flex flex-col items-center justify-center py-0.5 rounded-lg transition-all active:scale-90 cursor-pointer",
             isProfileOpen
               ? "text-cyan-400 font-bold"
               : "text-slate-400 hover:text-slate-200"
@@ -128,15 +128,15 @@ export function BottomNav() {
                 alt={userDisplayName || "Avatar"}
                 className={cn(
                   "w-5 h-5 rounded-full object-cover border transition-all",
-                  isProfileOpen ? "border-cyan-400 scale-110" : "border-slate-600"
+                  isProfileOpen ? "border-cyan-400 scale-105" : "border-slate-600"
                 )}
               />
             ) : (
               <div
                 className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all",
+                  "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border transition-all",
                   isProfileOpen
-                    ? "bg-cyan-500/20 text-cyan-400 border-cyan-400 scale-110"
+                    ? "bg-cyan-500/20 text-cyan-400 border-cyan-400 scale-105"
                     : "bg-slate-800 text-slate-300 border-slate-700"
                 )}
               >
@@ -148,10 +148,10 @@ export function BottomNav() {
               </div>
             )}
             {isProfileOpen && (
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
+              <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
             )}
           </div>
-          <span className="text-[10px] mt-1 tracking-tight leading-none">
+          <span className="text-[10px] mt-0.5 tracking-tight leading-none">
             Profile
           </span>
         </button>

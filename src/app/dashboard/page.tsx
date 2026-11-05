@@ -26,15 +26,42 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useAppUi } from "@/context/AppUiContext";
 
+const DEFAULT_DASHBOARD_DATA = {
+  kpis: {
+    todaySales: 0,
+    salesChangePercent: 0,
+    totalNetProfit: 0,
+    totalBalanceDue: 0,
+    readyForPickupCount: 0,
+    lowStockCount: 0,
+    dueTodayCount: 0,
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalCustomers: 0,
+  },
+  analytics: {
+    salesBreakdown: [],
+    dailyTrend: [],
+    weeklyTrend: [],
+    monthlyTrend: [],
+    topBrands: [],
+    topLensTypes: [],
+  },
+  urgentOrders: [],
+  lowStockItems: [],
+  storeSetting: null,
+};
+
 export default function DashboardPage() {
-  const { shopId, tenantFetch } = useAuth();
+  const { shopId, tenantFetch, loading: authLoading } = useAuth();
   const { openNewCustomerModal, openQuickSearchModal } = useAppUi();
-  const [data, setData] = useState<any | null>(null);
+  const [data, setData] = useState<any>(DEFAULT_DASHBOARD_DATA);
   const [loading, setLoading] = useState(true);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
   const [whatsappToast, setWhatsappToast] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     fetchDashboardData();
 
     const handleCustomerCreated = () => {
@@ -42,7 +69,7 @@ export default function DashboardPage() {
     };
     window.addEventListener("customer-created", handleCustomerCreated);
     return () => window.removeEventListener("customer-created", handleCustomerCreated);
-  }, [shopId]);
+  }, [shopId, authLoading]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -94,7 +121,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50 p-3 sm:p-4 lg:p-6 pb-28 sm:pb-32 lg:pb-12 space-y-4 sm:space-y-6">
+    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50 p-3 sm:p-4 lg:p-6 pb-16 sm:pb-20 lg:pb-12 space-y-4 sm:space-y-6">
       {/* Toast Feedback */}
       {whatsappToast && (
         <div className="fixed top-20 right-4 sm:right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xl animate-in slide-in-from-top-2">
@@ -241,7 +268,7 @@ export default function DashboardPage() {
               Ready for Pickup
             </p>
             <h3 className="text-xl sm:text-2xl font-black text-purple-700 mt-1 tracking-tight">
-              {kpis.readyForPickupCount || 0} Glasses
+              {kpis.readyForPickupCount || 0}
             </h3>
             <p className="text-[10px] sm:text-[11px] text-purple-600 font-semibold mt-1 flex items-center gap-1">
               <Glasses className="w-3 h-3" />
@@ -260,7 +287,7 @@ export default function DashboardPage() {
               Low Stock Items
             </p>
             <h3 className="text-xl sm:text-2xl font-black text-amber-700 mt-1 tracking-tight">
-              {kpis.lowStockCount || 0} Items
+              {kpis.lowStockCount || 0}
             </h3>
             <p className="text-[10px] sm:text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />

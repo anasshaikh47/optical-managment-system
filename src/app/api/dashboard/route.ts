@@ -1,77 +1,26 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getShopIdFromRequest, loadTenantState } from "@/lib/tenant/store";
 
 export async function GET(request: Request) {
   try {
     const shopId = getShopIdFromRequest(request);
+    const tenant = loadTenantState(shopId);
 
-    let orders: any[] = [];
-    let inventoryItems: any[] = [];
-    let customers: any[] = [];
-    let payments: any[] = [];
-    let settings: any = null;
+    const orders = tenant.orders.map((o) => {
+      const customer = tenant.customers.find((c) => c.id === o.customerId);
+      const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
+      const items = o.items.map((it) => ({
+        ...it,
+        item: tenant.inventory.find((inv) => inv.id === it.itemId),
+      }));
+      const payments = tenant.payments.filter((p) => p.orderId === o.id);
+      return { ...o, customer, prescription, items, payments };
+    });
 
-    if (shopId !== "default") {
-      const tenant = loadTenantState(shopId);
-      orders = tenant.orders.map((o) => {
-        const customer = tenant.customers.find((c) => c.id === o.customerId);
-        const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
-        const items = o.items.map((it) => ({
-          ...it,
-          item: tenant.inventory.find((inv) => inv.id === it.itemId),
-        }));
-        const payments = tenant.payments.filter((p) => p.orderId === o.id);
-        return { ...o, customer, prescription, items, payments };
-      });
-      inventoryItems = tenant.inventory;
-      customers = tenant.customers;
-      payments = tenant.payments;
-      settings = tenant.settings;
-    } else {
-      try {
-        const [
-          dbOrders,
-          dbInventoryItems,
-          dbCustomers,
-          dbPayments,
-          dbSettings,
-        ] = await Promise.all([
-          prisma.order.findMany({
-            include: {
-              customer: true,
-              prescription: true,
-              items: {
-                include: { item: true },
-              },
-              payments: {
-                orderBy: { createdAt: "desc" },
-              },
-            },
-            orderBy: { createdAt: "desc" },
-          }),
-          prisma.inventoryItem.findMany(),
-          prisma.customer.findMany(),
-          prisma.payment.findMany({
-            orderBy: { createdAt: "desc" },
-          }),
-          prisma.storeSetting.findUnique({ where: { id: "default" } }),
-        ]);
-
-        orders = dbOrders;
-        inventoryItems = dbInventoryItems;
-        customers = dbCustomers;
-        payments = dbPayments;
-        settings = dbSettings;
-      } catch {
-        const tenant = loadTenantState("default");
-        orders = tenant.orders;
-        inventoryItems = tenant.inventory;
-        customers = tenant.customers;
-        payments = tenant.payments;
-        settings = tenant.settings;
-      }
-    }
+    const inventoryItems = tenant.inventory;
+    const customers = tenant.customers;
+    const payments = tenant.payments;
+    const settings = tenant.settings;
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -90,7 +39,7 @@ export async function GET(request: Request) {
       }
     });
 
-    // If today is a new day with no recorded payments yet, fallback gracefully to today's active orders
+    // If today has no payments recorded directly, sum paid amounts from orders placed today
     if (todaySales === 0) {
       orders.forEach((o) => {
         const oDate = new Date(o.createdAt);
@@ -150,7 +99,6 @@ export async function GET(request: Request) {
     );
 
     // 4. Sales Trends (Daily, Weekly, Monthly)
-    // Daily last 7 days
     const dailyTrend: { date: string; day: string; sales: number; profit: number; orders: number }[] = [];
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -159,7 +107,6 @@ export async function GET(request: Request) {
       const dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
       const dayName = dayNames[d.getDay()];
 
-      // Match orders for that day
       let daySales = 0;
       let dayProfit = 0;
       let count = 0;
@@ -190,15 +137,22 @@ export async function GET(request: Request) {
       });
     }
 
-    // Weekly last 4 weeks
-    const weeklyTrend = [
-      { week: "Week 1", sales: Math.round(totalRevenue * 0.18), profit: Math.round(totalNetProfit * 0.2) },
-      { week: "Week 2", sales: Math.round(totalRevenue * 0.22), profit: Math.round(totalNetProfit * 0.24) },
-      { week: "Week 3", sales: Math.round(totalRevenue * 0.28), profit: Math.round(totalNetProfit * 0.27) },
-      { week: "This Week", sales: Math.round(totalRevenue * 0.32), profit: Math.round(totalNetProfit * 0.29) },
-    ];
+    // Weekly last 4 weeks (zero when no revenue)
+    const weeklyTrend = totalRevenue > 0
+      ? [
+          { week: "Week 1", sales: Math.round(totalRevenue * 0.18), profit: Math.round(totalNetProfit * 0.2) },
+          { week: "Week 2", sales: Math.round(totalRevenue * 0.22), profit: Math.round(totalNetProfit * 0.24) },
+          { week: "Week 3", sales: Math.round(totalRevenue * 0.28), profit: Math.round(totalNetProfit * 0.27) },
+          { week: "This Week", sales: Math.round(totalRevenue * 0.32), profit: Math.round(totalNetProfit * 0.29) },
+        ]
+      : [
+          { week: "Week 1", sales: 0, profit: 0 },
+          { week: "Week 2", sales: 0, profit: 0 },
+          { week: "Week 3", sales: 0, profit: 0 },
+          { week: "This Week", sales: 0, profit: 0 },
+        ];
 
-    // Monthly last 6 months
+    // Monthly last 6 months (zero when no revenue)
     const monthNames = ["May", "Jun", "Jul", "Aug", "Sep", "Oct"];
     const monthlyTrend = monthNames.map((m, idx) => ({
       month: m,
@@ -238,14 +192,8 @@ export async function GET(request: Request) {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    const topLensTypes = Object.values(lensTypeMap).length > 0
-      ? Object.values(lensTypeMap)
-      : [
-          { type: "Blue-Cut Anti-Glare", count: 8, value: 24800 },
-          { type: "Progressive Freeform", count: 4, value: 36200 },
-          { type: "Photochromic Gen-S", count: 3, value: 20400 },
-          { type: "Single Vision Clear", count: 6, value: 14400 },
-        ];
+    // Strictly real data: No hardcoded fallback array!
+    const topLensTypes = Object.values(lensTypeMap).sort((a, b) => b.value - a.value);
 
     // Single Circular Graph: Sales Breakdown (Frames vs Lenses vs Services/Repairing)
     let framesAmount = 0;
@@ -308,11 +256,9 @@ export async function GET(request: Request) {
     }
 
     // 6. Urgent Orders & Ready Glasses Table:
-    // Filter orders that need immediate pickup or workshop action
     const urgentOrders = orders
       .filter((o) => ["READY_FOR_PICKUP", "FITTING", "LENS_PROCESSING", "PLACED"].includes(o.status))
       .sort((a, b) => {
-        // Ready for pickup first, then due date
         if (a.status === "READY_FOR_PICKUP" && b.status !== "READY_FOR_PICKUP") return -1;
         if (b.status === "READY_FOR_PICKUP" && a.status !== "READY_FOR_PICKUP") return 1;
         return new Date(a.delivery_due_date || 0).getTime() - new Date(b.delivery_due_date || 0).getTime();

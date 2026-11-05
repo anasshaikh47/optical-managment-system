@@ -290,7 +290,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 space-y-3.5">
+      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 pb-16 md:pb-6 space-y-3.5">
         {/* Top Control Bar: Search, Filters & View Toggle */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
           {/* Search Input */}

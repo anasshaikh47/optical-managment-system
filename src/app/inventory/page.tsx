@@ -258,7 +258,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 space-y-4">
+      <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 pb-16 md:pb-6 space-y-4">
         {/* Controls Bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <div className="relative w-full md:w-80">

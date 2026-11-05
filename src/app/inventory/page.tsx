@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { AddProductModal } from "@/components/AddProductModal";
+import { EditProductModal } from "@/components/EditProductModal";
 import { BarcodeStickerModal } from "@/components/BarcodeStickerModal";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -36,6 +37,7 @@ export default function InventoryPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
 
   // Bulk Selection for Barcode Sticker Printing & Bulk Delete
@@ -529,7 +531,7 @@ export default function InventoryPage() {
                           </div>
                         </td>
 
-                        {/* Actions: Tag & Delete Buttons */}
+                        {/* Actions: Tag, Edit & Delete Buttons */}
                         <td className="p-3.5 text-center">
                           <div className="inline-flex items-center gap-1">
                             {/* Barcode Tag Button */}
@@ -542,6 +544,15 @@ export default function InventoryPage() {
                               title="Print Barcode Tag for this item"
                             >
                               <Tag className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Edit Button (Pencil icon) */}
+                            <button
+                              onClick={() => setEditingItem(item)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-700 hover:bg-cyan-50 transition-colors cursor-pointer"
+                              title={`Edit ${item.brand} - ${item.model || item.sku}`}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Delete Button (Trash icon with red hover) */}
@@ -776,6 +787,24 @@ export default function InventoryPage() {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => fetchItems()}
       />
+
+      {/* Edit Product Modal */}
+      {editingItem && (
+        <EditProductModal
+          isOpen={!!editingItem}
+          product={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSuccess={(updated) => {
+            setItems((prev) =>
+              prev.map((item) => (item.id === updated.id ? updated : item))
+            );
+            setAdjustmentToast(
+              `Item "${updated.brand} - ${updated.model || updated.sku}" updated successfully.`
+            );
+            setTimeout(() => setAdjustmentToast(null), 4000);
+          }}
+        />
+      )}
 
       {/* Barcode Stickers Printing Modal */}
       <BarcodeStickerModal

@@ -388,7 +388,7 @@ export function AddProductModal({
             <div className="flex items-center justify-between">
               <label className="text-slate-700 font-bold flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Product Photo (Drag & Drop or Camera)</span>
+                <span>Product Photo (Gallery or Camera)</span>
               </label>
               <button
                 type="button"
@@ -404,8 +404,7 @@ export function AddProductModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
-              capture="environment"
+              accept="image/png, image/jpeg, image/jpg, image/webp"
               onChange={handleFileInputChange}
               className="hidden"
             />
@@ -437,7 +436,7 @@ export function AddProductModal({
                     <span className="text-emerald-700">Click to upload photo</span> or drag & drop here
                   </p>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    Supports JPG, PNG, WEBP • Mobile Camera Ready (Max 8MB)
+                    Supports JPG, PNG, WEBP • Gallery & Camera (Max 8MB)
                   </p>
                 </div>
               </div>

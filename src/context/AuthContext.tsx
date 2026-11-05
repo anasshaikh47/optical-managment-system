@@ -5,6 +5,22 @@ import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+export const DEMO_USER = {
+  id: "default",
+  aud: "authenticated",
+  role: "authenticated",
+  email: "pharmacist@pharmapulse.in",
+  user_metadata: {
+    full_name: "Dr. Ramesh Joshi (Pharmacist)",
+    name: "Dr. Ramesh Joshi",
+    store_name: "PharmaPulse Medical & POS",
+  },
+  app_metadata: {
+    provider: "email",
+  },
+  created_at: "2026-01-01T00:00:00.000Z",
+} as unknown as User;
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -20,6 +36,7 @@ interface AuthContextType {
     password: string,
     storeOrName?: string
   ) => Promise<{ data: any; error: any }>;
+  loginAsDemo: () => void;
   signOut: () => Promise<void>;
   tenantFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
@@ -36,20 +53,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Check for demo session cookie / localStorage
+    const hasDemoCookie =
+      typeof document !== "undefined" &&
+      document.cookie.includes("pharmapulse_session=active");
+    const hasDemoStorage =
+      typeof window !== "undefined" &&
+      localStorage.getItem("pharmapulse_session") === "active";
 
-    // Listen to Supabase auth state change events (SIGN_IN, SIGN_OUT, TOKEN_REFRESHED)
+    if (hasDemoCookie || hasDemoStorage) {
+      if (typeof document !== "undefined" && !document.cookie.includes("pharmapulse_session=active")) {
+        document.cookie = "pharmapulse_session=active; path=/; max-age=2592000; SameSite=Lax";
+      }
+      setUser(DEMO_USER);
+      setLoading(false);
+      return;
+    }
+
+    // Check active session on mount
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return;
+        if (session) {
+          setSession(session);
+          setUser(session.user ?? null);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
+
+    // Listen to Supabase auth state change events
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      if (session) {
+        setSession(session);
+        setUser(session.user ?? null);
+      } else if (
+        typeof document !== "undefined" &&
+        document.cookie.includes("pharmapulse_session=active")
+      ) {
+        setUser(DEMO_USER);
+      } else {
+        setSession(null);
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -67,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user.user_metadata?.name ||
       user.user_metadata?.store_name ||
       user.email?.split("@")[0] ||
-      "Store Owner"
+      "Pharmacist In-Charge"
     );
   }, [user]);
 
@@ -87,6 +138,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const shopId = useMemo(() => {
     return user?.id || "default";
   }, [user]);
+
+  // Instant Demo / Dev login
+  const loginAsDemo = useCallback(() => {
+    if (typeof document !== "undefined") {
+      document.cookie = "pharmapulse_session=active; path=/; max-age=2592000; SameSite=Lax";
+      localStorage.setItem("pharmapulse_session", "active");
+    }
+    setUser(DEMO_USER);
+    setSession({
+      access_token: "demo-token",
+      token_type: "bearer",
+      expires_in: 2592000,
+      refresh_token: "demo-refresh",
+      user: DEMO_USER,
+    } as unknown as Session);
+    setLoading(false);
+  }, []);
 
   // Sign In with Google OAuth
   const signInWithGoogle = useCallback(async () => {
@@ -143,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             data: {
               full_name: storeOrName || email.split("@")[0],
               name: storeOrName || email.split("@")[0],
-              store_name: storeOrName || `${email.split("@")[0]}'s Optics`,
+              store_name: storeOrName || `${email.split("@")[0]}'s Pharmacy`,
             },
           },
         });
@@ -162,6 +230,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sign Out
   const signOut = useCallback(async () => {
     try {
+      if (typeof document !== "undefined") {
+        document.cookie = "pharmapulse_session=; path=/; max-age=0";
+        localStorage.removeItem("pharmapulse_session");
+      }
       await supabase.auth.signOut();
     } catch (e) {
       console.error("SignOut error:", e);
@@ -178,13 +250,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const currentShopId = user?.id || "default";
       let urlStr = typeof input === "string" ? input : input.toString();
 
-      // Append shopId and userId as query params if not already present
       if (!urlStr.includes("shopId=") && !urlStr.includes("userId=")) {
         const separator = urlStr.includes("?") ? "&" : "?";
         urlStr = `${urlStr}${separator}shopId=${encodeURIComponent(currentShopId)}&userId=${encodeURIComponent(currentShopId)}`;
       }
 
-      // Merge headers
       const headers = new Headers(init?.headers || {});
       if (!headers.has("x-shop-id")) {
         headers.set("x-shop-id", currentShopId);
@@ -214,6 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithGoogle,
         signInWithPassword,
         signUpWithPassword,
+        loginAsDemo,
         signOut,
         tenantFetch,
       }}

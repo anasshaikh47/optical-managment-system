@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { Printer, X, Glasses, Check, AlertTriangle, Calendar, Phone, Clock, Wrench } from "lucide-react";
 import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
 
@@ -13,6 +13,15 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
   const printRef = useRef<HTMLDivElement>(null);
 
   if (!order) return null;
+
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -32,8 +41,8 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
   const isOverdue = orderDueStr && orderDueStr < todayStr && order.status !== "DELIVERED";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] sm:max-h-[88vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
         {/* Controls Header (Hidden in Print) */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50 print:hidden">
           <div className="flex items-center gap-2">

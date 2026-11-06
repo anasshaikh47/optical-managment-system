@@ -87,7 +87,7 @@ export default function OrdersPage() {
     try {
       const res = await tenantFetch("/api/orders");
       const json = await res.json();
-      if (json.success) {
+      if (json.success && Array.isArray(json.data)) {
         setOrders(json.data);
       }
     } catch (e) {

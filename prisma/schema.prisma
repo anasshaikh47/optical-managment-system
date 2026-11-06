@@ -12,53 +12,50 @@ model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
-  role      String   @default("STAFF") // 'OWNER' | 'STAFF'
-  pin_hash  String   // Quick 4-digit POS unlock PIN hash
+  role      String   @default("STAFF")
+  pin_hash  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Customer {
   id             String         @id @default(uuid())
+  shopId         String         @default("default")
+  userId         String?        @default("default")
   name           String
   phone          String         @unique
   email          String?
   address        String?
   dob            DateTime?
   loyalty_points Int            @default(0)
-  prescriptions  Prescription[]
-  orders         Order[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  orders         Order[]
+  prescriptions  Prescription[]
+
+  @@index([shopId])
 }
 
 model Prescription {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   customerId      String
-  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  optometristName String?
-  
-  // Right Eye (OD - Oculus Dexter)
-  od_sph          Float?    // Sphere
-  od_cyl          Float?    // Cylinder
-  od_axis         Int?      // Axis (1-180)
-  od_add          Float?    // Addition for presbyopia
-
-  // Left Eye (OS - Oculus Sinister)
-  os_sph          Float?    // Sphere
-  os_cyl          Float?    // Cylinder
-  os_axis         Int?      // Axis (1-180)
-  os_add          Float?    // Addition for presbyopia
-
-  // Pupillary Distance & Lens specs
-  pd_distance     Float?    // Distance PD (mm)
-  pd_near         Float?    // Near PD (mm)
-  lens_type       String?   // 'SINGLE_VISION' | 'BIFOCAL' | 'PROGRESSIVE' | 'BLUE_CUT' | 'PHOTOCHROMIC'
   notes           String?
-  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lens_type       String?
+  od_add          Float?
+  od_axis         Int?
+  od_cyl          Float?
+  od_sph          Float?
+  optometristName String?
+  os_add          Float?
+  os_axis         Int?
+  os_cyl          Float?
+  os_sph          Float?
+  pd_distance     Float?
+  pd_near         Float?
   orders          Order[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }
 
 model InventoryItem {
@@ -66,48 +63,54 @@ model InventoryItem {
   shopId              String      @default("default")
   sku                 String
   barcode             String?
-  type                String      // 'FRAME' | 'LENS' | 'CONTACT_LENS' | 'ACCESSORY'
+  type                String
   brand               String
   model               String?
   color               String?
-  size                String?     // e.g. "52-18-140"
-  lens_index          String?     // e.g. "1.56", "1.61", "1.67", "1.74"
+  size                String?
+  lens_index          String?
   cost_price          Float
   selling_price       Float
-  gst_rate            Float       @default(12.0) // Indian GST % (typically 12% or 18%)
+  gst_rate            Float       @default(12.0)
   stock_quantity      Int         @default(0)
   min_alert_threshold Int         @default(5)
   image_url           String?
-  
-  orderItems          OrderItem[]
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
+  orderItems          OrderItem[]
 
   @@index([shopId])
 }
 
 model Order {
-  id               String        @id @default(uuid())
-  bill_no          String        @unique // e.g. "VP-2026-0001"
-  shopId           String        @default("default")
-  customerId       String
-  customer         Customer      @relation(fields: [customerId], references: [id])
-  prescriptionId   String?
-  prescription     Prescription? @relation(fields: [prescriptionId], references: [id])
-  
-  status           String        @default("PLACED") // 'PLACED' | 'LENS_PROCESSING' | 'FITTING' | 'READY_FOR_PICKUP' | 'DELIVERED' | 'CANCELLED'
-  total_amount     Float         // Subtotal before discount & tax
-  discount_amount  Float         @default(0)
-  tax_amount       Float         @default(0) // GST Amount
-  final_payable    Float         // total_amount - discount_amount + tax_amount
-  paid_amount      Float         @default(0)
-  balance_amount   Float         @default(0)
+  id                String        @id @default(uuid())
+  bill_no           String        @unique
+  customerId        String
+  prescriptionId    String?
+  status            String        @default("PLACED")
+  total_amount      Float
+  discount_amount   Float         @default(0)
+  tax_amount        Float         @default(0)
+  final_payable     Float
+  paid_amount       Float         @default(0)
+  balance_amount    Float         @default(0)
   delivery_due_date DateTime?
-  
-  items            OrderItem[]
-  payments         Payment[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  shopId            String        @default("default")
+  userId            String?       @default("default")
+  customerName      String?
+  customerPhone     String?
+  itemsJson         Json?
+  subtotal          Float?
+  taxAmount         Float?        @default(0)
+  totalAmount       Float?
+  paidAmount        Float?        @default(0)
+  pendingAmount     Float?        @default(0)
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  prescription      Prescription? @relation(fields: [prescriptionId], references: [id])
+  items             OrderItem[]
+  payments          Payment[]
 
   @@index([shopId])
 }
@@ -115,26 +118,26 @@ model Order {
 model OrderItem {
   id              String         @id @default(uuid())
   orderId         String
-  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  itemId          String?
-  item            InventoryItem? @relation(fields: [itemId], references: [id])
   quantity        Int            @default(1)
   unit_price      Float
+  subtotal        Float
+  createdAt       DateTime       @default(now())
   coating_charges Float          @default(0)
   fitting_charges Float          @default(0)
-  subtotal        Float          // (unit_price * quantity) + coating_charges + fitting_charges
-  createdAt       DateTime       @default(now())
+  itemId          String?
+  item            InventoryItem? @relation(fields: [itemId], references: [id])
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
   id              String   @id @default(uuid())
   orderId         String
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  method          String   // 'CASH' | 'UPI' | 'CARD'
+  method          String
   amount          Float
-  payment_type    String   // 'ADVANCE' | 'BALANCE' | 'FULL'
-  transaction_ref String?  // UPI Ref / UTR / Card Auth Code
+  payment_type    String
+  transaction_ref String?
   createdAt       DateTime @default(now())
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model StoreSetting {

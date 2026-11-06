@@ -75,7 +75,7 @@ export function NewCustomerModal({
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && (res.status === 200 || res.status === 201) && data.success) {
         // Reset form
         setFormData({
           name: "",
@@ -87,10 +87,14 @@ export function NewCustomerModal({
         });
         onSuccess(data.data);
       } else {
-        setError(data.error || "Failed to create patient account");
+        const errMsg = data.error || `Failed to create customer in database (HTTP ${res.status})`;
+        setError(errMsg);
+        alert(errMsg);
       }
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
+      const errMsg = err.message || "An unexpected error occurred while saving customer to database";
+      setError(errMsg);
+      alert(errMsg);
     } finally {
       setSubmitting(false);
     }

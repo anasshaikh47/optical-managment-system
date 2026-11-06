@@ -7,33 +7,166 @@ export async function GET(request: Request) {
     const shopId = getShopIdFromRequest(request);
     const tenant = loadTenantState(shopId);
 
-    let inventoryItems = tenant.inventory;
-    try {
-      const dbItems = await prisma.inventoryItem.findMany({ where: { shopId } });
-      if (dbItems.length > 0 || inventoryItems.length === 0) {
-        inventoryItems = dbItems.map((it) => ({
-          ...it,
-          createdAt: it.createdAt.toISOString(),
-          updatedAt: it.updatedAt.toISOString(),
-        }));
-      }
-    } catch {
-      // fallback to memory
-    }
+    let inventoryItems: any[] = [];
+    let orders: any[] = [];
+    let customers: any[] = [];
+    let payments: any[] = [];
+    let settings = tenant.settings;
 
-    const orders = tenant.orders.map((o) => {
-      const customer = tenant.customers.find((c) => c.id === o.customerId);
-      const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
-      const items = o.items.map((it) => ({
+    try {
+      // Query Inventory Items from Database
+      const dbItems = await prisma.inventoryItem.findMany({
+        where: {
+          OR: [
+            { shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      inventoryItems = dbItems.map((it) => ({
         ...it,
-        item: inventoryItems.find((inv) => inv.id === it.itemId) || tenant.inventory.find((inv) => inv.id === it.itemId),
+        createdAt: it.createdAt.toISOString(),
+        updatedAt: it.updatedAt.toISOString(),
       }));
-      const payments = tenant.payments.filter((p) => p.orderId === o.id);
-      return { ...o, customer, prescription, items, payments };
-    });
-    const customers = tenant.customers;
-    const payments = tenant.payments;
-    const settings = tenant.settings;
+
+      // Query Orders from Database with Customer, Prescription, Items and Payments
+      const dbOrders = await prisma.order.findMany({
+        where: {
+          OR: [
+            { shopId },
+            { userId: shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
+        include: {
+          customer: true,
+          prescription: true,
+          items: {
+            include: {
+              item: true,
+            },
+          },
+          payments: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      orders = dbOrders.map((o) => {
+        const subtotal = o.subtotal ?? o.total_amount;
+        const totalAmount = o.totalAmount ?? o.final_payable;
+        const paidAmount = o.paidAmount ?? o.paid_amount;
+        const pendingAmount = o.pendingAmount ?? o.balance_amount;
+        const taxAmount = o.taxAmount ?? o.tax_amount;
+
+        return {
+          ...o,
+          subtotal,
+          totalAmount,
+          paidAmount,
+          pendingAmount,
+          taxAmount,
+          customerName: o.customerName || o.customer?.name || "",
+          customerPhone: o.customerPhone || o.customer?.phone || "",
+          delivery_due_date: o.delivery_due_date ? o.delivery_due_date.toISOString() : null,
+          createdAt: o.createdAt.toISOString(),
+          updatedAt: o.updatedAt.toISOString(),
+          customer: o.customer
+            ? {
+                ...o.customer,
+                dob: o.customer.dob ? o.customer.dob.toISOString() : null,
+                createdAt: o.customer.createdAt.toISOString(),
+                updatedAt: o.customer.updatedAt.toISOString(),
+              }
+            : null,
+          prescription: o.prescription
+            ? {
+                ...o.prescription,
+                createdAt: o.prescription.createdAt.toISOString(),
+                updatedAt: o.prescription.updatedAt.toISOString(),
+              }
+            : null,
+          items: o.items.map((it) => ({
+            ...it,
+            createdAt: it.createdAt.toISOString(),
+            item: it.item
+              ? {
+                  ...it.item,
+                  createdAt: it.item.createdAt.toISOString(),
+                  updatedAt: it.item.updatedAt.toISOString(),
+                }
+              : null,
+          })),
+          payments: o.payments.map((p) => ({
+            ...p,
+            createdAt: p.createdAt.toISOString(),
+          })),
+        };
+      });
+
+      // Query Customers from Database
+      const dbCustomers = await prisma.customer.findMany({
+        where: {
+          OR: [
+            { shopId },
+            { userId: shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
+        include: {
+          orders: true,
+          prescriptions: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      customers = dbCustomers.map((c) => ({
+        ...c,
+        dob: c.dob ? c.dob.toISOString() : null,
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: c.updatedAt.toISOString(),
+      }));
+
+      // Flatten payments
+      payments = orders.flatMap((o) => o.payments || []);
+
+      // Store settings from DB if available
+      try {
+        const dbSetting = await prisma.storeSetting.findFirst();
+        if (dbSetting) {
+          settings = {
+            ...settings,
+            storeName: dbSetting.storeName,
+            tagline: dbSetting.tagline,
+            gstin: dbSetting.gstin,
+            phone: dbSetting.phone,
+            email: dbSetting.email,
+            address: dbSetting.address,
+            currencySymbol: dbSetting.currencySymbol,
+            currencyCode: dbSetting.currencyCode,
+            defaultGstRate: dbSetting.defaultGstRate,
+            receiptFooter: dbSetting.receiptFooter,
+          };
+        }
+      } catch {}
+    } catch (dbError: any) {
+      console.warn("Prisma GET dashboard fallback to memory:", dbError.message);
+      inventoryItems = tenant.inventory;
+      orders = tenant.orders.map((o) => {
+        const customer = tenant.customers.find((c) => c.id === o.customerId);
+        const prescription = tenant.prescriptions.find((p) => p.id === o.prescriptionId);
+        const items = o.items.map((it) => ({
+          ...it,
+          item: inventoryItems.find((inv) => inv.id === it.itemId) || tenant.inventory.find((inv) => inv.id === it.itemId),
+        }));
+        const orderPayments = tenant.payments.filter((p) => p.orderId === o.id);
+        return { ...o, customer, prescription, items, payments: orderPayments };
+      });
+      customers = tenant.customers;
+      payments = tenant.payments;
+    }
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -43,7 +176,7 @@ export async function GET(request: Request) {
     let todaySales = 0;
     let yesterdaySales = 0;
 
-    payments.forEach((p) => {
+    payments.forEach((p: any) => {
       const pDate = new Date(p.createdAt);
       if (pDate >= startOfToday) {
         todaySales += p.amount;
@@ -54,12 +187,12 @@ export async function GET(request: Request) {
 
     // If today has no payments recorded directly, sum paid amounts from orders placed today
     if (todaySales === 0) {
-      orders.forEach((o) => {
+      orders.forEach((o: any) => {
         const oDate = new Date(o.createdAt);
         if (oDate >= startOfToday) {
-          todaySales += o.paid_amount;
+          todaySales += (o.paidAmount ?? o.paid_amount ?? 0);
         } else if (oDate >= startOfYesterday && oDate < startOfToday) {
-          yesterdaySales += o.paid_amount;
+          yesterdaySales += (o.paidAmount ?? o.paid_amount ?? 0);
         }
       });
     }
@@ -76,9 +209,11 @@ export async function GET(request: Request) {
     let readyForPickupCount = 0;
     let dueTodayCount = 0;
 
-    orders.forEach((order) => {
-      totalRevenue += order.paid_amount;
-      totalBalanceDue += order.balance_amount;
+    orders.forEach((order: any) => {
+      const paid = order.paidAmount ?? order.paid_amount ?? 0;
+      const balance = order.pendingAmount ?? order.balance_amount ?? 0;
+      totalRevenue += paid;
+      totalBalanceDue += balance;
 
       if (order.status === "READY_FOR_PICKUP") {
         readyForPickupCount += 1;
@@ -100,15 +235,15 @@ export async function GET(request: Request) {
       order.items?.forEach((oi: any) => {
         const costPrice = oi.item?.cost_price || 0;
         const marginPerUnit = oi.unit_price - costPrice;
-        orderProfit += (marginPerUnit * oi.quantity) + oi.coating_charges + oi.fitting_charges;
+        orderProfit += (marginPerUnit * oi.quantity) + (oi.coating_charges || 0) + (oi.fitting_charges || 0);
       });
-      orderProfit -= order.discount_amount;
+      orderProfit -= (order.discountAmount ?? order.discount_amount ?? 0);
       totalNetProfit += Math.max(0, orderProfit);
     });
 
     // 3. Low Stock Items
     const lowStockItems = inventoryItems.filter(
-      (item) => item.stock_quantity <= item.min_alert_threshold
+      (item: any) => item.stock_quantity <= item.min_alert_threshold
     );
 
     // 4. Sales Trends (Daily, Weekly, Monthly)
@@ -124,20 +259,20 @@ export async function GET(request: Request) {
       let dayProfit = 0;
       let count = 0;
 
-      orders.forEach((o) => {
+      orders.forEach((o: any) => {
         const od = new Date(o.createdAt);
         if (
           od.getDate() === d.getDate() &&
           od.getMonth() === d.getMonth() &&
           od.getFullYear() === d.getFullYear()
         ) {
-          daySales += o.paid_amount;
+          daySales += (o.paidAmount ?? o.paid_amount ?? 0);
           count += 1;
           let p = 0;
           o.items?.forEach((oi: any) => {
-            p += (oi.unit_price - (oi.item?.cost_price || 0)) * oi.quantity + oi.coating_charges + oi.fitting_charges;
+            p += (oi.unit_price - (oi.item?.cost_price || 0)) * oi.quantity + (oi.coating_charges || 0) + (oi.fitting_charges || 0);
           });
-          dayProfit += Math.max(0, p - o.discount_amount);
+          dayProfit += Math.max(0, p - (o.discountAmount ?? o.discount_amount ?? 0));
         }
       });
 
@@ -150,7 +285,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // Weekly last 4 weeks (zero when no revenue)
+    // Weekly last 4 weeks
     const weeklyTrend = totalRevenue > 0
       ? [
           { week: "Week 1", sales: Math.round(totalRevenue * 0.18), profit: Math.round(totalNetProfit * 0.2) },
@@ -165,7 +300,7 @@ export async function GET(request: Request) {
           { week: "This Week", sales: 0, profit: 0 },
         ];
 
-    // Monthly last 6 months (zero when no revenue)
+    // Monthly last 6 months
     const monthNames = ["May", "Jun", "Jul", "Aug", "Sep", "Oct"];
     const monthlyTrend = monthNames.map((m, idx) => ({
       month: m,
@@ -177,7 +312,7 @@ export async function GET(request: Request) {
     const brandMap: Record<string, { brand: string; count: number; value: number }> = {};
     const lensTypeMap: Record<string, { type: string; count: number; value: number }> = {};
 
-    orders.forEach((order) => {
+    orders.forEach((order: any) => {
       order.items?.forEach((oi: any) => {
         const brand = oi.item?.brand || "Other";
         if (!brandMap[brand]) {
@@ -205,10 +340,9 @@ export async function GET(request: Request) {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    // Strictly real data: No hardcoded fallback array!
     const topLensTypes = Object.values(lensTypeMap).sort((a, b) => b.value - a.value);
 
-    // Single Circular Graph: Sales Breakdown (Frames vs Lenses vs Services/Repairing)
+    // Sales Breakdown
     let framesAmount = 0;
     let framesCount = 0;
     let lensesAmount = 0;
@@ -216,7 +350,7 @@ export async function GET(request: Request) {
     let servicesAmount = 0;
     let servicesCount = 0;
 
-    orders.forEach((order) => {
+    orders.forEach((order: any) => {
       order.items?.forEach((oi: any) => {
         if (oi.item?.type === "FRAME") {
           framesAmount += oi.subtotal;
@@ -268,10 +402,10 @@ export async function GET(request: Request) {
       ];
     }
 
-    // 6. Urgent Orders & Ready Glasses Table:
+    // 6. Urgent Orders
     const urgentOrders = orders
-      .filter((o) => ["READY_FOR_PICKUP", "FITTING", "LENS_PROCESSING", "PLACED"].includes(o.status))
-      .sort((a, b) => {
+      .filter((o: any) => ["READY_FOR_PICKUP", "FITTING", "LENS_PROCESSING", "PLACED"].includes(o.status))
+      .sort((a: any, b: any) => {
         if (a.status === "READY_FOR_PICKUP" && b.status !== "READY_FOR_PICKUP") return -1;
         if (b.status === "READY_FOR_PICKUP" && a.status !== "READY_FOR_PICKUP") return 1;
         return new Date(a.delivery_due_date || 0).getTime() - new Date(b.delivery_due_date || 0).getTime();

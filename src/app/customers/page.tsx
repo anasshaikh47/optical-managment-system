@@ -50,7 +50,7 @@ export default function CustomersPage() {
     try {
       const res = await tenantFetch("/api/customers");
       const json = await res.json();
-      if (json.success) {
+      if (json.success && Array.isArray(json.data)) {
         setCustomers(json.data);
       }
     } catch (e) {
@@ -284,7 +284,7 @@ export default function CustomersPage() {
       <NewCustomerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => fetchCustomers()}
+        onSuccess={() => { setIsModalOpen(false); fetchCustomers(); }}
       />
     </div>
   );

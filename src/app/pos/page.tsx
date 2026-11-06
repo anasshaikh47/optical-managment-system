@@ -625,28 +625,38 @@ We will message you the moment your glasses pass optical lab inspection!`;
 
     const payload = {
       customerId: selectedCustomerId,
+      customerName: selectedCustomerDetails?.name || "",
+      customerPhone: selectedCustomerDetails?.phone || "",
       items: cart,
+      subtotal: rawSubtotal,
       total_amount: rawSubtotal,
       discount_amount: calculatedDiscount,
+      discountAmount: calculatedDiscount,
       tax_amount: parseFloat(totalTax.toFixed(2)),
+      taxAmount: parseFloat(totalTax.toFixed(2)),
       final_payable: finalPayable,
+      totalAmount: finalPayable,
       paid_amount: effectiveAdvancePaid,
+      paidAmount: effectiveAdvancePaid,
+      pendingAmount: Math.max(0, parseFloat((finalPayable - effectiveAdvancePaid).toFixed(2))),
       method: paymentMethod,
       transaction_ref: transactionRef,
       delivery_due_date: deliveryDate,
       prescriptionData:
         attachPrescription && (rxData.od_sph !== "" || rxData.os_sph !== "") ? rxData : null,
+      shopId,
+      userId: shopId,
     };
 
     try {
-      const res = await tenantFetch("/api/pos/checkout", {
+      const res = await tenantFetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, shopId, userId: shopId }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && (res.status === 200 || res.status === 201) && data.success) {
         const orderData = data.data;
         setCompletedOrder(orderData);
 
@@ -662,10 +672,14 @@ We will message you the moment your glasses pass optical lab inspection!`;
         fetchInventory();
         fetchCustomers();
       } else {
-        setCheckoutError(data.error || "Checkout transaction failed");
+        const errMsg = data.error || `Checkout transaction failed (HTTP ${res.status}). Order was not saved to database.`;
+        setCheckoutError(errMsg);
+        alert(errMsg);
       }
     } catch (e: any) {
-      setCheckoutError(e.message || "An unexpected error occurred during checkout");
+      const errMsg = e.message || "An unexpected error occurred during checkout";
+      setCheckoutError(errMsg);
+      alert(errMsg);
     } finally {
       setIsSubmitting(false);
     }

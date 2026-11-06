@@ -5,11 +5,16 @@ import { User, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+export type UserRole = "OWNER" | "STAFF";
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   shopId: string;
+  role: UserRole;
+  isOwner: boolean;
+  isStaff: boolean;
   userDisplayName: string;
   userEmail: string;
   userAvatarUrl: string | null;
@@ -18,7 +23,8 @@ interface AuthContextType {
   signUpWithPassword: (
     email: string,
     password: string,
-    storeOrName?: string
+    storeOrName?: string,
+    role?: UserRole
   ) => Promise<{ data: any; error: any }>;
   signOut: () => Promise<void>;
   tenantFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -30,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [serverRole, setServerRole] = useState<UserRole | null>(null);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -44,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    // Listen to Supabase auth state change events (SIGN_IN, SIGN_OUT, TOKEN_REFRESHED)
+    // Listen to Supabase auth state change events
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -59,6 +66,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase]);
 
+  // Sync role with database table
+  useEffect(() => {
+    if (!user?.email) {
+      setServerRole(null);
+      return;
+    }
+
+    let isMounted = true;
+    fetch(`/api/staff?email=${encodeURIComponent(user.email)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.role) {
+          setServerRole(data.role === "STAFF" ? "STAFF" : "OWNER");
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.email]);
+
+  // Role calculation: First checks server DB confirmation, then user_metadata, defaults to OWNER for store creator
+  const role: UserRole = useMemo(() => {
+    if (serverRole) return serverRole;
+    const metaRole = (user?.user_metadata?.role || "").toUpperCase();
+    if (metaRole === "STAFF") return "STAFF";
+    if (metaRole === "OWNER") return "OWNER";
+    return "OWNER";
+  }, [user, serverRole]);
+
+  const isOwner = role === "OWNER";
+  const isStaff = role === "STAFF";
+
   // Derived user details
   const userDisplayName = useMemo(() => {
     if (!user) return "";
@@ -67,9 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user.user_metadata?.name ||
       user.user_metadata?.store_name ||
       user.email?.split("@")[0] ||
-      "Store Owner"
+      (isStaff ? "Staff Member" : "Store Owner")
     );
-  }, [user]);
+  }, [user, isStaff]);
 
   const userEmail = useMemo(() => {
     return user?.email || "";
@@ -132,15 +173,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [supabase]
   );
 
-  // Sign Up with Email & Password
+  // Sign Up with Email & Password (First store creator becomes OWNER)
   const signUpWithPassword = useCallback(
-    async (email: string, password: string, storeOrName?: string) => {
+    async (
+      email: string,
+      password: string,
+      storeOrName?: string,
+      accountRole: UserRole = "OWNER"
+    ) => {
       try {
         const result = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
+              role: accountRole,
               full_name: storeOrName || email.split("@")[0],
               name: storeOrName || email.split("@")[0],
               store_name: storeOrName || `${email.split("@")[0]}'s Optics`,
@@ -168,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       setSession(null);
+      setServerRole(null);
       router.push("/login");
     }
   }, [supabase, router]);
@@ -208,6 +256,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         loading,
         shopId,
+        role,
+        isOwner,
+        isStaff,
         userDisplayName,
         userEmail,
         userAvatarUrl,

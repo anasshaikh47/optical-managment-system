@@ -16,6 +16,7 @@ import {
 import { useAppUi } from "@/context/AppUiContext";
 import { useAuth } from "@/context/AuthContext";
 import { InstallPwaButton } from "@/components/InstallPwaButton";
+import { VisionPulseMark } from "@/components/VisionPulseLogo";
 
 interface HeaderProps {
   title?: string;
@@ -25,7 +26,7 @@ interface HeaderProps {
 
 export function Header({ children }: HeaderProps) {
   const { openNewCustomerModal, openQuickSearchModal, openMobileSyncModal, toggleSidebar } = useAppUi();
-  const { userDisplayName, userAvatarUrl } = useAuth();
+  const { userDisplayName, userAvatarUrl, isStaff, isOwner } = useAuth();
 
   return (
     <header className="bg-white border-b border-slate-200 flex flex-col flex-shrink-0 z-20 shadow-xs select-none">
@@ -46,16 +47,16 @@ export function Header({ children }: HeaderProps) {
             <Menu className="w-5 h-5 stroke-[2.2]" />
           </button>
 
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900 text-cyan-400 flex items-center justify-center border border-slate-800 shrink-0">
-            <Eye className="w-5 h-5 text-cyan-400 stroke-[2.4]" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900 text-slate-100 flex items-center justify-center border border-slate-800 shrink-0 shadow-xs">
+            <VisionPulseMark className="w-5 h-5 sm:w-5 sm:h-5" />
           </div>
 
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-none truncate">
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none truncate">
               {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
             </h2>
             <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate mt-0.5 hidden xs:block">
-              {userDisplayName ? `Active Counter • ${userDisplayName}` : "Counter Terminal Active"}
+              {isStaff ? "Staff Counter Terminal Active" : userDisplayName ? `Active Counter • ${userDisplayName}` : "Counter Terminal Active"}
             </p>
           </div>
         </div>

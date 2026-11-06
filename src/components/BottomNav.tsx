@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { user, userDisplayName, userEmail, userAvatarUrl, signOut } = useAuth();
+  const { user, userDisplayName, userEmail, userAvatarUrl, signOut, isStaff, isOwner } = useAuth();
   const { isSidebarOpen } = useAppUi();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -34,10 +34,12 @@ export function BottomNav() {
 
   const navItems = [
     {
-      name: "Home",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-      isActive: pathname === "/" || pathname === "/dashboard",
+      name: isStaff ? "POS" : "Home",
+      href: isStaff ? "/pos" : "/dashboard",
+      icon: isStaff ? Zap : LayoutDashboard,
+      isActive: isStaff
+        ? pathname.startsWith("/pos")
+        : pathname === "/" || pathname === "/dashboard",
     },
     {
       name: "Billing",
@@ -198,9 +200,9 @@ export function BottomNav() {
                   <p className="text-xs text-slate-400 font-mono truncate mt-0.5">
                     {userEmail || "owner@visionpulse.in"}
                   </p>
-                  <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
+                  <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span>Verified Owner • Active Counter</span>
+                    <span>{isStaff ? "Verified Staff • Counter Terminal" : "Verified Owner • Active Counter"}</span>
                   </div>
                 </div>
               </div>
@@ -223,10 +225,9 @@ export function BottomNav() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-medium">Database Ledger</span>
-                <span className="text-emerald-400 font-semibold font-mono flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Cloud Synced (Supabase)
+                <span className="text-slate-400 font-medium">Account Role</span>
+                <span className="text-slate-200 font-bold font-mono">
+                  {isStaff ? "STAFF TERMINAL" : "STORE OWNER"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -237,29 +238,33 @@ export function BottomNav() {
 
             {/* Quick Action Navigation Links */}
             <div className="space-y-1.5 text-xs font-semibold">
-              <Link
-                href="/settings"
-                onClick={() => setIsProfileOpen(false)}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Settings className="w-4 h-4 text-cyan-400" />
-                  <span>My Shop Profiles & Tax Settings</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-500" />
-              </Link>
+              {!isStaff && (
+                <>
+                  <Link
+                    href="/settings"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Settings className="w-4 h-4 text-slate-300" />
+                      <span>My Shop Profiles &amp; Tax Settings</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  </Link>
 
-              <Link
-                href="/staff"
-                onClick={() => setIsProfileOpen(false)}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Store className="w-4 h-4 text-indigo-400" />
-                  <span>Staff & Counter Terminals</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-500" />
-              </Link>
+                  <Link
+                    href="/staff"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Store className="w-4 h-4 text-slate-300" />
+                      <span>Staff &amp; Counter Terminals</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                  </Link>
+                </>
+              )}
 
               <button
                 type="button"
@@ -268,7 +273,7 @@ export function BottomNav() {
               >
                 <div className="flex items-center gap-2.5">
                   <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                  <span>Accounting & WhatsApp Support</span>
+                  <span>Accounting &amp; WhatsApp Support</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
               </button>

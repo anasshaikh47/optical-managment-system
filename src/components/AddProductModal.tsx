@@ -27,7 +27,7 @@ export function AddProductModal({
   onClose,
   onSuccess,
 }: AddProductModalProps) {
-  const { shopId, tenantFetch } = useAuth();
+  const { shopId, tenantFetch, isStaff } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -511,20 +511,22 @@ export function AddProductModal({
 
           {/* Pricing, Cost Price & Margin Calculation */}
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">
-                  Cost Price (₹)
-                </label>
-                <input
-                  type="number"
-                  step="1"
-                  placeholder="2000"
-                  value={formData.cost_price}
-                  onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
+            <div className={`grid gap-3 ${isStaff ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
+              {!isStaff && (
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Cost Price (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    placeholder="2000"
+                    value={formData.cost_price}
+                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
                   Selling Price (₹) <span className="text-rose-500">*</span>
@@ -564,8 +566,8 @@ export function AddProductModal({
               </div>
             </div>
 
-            {/* Profit Margin Indicator */}
-            {marginPct !== null && (
+            {/* Profit Margin Indicator (Owner Only) */}
+            {!isStaff && marginPct !== null && (
               <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200">
                 <span className="text-slate-600 font-medium">Calculated Profit Margin:</span>
                 <span className="font-black font-mono text-emerald-700">

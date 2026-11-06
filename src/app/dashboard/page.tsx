@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   IndianRupee,
   Clock,
@@ -19,6 +20,7 @@ import {
   UserPlus,
   Search,
   Zap,
+  Loader2,
 } from "lucide-react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { ReceiptModal } from "@/components/ReceiptModal";
@@ -28,11 +30,29 @@ import { useAppUi } from "@/context/AppUiContext";
 import { useDashboardData, DEFAULT_DASHBOARD_DATA } from "@/hooks/useDashboardData";
 
 export default function DashboardPage() {
-  const { shopId, tenantFetch } = useAuth();
+  const router = useRouter();
+  const { shopId, tenantFetch, isStaff, loading: authLoading } = useAuth();
+
+  // If a Staff tries to open executive dashboard revenue, cleanly redirect to /pos
+  useEffect(() => {
+    if (!authLoading && isStaff) {
+      router.replace("/pos");
+    }
+  }, [isStaff, authLoading, router]);
+
   const { openNewCustomerModal, openQuickSearchModal } = useAppUi();
   const { data, loading, isRevalidating, refetch } = useDashboardData(shopId, tenantFetch);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
   const [whatsappToast, setWhatsappToast] = useState<string | null>(null);
+
+  if (isStaff) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-slate-400 text-xs">
+        <Loader2 className="w-5 h-5 animate-spin mb-2" />
+        <span>Redirecting staff to Counter POS...</span>
+      </div>
+    );
+  }
 
   const kpis = data?.kpis || {};
   const recentOrders = data?.urgentOrders || [];

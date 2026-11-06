@@ -22,23 +22,30 @@ import { useAppUi } from "@/context/AppUiContext";
 import { InstallPwaButton } from "@/components/InstallPwaButton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { VisionPulseMark } from "@/components/VisionPulseLogo";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { openNewCustomerModal, isSidebarOpen, closeSidebar } = useAppUi();
-  const { user, userDisplayName, userEmail, userAvatarUrl, signOut } = useAuth();
+  const { user, userDisplayName, userEmail, userAvatarUrl, signOut, isStaff, isOwner } = useAuth();
 
   // Auto-close mobile sidebar drawer whenever route changes
   useEffect(() => {
     closeSidebar();
   }, [pathname]);
 
-  const navItems = [
+  const allNavItems = [
     {
       name: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
       isDashboard: true,
+      ownerOnly: true,
+    },
+    {
+      name: "Terminal Sales (POS)",
+      href: "/pos",
+      icon: Receipt,
     },
     {
       name: "Add Customer",
@@ -60,11 +67,6 @@ export function Sidebar() {
       icon: Wrench,
     },
     {
-      name: "Terminal Sales (POS)",
-      href: "/pos",
-      icon: Receipt,
-    },
-    {
       name: "Stock Control (Inventory)",
       href: "/inventory",
       icon: Package,
@@ -73,13 +75,20 @@ export function Sidebar() {
       name: "My Shop Profiles",
       href: "/settings",
       icon: Store,
+      ownerOnly: true,
     },
     {
       name: "Staff & Branches",
       href: "/staff",
       icon: Users,
+      ownerOnly: true,
     },
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    if (isStaff && item.ownerOnly) return false;
+    return true;
+  });
 
   const handleSupportClick = () => {
     window.open(
@@ -120,16 +129,16 @@ export function Sidebar() {
         {/* ======================================================== */}
         <div className="p-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 shrink-0">
-              <Eye className="w-5 h-5 stroke-[2.2]" />
+            <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-100 shrink-0 shadow-sm">
+              <VisionPulseMark className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-extrabold text-sm tracking-wide text-white leading-tight truncate">
+              <h1 className="font-bold text-sm tracking-tight text-white leading-tight truncate">
                 {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
               </h1>
-              <div className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
+              <div className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Workspace Live</span>
+                <span>{isStaff ? "Staff Counter Terminal" : "Executive Workspace"}</span>
               </div>
             </div>
           </div>
@@ -258,7 +267,7 @@ export function Sidebar() {
                   {userDisplayName || userEmail?.split("@")[0] || "Store Owner"}
                 </p>
                 <p className="text-[10px] text-slate-400 font-mono truncate">
-                  {userEmail || "OWNER • Active Terminal"}
+                  {userEmail || "user@visionpulse.in"} • {isStaff ? "STAFF" : "OWNER"}
                 </p>
               </div>
             </div>

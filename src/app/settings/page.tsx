@@ -1,11 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Save, Check, Store, Receipt } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Settings, Save, Check, Store, Receipt, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SettingsPage() {
-  const { shopId, tenantFetch } = useAuth();
+  const router = useRouter();
+  const { shopId, tenantFetch, isStaff, loading: authLoading } = useAuth();
+
+  // If a Staff tries to open restricted Store Settings, cleanly redirect to /pos
+  useEffect(() => {
+    if (!authLoading && isStaff) {
+      router.replace("/pos");
+    }
+  }, [isStaff, authLoading, router]);
+
   const [settings, setSettings] = useState<any>({
     storeName: "VisionPulse Eyewear Studio",
     tagline: "Precision Clinical Optometry & Premium Eyewear",
@@ -63,6 +73,15 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
+
+  if (isStaff) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-slate-400 text-xs">
+        <Loader2 className="w-5 h-5 animate-spin mb-2" />
+        <span>Redirecting staff to POS Terminal...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">

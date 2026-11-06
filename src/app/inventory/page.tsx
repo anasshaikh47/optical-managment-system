@@ -28,7 +28,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 export default function InventoryPage() {
-  const { shopId, tenantFetch, loading: authLoading } = useAuth();
+  const { shopId, tenantFetch, isStaff, isOwner, loading: authLoading } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState("ALL");
@@ -351,10 +351,10 @@ export default function InventoryPage() {
                   <th className="p-3.5">Photo</th>
                   <th className="p-3.5">SKU / Barcode</th>
                   <th className="p-3.5">Brand & Model</th>
-                  <th className="p-3.5">Color & Size</th>
-                  <th className="p-3.5 text-right">Cost Price</th>
+                  <th className="p-3.5">Color & Model</th>
+                  {!isStaff && <th className="p-3.5 text-right">Cost Price</th>}
                   <th className="p-3.5 text-right">Selling Price</th>
-                  <th className="p-3.5 text-right">Margin %</th>
+                  {!isStaff && <th className="p-3.5 text-right">Margin %</th>}
                   <th className="p-3.5 text-center">Stock Qty</th>
                   <th className="p-3.5 text-center">Quick Adjust</th>
                   <th className="p-3.5 text-center">Actions</th>
@@ -406,7 +406,7 @@ export default function InventoryPage() {
                   </>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="p-12 text-center text-slate-500">
+                    <td colSpan={isStaff ? 9 : 11} className="p-12 text-center text-slate-500">
                       <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2.5">
                         <Package className="w-10 h-10 text-slate-300 stroke-[1.5]" />
                         <h4 className="font-extrabold text-slate-800 text-sm">
@@ -524,30 +524,34 @@ export default function InventoryPage() {
                           )}
                         </td>
 
-                        {/* Cost Price */}
-                        <td className="p-3.5 text-right font-medium text-slate-500">
-                          {formatCurrency(item.cost_price)}
-                        </td>
+                        {/* Cost Price (Hidden for Staff) */}
+                        {!isStaff && (
+                          <td className="p-3.5 text-right font-medium text-slate-500">
+                            {formatCurrency(item.cost_price)}
+                          </td>
+                        )}
 
                         {/* Selling Price */}
                         <td className="p-3.5 text-right font-black text-slate-900 text-xs">
                           {formatCurrency(item.selling_price)}
                         </td>
 
-                        {/* Margin % */}
-                        <td className="p-3.5 text-right font-bold">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] ${
-                              parseFloat(margin) >= 50
-                                ? "bg-emerald-50 text-emerald-700 font-extrabold"
-                                : parseFloat(margin) >= 30
-                                ? "bg-cyan-50 text-cyan-700"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {margin}%
-                          </span>
-                        </td>
+                        {/* Margin % (Hidden for Staff) */}
+                        {!isStaff && (
+                          <td className="p-3.5 text-right font-bold">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                parseFloat(margin) >= 50
+                                  ? "bg-emerald-50 text-emerald-700 font-extrabold"
+                                  : parseFloat(margin) >= 30
+                                  ? "bg-cyan-50 text-cyan-700"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {margin}%
+                            </span>
+                          </td>
+                        )}
 
                         {/* Stock Qty */}
                         <td className="p-3.5 text-center">

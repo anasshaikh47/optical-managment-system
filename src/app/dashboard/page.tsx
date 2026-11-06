@@ -25,66 +25,14 @@ import { ReceiptModal } from "@/components/ReceiptModal";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useAppUi } from "@/context/AppUiContext";
-
-const DEFAULT_DASHBOARD_DATA = {
-  kpis: {
-    todaySales: 0,
-    salesChangePercent: 0,
-    totalNetProfit: 0,
-    totalBalanceDue: 0,
-    readyForPickupCount: 0,
-    lowStockCount: 0,
-    dueTodayCount: 0,
-    totalRevenue: 0,
-    totalOrders: 0,
-    totalCustomers: 0,
-  },
-  analytics: {
-    salesBreakdown: [],
-    dailyTrend: [],
-    weeklyTrend: [],
-    monthlyTrend: [],
-    topBrands: [],
-    topLensTypes: [],
-  },
-  urgentOrders: [],
-  lowStockItems: [],
-  storeSetting: null,
-};
+import { useDashboardData, DEFAULT_DASHBOARD_DATA } from "@/hooks/useDashboardData";
 
 export default function DashboardPage() {
-  const { shopId, tenantFetch, loading: authLoading } = useAuth();
+  const { shopId, tenantFetch } = useAuth();
   const { openNewCustomerModal, openQuickSearchModal } = useAppUi();
-  const [data, setData] = useState<any>(DEFAULT_DASHBOARD_DATA);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, isRevalidating, refetch } = useDashboardData(shopId, tenantFetch);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
   const [whatsappToast, setWhatsappToast] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (authLoading) return;
-    fetchDashboardData();
-
-    const handleCustomerCreated = () => {
-      fetchDashboardData();
-    };
-    window.addEventListener("customer-created", handleCustomerCreated);
-    return () => window.removeEventListener("customer-created", handleCustomerCreated);
-  }, [shopId, authLoading]);
-
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      const res = await tenantFetch("/api/dashboard");
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const kpis = data?.kpis || {};
   const recentOrders = data?.urgentOrders || [];
@@ -320,13 +268,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <Link
-            href="/orders"
-            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors group shrink-0"
-          >
-            <span>View All Orders</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
+          <div className="flex items-center gap-2.5">
+            {isRevalidating && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2.5 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-ping" />
+                Live Syncing
+              </span>
+            )}
+            <Link
+              href="/orders"
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors group shrink-0"
+            >
+              <span>View All Orders</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
         </div>
 
         {/* Orders Table Container: Scroll horizontally on mobile */}

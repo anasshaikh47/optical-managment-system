@@ -34,6 +34,7 @@ model Customer {
   prescriptions  Prescription[]
 
   @@index([shopId])
+  @@index([shopId, createdAt])
 }
 
 model Prescription {
@@ -80,6 +81,7 @@ model InventoryItem {
   orderItems          OrderItem[]
 
   @@index([shopId])
+  @@index([shopId, createdAt])
 }
 
 model Order {
@@ -113,6 +115,8 @@ model Order {
   payments          Payment[]
 
   @@index([shopId])
+  @@index([shopId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model OrderItem {

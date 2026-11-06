@@ -14,47 +14,131 @@ export async function GET(request: Request) {
     let settings = tenant.settings;
 
     try {
-      // Query Inventory Items from Database
-      const dbItems = await prisma.inventoryItem.findMany({
-        where: {
-          OR: [
-            { shopId },
-            ...(shopId === "default" ? [{ shopId: "default" }] : []),
-          ],
-        },
-        orderBy: { createdAt: "desc" },
-      });
+      // Parallelize Database Queries with Promise.all and selective column projections
+      const [dbItems, dbOrders, dbCustomers, dbSetting] = await Promise.all([
+        prisma.inventoryItem.findMany({
+          where: {
+            OR: [
+              { shopId },
+              ...(shopId === "default" ? [{ shopId: "default" }] : []),
+            ],
+          },
+          select: {
+            id: true,
+            sku: true,
+            brand: true,
+            model: true,
+            type: true,
+            selling_price: true,
+            cost_price: true,
+            stock_quantity: true,
+            min_alert_threshold: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.order.findMany({
+          where: {
+            OR: [
+              { shopId },
+              { userId: shopId },
+              ...(shopId === "default" ? [{ shopId: "default" }] : []),
+            ],
+          },
+          select: {
+            id: true,
+            bill_no: true,
+            status: true,
+            subtotal: true,
+            total_amount: true,
+            totalAmount: true,
+            discount_amount: true,
+            tax_amount: true,
+            taxAmount: true,
+            final_payable: true,
+            paid_amount: true,
+            paidAmount: true,
+            balance_amount: true,
+            pendingAmount: true,
+            delivery_due_date: true,
+            createdAt: true,
+            updatedAt: true,
+            customerName: true,
+            customerPhone: true,
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+              },
+            },
+            prescription: {
+              select: {
+                id: true,
+                lens_type: true,
+              },
+            },
+            items: {
+              select: {
+                id: true,
+                quantity: true,
+                unit_price: true,
+                subtotal: true,
+                coating_charges: true,
+                fitting_charges: true,
+                createdAt: true,
+                item: {
+                  select: {
+                    id: true,
+                    brand: true,
+                    model: true,
+                    type: true,
+                    lens_index: true,
+                    cost_price: true,
+                  },
+                },
+              },
+            },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
+                method: true,
+                payment_type: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: "desc" },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.customer.findMany({
+          where: {
+            OR: [
+              { shopId },
+              { userId: shopId },
+              ...(shopId === "default" ? [{ shopId: "default" }] : []),
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.storeSetting.findFirst(),
+      ]);
+
       inventoryItems = dbItems.map((it) => ({
         ...it,
         createdAt: it.createdAt.toISOString(),
         updatedAt: it.updatedAt.toISOString(),
       }));
 
-      // Query Orders from Database with Customer, Prescription, Items and Payments
-      const dbOrders = await prisma.order.findMany({
-        where: {
-          OR: [
-            { shopId },
-            { userId: shopId },
-            ...(shopId === "default" ? [{ shopId: "default" }] : []),
-          ],
-        },
-        include: {
-          customer: true,
-          prescription: true,
-          items: {
-            include: {
-              item: true,
-            },
-          },
-          payments: {
-            orderBy: { createdAt: "desc" },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      });
-
-      orders = dbOrders.map((o) => {
+      orders = (dbOrders as any[]).map((o: any) => {
         const subtotal = o.subtotal ?? o.total_amount;
         const totalAmount = o.totalAmount ?? o.final_payable;
         const paidAmount = o.paidAmount ?? o.paid_amount;
@@ -73,84 +157,43 @@ export async function GET(request: Request) {
           delivery_due_date: o.delivery_due_date ? o.delivery_due_date.toISOString() : null,
           createdAt: o.createdAt.toISOString(),
           updatedAt: o.updatedAt.toISOString(),
-          customer: o.customer
-            ? {
-                ...o.customer,
-                dob: o.customer.dob ? o.customer.dob.toISOString() : null,
-                createdAt: o.customer.createdAt.toISOString(),
-                updatedAt: o.customer.updatedAt.toISOString(),
-              }
-            : null,
-          prescription: o.prescription
-            ? {
-                ...o.prescription,
-                createdAt: o.prescription.createdAt.toISOString(),
-                updatedAt: o.prescription.updatedAt.toISOString(),
-              }
-            : null,
-          items: o.items.map((it) => ({
+          customer: o.customer || null,
+          prescription: o.prescription || null,
+          items: (o.items || []).map((it: any) => ({
             ...it,
             createdAt: it.createdAt.toISOString(),
-            item: it.item
-              ? {
-                  ...it.item,
-                  createdAt: it.item.createdAt.toISOString(),
-                  updatedAt: it.item.updatedAt.toISOString(),
-                }
-              : null,
+            item: it.item || null,
           })),
-          payments: o.payments.map((p) => ({
+          payments: (o.payments || []).map((p: any) => ({
             ...p,
             createdAt: p.createdAt.toISOString(),
           })),
         };
       });
 
-      // Query Customers from Database
-      const dbCustomers = await prisma.customer.findMany({
-        where: {
-          OR: [
-            { shopId },
-            { userId: shopId },
-            ...(shopId === "default" ? [{ shopId: "default" }] : []),
-          ],
-        },
-        include: {
-          orders: true,
-          prescriptions: true,
-        },
-        orderBy: { createdAt: "desc" },
-      });
-
       customers = dbCustomers.map((c) => ({
         ...c,
-        dob: c.dob ? c.dob.toISOString() : null,
         createdAt: c.createdAt.toISOString(),
-        updatedAt: c.updatedAt.toISOString(),
       }));
 
       // Flatten payments
       payments = orders.flatMap((o) => o.payments || []);
 
-      // Store settings from DB if available
-      try {
-        const dbSetting = await prisma.storeSetting.findFirst();
-        if (dbSetting) {
-          settings = {
-            ...settings,
-            storeName: dbSetting.storeName,
-            tagline: dbSetting.tagline,
-            gstin: dbSetting.gstin,
-            phone: dbSetting.phone,
-            email: dbSetting.email,
-            address: dbSetting.address,
-            currencySymbol: dbSetting.currencySymbol,
-            currencyCode: dbSetting.currencyCode,
-            defaultGstRate: dbSetting.defaultGstRate,
-            receiptFooter: dbSetting.receiptFooter,
-          };
-        }
-      } catch {}
+      if (dbSetting) {
+        settings = {
+          ...settings,
+          storeName: dbSetting.storeName,
+          tagline: dbSetting.tagline,
+          gstin: dbSetting.gstin,
+          phone: dbSetting.phone,
+          email: dbSetting.email,
+          address: dbSetting.address,
+          currencySymbol: dbSetting.currencySymbol,
+          currencyCode: dbSetting.currencyCode,
+          defaultGstRate: dbSetting.defaultGstRate,
+          receiptFooter: dbSetting.receiptFooter,
+        };
+      }
     } catch (dbError: any) {
       console.warn("Prisma GET dashboard fallback to memory:", dbError.message);
       inventoryItems = tenant.inventory;

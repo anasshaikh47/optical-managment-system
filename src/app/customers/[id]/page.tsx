@@ -89,7 +89,8 @@ export default function CustomerProfilePage({
             href="/customers"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs"
           >
-            <ArrowLeft className="w-4 h-4" /> Return to Patients Directory
+            <ArrowLeft className="w-4 h-4" />
+            <span>← Back to Customers Directory</span>
           </Link>
         </div>
       </div>
@@ -166,10 +167,10 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/customers"
-            className="font-bold text-slate-500 hover:text-cyan-700 flex items-center gap-1.5 text-xs"
+            className="font-bold text-slate-600 hover:text-cyan-700 flex items-center gap-1.5 text-xs transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Patients Directory</span>
+            <span>← Back to Customers Directory</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -421,7 +422,71 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
             </span>
           </div>
 
-          <div className="overflow-x-auto w-full">
+          {/* Mobile Order Cards View */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            {orders.length === 0 ? (
+              <p className="p-6 text-center text-slate-400 italic text-xs">
+                No orders placed by this patient yet.
+              </p>
+            ) : (
+              orders.map((ord: any) => (
+                <div key={ord.id} className="p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href={`/orders/${ord.id}`}
+                      className="font-mono font-bold text-cyan-800 text-xs hover:underline"
+                    >
+                      {ord.bill_no}
+                    </Link>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {ord.status.replace("_", " ")}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-800 font-semibold">
+                    {ord.items
+                      ?.map(
+                        (i: any) =>
+                          `${i.quantity}x ${i.item?.brand || ""} ${i.item?.model || i.item?.type || ""}`.trim()
+                      )
+                      .join(", ") || "Eyewear Products"}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>{formatDate(ord.createdAt)}</span>
+                    <span className="font-black text-slate-900 text-sm">
+                      {formatCurrency(ord.final_payable)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                    <div>
+                      {ord.balance_amount > 0 ? (
+                        <span className="text-rose-600 font-bold text-xs">
+                          Due: {formatCurrency(ord.balance_amount)}
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 font-bold text-xs">Paid Full</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedReceiptOrder({
+                          ...ord,
+                          customer: ord.customer || customer,
+                        })
+                      }
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>View / Reprint Invoice</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop/Tablet Table View */}
+          <div className="hidden sm:block overflow-x-auto w-full">
             <table className="w-full min-w-[750px] text-xs text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold">
                 <tr>
@@ -487,17 +552,24 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
                       </td>
 
                       <td className="p-3 text-center">
-                        <div className="inline-flex items-center gap-1">
+                        <div className="inline-flex items-center gap-1.5 justify-center">
                           <button
-                            onClick={() => setSelectedReceiptOrder(ord)}
-                            className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
-                            title="Print GST Invoice"
+                            type="button"
+                            onClick={() =>
+                              setSelectedReceiptOrder({
+                                ...ord,
+                                customer: ord.customer || customer,
+                              })
+                            }
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+                            title="View / Reprint Invoice"
                           >
                             <Printer className="w-3.5 h-3.5" />
+                            <span>View / Reprint Invoice</span>
                           </button>
                           <Link
                             href={`/orders/${ord.id}`}
-                            className="p-1 rounded text-slate-500 hover:text-cyan-700 hover:bg-slate-100"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-cyan-700 hover:bg-slate-100 transition-colors"
                             title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />

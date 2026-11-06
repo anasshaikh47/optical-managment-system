@@ -1,5 +1,5 @@
 // Optical Store ERP & POS Service Worker
-const CACHE_NAME = 'optical-pos-v1';
+const CACHE_NAME = 'optical-pos-v1.2.0';
 
 const STATIC_PRECACHE = [
   '/',
@@ -18,7 +18,6 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -36,6 +35,13 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Support Skip Waiting message for in-app updates
+self.addEventListener('message', (event) => {
+  if (event.data && (event.data.type === 'SKIP_WAITING' || event.data === 'skipWaiting')) {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
@@ -43,8 +49,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Bypass API endpoints, auth, and Next.js dev server hot updates
+  // Strict live guarantee: All database and API calls always hit the network
   if (
     url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/auth/') ||
     url.pathname.startsWith('/_next/webpack-hmr') ||
     url.pathname.includes('hot-update')
   ) {

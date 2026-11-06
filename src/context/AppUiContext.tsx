@@ -1,12 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { QuickSearchModal } from "@/components/QuickSearchModal";
 import { MobileSyncModal } from "@/components/MobileSyncModal";
 import { InstallPwaModal } from "@/components/InstallPwaModal";
+import { AppUpdateBanner } from "@/components/AppUpdateBanner";
+import { APP_VERSION } from "@/config/version";
 
 interface AppUiContextType {
   openNewCustomerModal: () => void;
@@ -27,6 +29,10 @@ interface AppUiContextType {
   openInstallModal: () => void;
   closeInstallModal: () => void;
   promptInstall: () => Promise<void>;
+  // In-App Service Worker & Version Update Management
+  isUpdateAvailable: boolean;
+  applyAppUpdate: () => void;
+  dismissUpdate: () => void;
 }
 
 const AppUiContext = createContext<AppUiContextType | undefined>(undefined);
@@ -46,6 +52,10 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const [isIos, setIsIos] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
+  // In-App Version & Service Worker Update State
+  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
   // Global keyboard shortcut: Ctrl+K / Cmd+K to open Quick Search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,21 +68,91 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Register PWA Service Worker & Listen to PWA Install Lifecycle
+  // Register PWA Service Worker & Listen to PWA Install & Update Lifecycle
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Register Service Worker
+    let swRegistration: ServiceWorkerRegistration | null = null;
+    let isReloading = false;
+
+    // Listen for service worker controlling changes (when new worker activates)
+    const handleControllerChange = () => {
+      if (!isReloading) {
+        isReloading = true;
+        window.location.reload();
+      }
+    };
+
     if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+
       navigator.serviceWorker
         .register("/sw.js")
         .then((reg) => {
-          // Service worker active
+          swRegistration = reg;
+
+          // 1. If there's an existing worker waiting, an update is already installed & ready
+          if (reg.waiting) {
+            setWaitingWorker(reg.waiting);
+            setIsUpdateAvailable(true);
+          }
+
+          // 2. Listen for newly discovered updates
+          reg.addEventListener("updatefound", () => {
+            const installingWorker = reg.installing;
+            if (!installingWorker) return;
+
+            installingWorker.addEventListener("statechange", () => {
+              if (
+                installingWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
+                setWaitingWorker(installingWorker);
+                setIsUpdateAvailable(true);
+              }
+            });
+          });
         })
         .catch((err) => {
           console.warn("PWA SW registration:", err);
         });
     }
+
+    // Version Polling Helper (compares client APP_VERSION with deployment /api/version)
+    const checkServerVersion = async () => {
+      try {
+        if (swRegistration) {
+          await swRegistration.update();
+        }
+        const res = await fetch(`/api/version?_t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.version && data.version !== APP_VERSION) {
+            setIsUpdateAvailable(true);
+          }
+        }
+      } catch {
+        // network or offline
+      }
+    };
+
+    // Initial server version check after 10 seconds of launch
+    const initialCheckTimer = setTimeout(checkServerVersion, 10000);
+
+    // Periodic check every 4 minutes
+    const checkInterval = setInterval(checkServerVersion, 4 * 60 * 1000);
+
+    // Recheck when tab gains focus or visibility returns
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkServerVersion();
+      }
+    };
+    window.addEventListener("focus", checkServerVersion);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Check if running in standalone mode already
     const isStandalone =
@@ -106,8 +186,15 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
+      clearTimeout(initialCheckTimer);
+      clearInterval(checkInterval);
+      window.removeEventListener("focus", checkServerVersion);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+      }
     };
   }, []);
 
@@ -143,6 +230,23 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Trigger skipWaiting and instant UI reload without touching cloud database records
+  const applyAppUpdate = useCallback(() => {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    }
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: "SKIP_WAITING" });
+    }
+    setTimeout(() => {
+      window.location.reload();
+    }, 150);
+  }, [waitingWorker]);
+
+  const dismissUpdate = useCallback(() => {
+    setIsUpdateAvailable(false);
+  }, []);
+
   const handleCustomerCreated = (newCust: any) => {
     setIsNewCustomerOpen(false);
     setToastMessage(`✓ Customer "${newCust.name}" successfully registered (+91 ${newCust.phone.replace(/[^0-9]/g, "").slice(-10)})`);
@@ -173,9 +277,15 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         openInstallModal,
         closeInstallModal,
         promptInstall,
+        isUpdateAvailable,
+        applyAppUpdate,
+        dismissUpdate,
       }}
     >
       {children}
+
+      {/* In-App Update Notification Banner (PWA / Service Worker Update) */}
+      <AppUpdateBanner />
 
       {/* Global In-App Toast Feedback */}
       {toastMessage && (

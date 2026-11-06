@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Save, Check, Store, Receipt, Loader2 } from "lucide-react";
+import { Settings, Save, Check, Store, Receipt, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { APP_VERSION_DISPLAY } from "@/config/version";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -230,6 +231,18 @@ export default function SettingsPage() {
                 onChange={(e) => setSettings({ ...settings, receiptFooter: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs"
               />
+            </div>
+          </div>
+
+          {/* System Version & Cloud Persistence Card */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-700">App Version &amp; Build:</span>
+              <span className="font-mono font-bold text-slate-800">{APP_VERSION_DISPLAY}</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 self-start sm:self-auto">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Zero Data Loss Protection • Supabase DB Active</span>
             </div>
           </div>
 

@@ -129,7 +129,7 @@ export async function GET(request: Request) {
           },
           orderBy: { createdAt: "desc" },
         }),
-        prisma.storeSetting.findFirst(),
+        prisma.storeSetting.findUnique({ where: { id: shopId } }).then((s) => s || prisma.storeSetting.findFirst()),
       ]);
 
       inventoryItems = dbItems.map((it) => ({

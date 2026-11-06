@@ -14,6 +14,14 @@ export async function GET(request: Request) {
       if (customerId) {
         where.customerId = customerId;
       }
+      if (shopId && shopId !== "default") {
+        where.customer = {
+          OR: [
+            { shopId },
+            { userId: shopId },
+          ],
+        };
+      }
       if (query && query.trim()) {
         const q = query.trim();
         where.OR = [

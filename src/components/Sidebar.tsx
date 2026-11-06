@@ -23,6 +23,7 @@ import { InstallPwaButton } from "@/components/InstallPwaButton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { VisionPulseMark } from "@/components/VisionPulseLogo";
+import { APP_VERSION_DISPLAY } from "@/config/version";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -279,6 +280,13 @@ export function Sidebar() {
             >
               <LogOut className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* App Version Tracker */}
+          <div className="pt-0.5 text-center">
+            <p className="text-[10px] font-mono text-slate-400 truncate tracking-tight select-none">
+              {APP_VERSION_DISPLAY}
+            </p>
           </div>
         </div>
       </aside>

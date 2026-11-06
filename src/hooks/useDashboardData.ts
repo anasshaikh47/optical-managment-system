@@ -116,7 +116,7 @@ export async function fetchStockSummary(supabase: any, shopId: string) {
     .order("createdAt", { ascending: false });
 
   if (shopId && shopId !== "default") {
-    query = query.or(`shopId.eq.${shopId},shopId.eq.default`);
+    query = query.eq("shopId", shopId);
   }
   const { data, error } = await query;
   if (error) throw error;

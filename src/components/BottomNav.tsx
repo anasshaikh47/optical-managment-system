@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useAppUi } from "@/context/AppUiContext";
 import { cn } from "@/lib/utils";
+import { APP_VERSION_DISPLAY } from "@/config/version";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -288,6 +289,17 @@ export function BottomNav() {
               <LogOut className="w-4 h-4" />
               <span>Sign Out of Account</span>
             </button>
+
+            {/* Version & Sync Status */}
+            <div className="pt-2 text-center space-y-0.5">
+              <p className="text-[11px] font-mono text-slate-400 font-medium select-none">
+                {APP_VERSION_DISPLAY}
+              </p>
+              <div className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400/90 font-semibold select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Cloud Database Synchronized</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

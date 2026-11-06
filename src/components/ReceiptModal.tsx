@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDate, formatDateTime, formatDiopter } from "@/lib/utils";
 
-interface ReceiptModalProps {
+export interface ReceiptModalProps {
   order: any;
   onClose: () => void;
   onGoToDashboard?: () => void;
@@ -104,18 +104,85 @@ ${rxSummary}
   const cgstAmount = totalTax / 2;
   const sgstAmount = totalTax / 2;
   const taxableSubtotal = Math.max(0, order.total_amount - (order.discount_amount || 0));
+  const finalPayable = order.final_payable ?? order.totalAmount ?? order.total_amount ?? 0;
+  const paidAmount = order.paid_amount ?? order.paidAmount ?? 0;
+  const balanceDue = order.balance_amount ?? order.pendingAmount ?? order.balanceAmount ?? 0;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150 modal-print-backdrop">
+      {/* Strict Print Media Rules */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+@media print {
+  @page {
+    size: ${printFormat === "THERMAL_80MM" ? "80mm auto" : "A4 portrait"};
+    margin: ${printFormat === "THERMAL_80MM" ? "2mm 3mm" : "10mm 12mm"};
+  }
+  html, body {
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .invoice-print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+  /* Hide all modal backdrops, headers, buttons during print */
+  header, nav, .bottom-nav, button, .no-print {
+    display: none !important;
+  }
+  .modal-print-backdrop {
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+    display: block !important;
+    inset: auto !important;
+    z-index: auto !important;
+  }
+  .modal-print-wrapper {
+    position: static !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+  .modal-print-content {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+}
+`,
+        }}
+      />
       <div
-        className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] sm:max-h-[88vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 ${
+        className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] sm:max-h-[88vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 modal-print-wrapper ${
           printFormat === "A4_INVOICE" ? "max-w-4xl" : "max-w-md"
         }`}
       >
         {/* ======================================================== */}
         {/* 1. TOP RESPONSIVE HEADER & FORMAT SELECTOR BAR           */}
         {/* ======================================================== */}
-        <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-slate-200 bg-slate-50 print:hidden space-y-2.5 shrink-0">
+        <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-slate-200 bg-slate-50 print:hidden no-print space-y-2.5 shrink-0">
           {/* Top Row: Title, Bill Badge & Close Button */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -194,92 +261,92 @@ ${rxSummary}
         {/* ======================================================== */}
         {/* 2. PRINTABLE DOCUMENT CONTENT AREA                       */}
         {/* ======================================================== */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-100 flex justify-center pb-8 sm:pb-6 print:bg-white print:p-0 print:m-0">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-100 flex justify-center pb-8 sm:pb-6 print:bg-white print:p-0 print:m-0 modal-print-content">
           {/* ======================================================== */}
           {/* TEMPLATE 1: STANDARD A4 GST TAX INVOICE                 */}
           {/* ======================================================== */}
           {printFormat === "A4_INVOICE" ? (
             <div
               ref={printRef}
-              className="w-full max-w-[800px] bg-white p-4 sm:p-6 md:p-8 rounded-xl shadow-xs border border-slate-200 text-slate-800 font-sans text-xs space-y-4 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:w-full"
+              className="invoice-print-container w-full max-w-[800px] bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-200 text-slate-800 font-sans text-xs print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:w-full"
             >
               {/* Header: Seller & Invoice Banner */}
-              <div className="flex flex-col sm:flex-row items-start justify-between gap-4 pb-4 border-b-2 border-slate-800">
-                <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-cyan-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                    <Glasses className="w-6 h-6 sm:w-7 sm:h-7" />
+              <div className="flex items-start justify-between gap-3 mb-3 pb-2 border-b border-slate-800">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-cyan-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0 mt-0.5">
+                    <Glasses className="w-5 h-5" />
                   </div>
                   <div>
-                    <h1 className="text-base sm:text-xl font-black text-slate-900 tracking-wider">
+                    <h1 className="text-sm sm:text-base font-black text-slate-900 tracking-wider leading-tight">
                       VISION<span className="text-cyan-600">PULSE</span> EYEWEAR STUDIO
                     </h1>
-                    <p className="text-[11px] font-semibold text-slate-600">
+                    <p className="text-[10px] font-semibold text-slate-600 leading-tight">
                       Precision Clinical Optometry & Premium Eyewear
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">
+                    <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
                       Galleria Arcade, Powai, Mumbai - 400076, Maharashtra
                     </p>
-                    <p className="text-[10px] font-mono text-slate-700">
+                    <p className="text-[9px] font-mono text-slate-700 leading-tight">
                       <strong>GSTIN:</strong> 27AABCV1234F1Z8 • <strong>State Code:</strong> 27 (Maharashtra)
                     </p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[9px] text-slate-500 leading-tight">
                       Tel: +91 98201 12345 • Email: billing@visionpulse.in
                     </p>
                   </div>
                 </div>
 
-                <div className="w-full sm:w-auto text-left sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                  <span className="inline-block px-3 py-1 bg-slate-900 text-white font-black text-xs uppercase tracking-wider rounded">
+                <div className="text-right shrink-0">
+                  <span className="inline-block px-2.5 py-0.5 bg-slate-900 text-white font-black text-[10px] uppercase tracking-wider rounded">
                     TAX INVOICE
                   </span>
-                  <p className="text-xs font-mono font-bold text-slate-900 mt-1.5">
+                  <p className="text-[11px] font-mono font-bold text-slate-900 mt-1 leading-tight">
                     Invoice No: {order.bill_no}
                   </p>
-                  <p className="text-[11px] text-slate-600">
+                  <p className="text-[10px] text-slate-600 leading-tight">
                     Date: {formatDateTime(order.createdAt)}
                   </p>
                   {order.delivery_due_date && (
-                    <p className="text-[11px] font-bold text-cyan-800 mt-0.5">
+                    <p className="text-[10px] font-bold text-cyan-800 mt-0.5 leading-tight">
                       Promised Ready: {formatDate(order.delivery_due_date)}
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Responsive Seller & Buyer Tax Information */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+              {/* Customer details & Bill details grid: compact 2-column flex */}
+              <div className="grid grid-cols-2 gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200 mb-3 text-[11px] leading-tight">
                 <div>
-                  <h4 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-1">
+                  <h4 className="font-bold text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">
                     Bill To / Patient Details:
                   </h4>
-                  <p className="font-bold text-slate-900 text-sm">
+                  <p className="font-bold text-slate-900 text-xs leading-tight">
                     {order.customer ? order.customer.name : "Walk-in Retail Guest"}
                   </p>
-                  <p className="font-mono text-slate-700 mt-0.5">
+                  <p className="font-mono text-slate-700 mt-0.5 leading-tight">
                     Phone: {order.customer?.phone || "—"}
                   </p>
                   {order.customer?.email && (
-                    <p className="text-slate-600 truncate">{order.customer.email}</p>
+                    <p className="text-slate-600 truncate leading-tight">{order.customer.email}</p>
                   )}
                   {order.customer?.address && (
-                    <p className="text-slate-600">{order.customer.address}</p>
+                    <p className="text-slate-600 truncate leading-tight">{order.customer.address}</p>
                   )}
-                  <p className="text-[10px] text-slate-500 mt-0.5">
+                  <p className="text-[9px] text-slate-500 mt-0.5 leading-tight">
                     Place of Supply: <strong>Maharashtra (27)</strong>
                   </p>
                 </div>
 
-                <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
-                  <h4 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-1">
+                <div className="text-right">
+                  <h4 className="font-bold text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">
                     Invoice & Payment Status:
                   </h4>
-                  <p className="font-mono text-xs">
-                    Order Status: <strong className="uppercase text-slate-900">{order.status.replace("_", " ")}</strong>
+                  <p className="font-mono text-[11px] leading-tight">
+                    Order Status: <strong className="uppercase text-slate-900">{order.status?.replace("_", " ")}</strong>
                   </p>
-                  <p className="text-slate-600 mt-0.5">
-                    Payment Type: {order.balance_amount === 0 ? "Full Payment Settled" : "Advance Deposit"}
+                  <p className="text-slate-600 mt-0.5 leading-tight">
+                    Payment Type: {balanceDue === 0 ? "Full Payment Settled" : "Advance Deposit"}
                   </p>
-                  <p className="text-slate-600 font-mono">
+                  <p className="text-slate-600 font-mono leading-tight">
                     Payment Method: {order.payments?.[0]?.method || "UPI / Counter"}
                   </p>
                 </div>
@@ -287,118 +354,124 @@ ${rxSummary}
 
               {/* Optical Prescription Matrix Table (If attached) */}
               {rx && (
-                <div className="border border-cyan-200 bg-cyan-50/40 rounded-xl p-3 space-y-1.5">
-                  <div className="flex items-center justify-between text-cyan-900 font-bold text-xs">
-                    <span className="flex items-center gap-1.5">
+                <div className="border border-cyan-200 bg-cyan-50/40 rounded-lg p-2 mb-3 text-[10px] leading-tight">
+                  <div className="flex items-center justify-between text-cyan-900 font-bold text-[11px] mb-1">
+                    <span className="flex items-center gap-1">
                       <Glasses className="w-3.5 h-3.5 text-cyan-700 shrink-0" />
                       Refraction Prescription Record
                     </span>
-                    <span className="text-[10px] font-sans">
+                    <span className="text-[9px] font-sans font-normal text-cyan-800">
                       Optometrist: {rx.optometristName || "Dr. Staff"}
                     </span>
                   </div>
 
-                  <div className="overflow-x-auto w-full">
-                    <table className="w-full min-w-[480px] text-[10px] text-center border-collapse border border-cyan-300 font-mono">
+                  <div className="w-full overflow-hidden rounded border border-cyan-300">
+                    <table className="w-full text-[9px] text-center border-collapse font-mono" style={{ tableLayout: "fixed" }}>
                       <thead className="bg-cyan-100 text-cyan-950 uppercase font-sans font-bold">
                         <tr>
-                          <th className="p-1 border border-cyan-300 text-left pl-2">Eye</th>
-                          <th className="p-1 border border-cyan-300">SPH (D)</th>
-                          <th className="p-1 border border-cyan-300">CYL (D)</th>
-                          <th className="p-1 border border-cyan-300">AXIS (°)</th>
-                          <th className="p-1 border border-cyan-300">ADD</th>
-                          <th className="p-1 border border-cyan-300">PD (Dist)</th>
-                          <th className="p-1 border border-cyan-300">PD (Near)</th>
+                          <th className="py-0.5 px-1 border-r border-cyan-300 text-left pl-1.5 w-[16%]">Eye</th>
+                          <th className="py-0.5 px-1 border-r border-cyan-300 w-[14%]">SPH (D)</th>
+                          <th className="py-0.5 px-1 border-r border-cyan-300 w-[14%]">CYL (D)</th>
+                          <th className="py-0.5 px-1 border-r border-cyan-300 w-[14%]">AXIS (°)</th>
+                          <th className="py-0.5 px-1 border-r border-cyan-300 w-[14%]">ADD</th>
+                          <th className="py-0.5 px-1 border-r border-cyan-300 w-[14%]">PD (Dist)</th>
+                          <th className="py-0.5 px-1 w-[14%]">PD (Near)</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white">
-                        <tr>
-                          <td className="p-1 border border-cyan-300 font-sans font-bold text-left pl-2 text-cyan-950">
+                        <tr className="border-t border-cyan-200">
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-sans font-bold text-left pl-1.5 text-cyan-950">
                             OD (Right)
                           </td>
-                          <td className="p-1 border border-cyan-300 font-bold">{formatDiopter(rx.od_sph)}</td>
-                          <td className="p-1 border border-cyan-300">{formatDiopter(rx.od_cyl)}</td>
-                          <td className="p-1 border border-cyan-300">{rx.od_axis !== null ? `${rx.od_axis}°` : "—"}</td>
-                          <td className="p-1 border border-cyan-300 font-bold text-cyan-700">
-                            {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold">{formatDiopter(rx.od_sph)}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{formatDiopter(rx.od_cyl)}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.od_axis !== null && rx.od_axis !== undefined ? `${rx.od_axis}°` : "—"}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold text-cyan-700">
+                            {rx.od_add ? `+${Number(rx.od_add).toFixed(2)}` : "—"}
                           </td>
-                          <td className="p-1 border border-cyan-300">{rx.pd_distance || "—"} mm</td>
-                          <td className="p-1 border border-cyan-300">{rx.pd_near || "—"} mm</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.pd_distance || "—"} mm</td>
+                          <td className="py-0.5 px-1">{rx.pd_near || "—"} mm</td>
                         </tr>
-                        <tr>
-                          <td className="p-1 border border-cyan-300 font-sans font-bold text-left pl-2 text-cyan-950">
+                        <tr className="border-t border-cyan-200">
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-sans font-bold text-left pl-1.5 text-cyan-950">
                             OS (Left)
                           </td>
-                          <td className="p-1 border border-cyan-300 font-bold">{formatDiopter(rx.os_sph)}</td>
-                          <td className="p-1 border border-cyan-300">{formatDiopter(rx.os_cyl)}</td>
-                          <td className="p-1 border border-cyan-300">{rx.os_axis !== null ? `${rx.os_axis}°` : "—"}</td>
-                          <td className="p-1 border border-cyan-300 font-bold text-cyan-700">
-                            {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold">{formatDiopter(rx.os_sph)}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{formatDiopter(rx.os_cyl)}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.os_axis !== null && rx.os_axis !== undefined ? `${rx.os_axis}°` : "—"}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold text-cyan-700">
+                            {rx.os_add ? `+${Number(rx.os_add).toFixed(2)}` : "—"}
                           </td>
-                          <td className="p-1 border border-cyan-300">{rx.pd_distance || "—"} mm</td>
-                          <td className="p-1 border border-cyan-300">{rx.pd_near || "—"} mm</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.pd_distance || "—"} mm</td>
+                          <td className="py-0.5 px-1">{rx.pd_near || "—"} mm</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
 
-                  <p className="text-[10px] text-cyan-900">
+                  <p className="text-[9px] text-cyan-900 mt-1">
                     Lens Design: <strong className="uppercase">{(rx.lens_type || "Single Vision").replace("_", " ")}</strong>
                     {rx.notes && <span> • Notes: {rx.notes}</span>}
                   </p>
                 </div>
               )}
 
-              {/* Line Items Table with HSN, Rates, CGST/SGST Breakdown */}
-              <div className="overflow-x-auto w-full rounded-xl border border-slate-200">
-                <table className="w-full min-w-[560px] text-left text-xs border-collapse">
-                  <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 uppercase font-bold text-[10px]">
+              {/* Items Table: Fixed Layout, Exact Percentages, py-1.5 px-2 text-[11px] */}
+              <div className="w-full rounded-lg border border-slate-200 overflow-hidden mb-3">
+                <table className="w-full text-left text-[11px] border-collapse" style={{ tableLayout: "fixed", width: "100%" }}>
+                  <colgroup>
+                    <col style={{ width: "5%" }} />
+                    <col style={{ width: "40%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "15%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "10%" }} />
+                  </colgroup>
+                  <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 uppercase font-bold text-[9px]">
                     <tr>
-                      <th className="p-2 border-r border-slate-300 text-center w-8">#</th>
-                      <th className="p-2 border-r border-slate-300">Item Description</th>
-                      <th className="p-2 border-r border-slate-300 text-center">HSN</th>
-                      <th className="p-2 border-r border-slate-300 text-center">Qty</th>
-                      <th className="p-2 border-r border-slate-300 text-right">Unit Rate</th>
-                      <th className="p-2 border-r border-slate-300 text-right">Fitting/Coating</th>
-                      <th className="p-2 border-r border-slate-300 text-right">Taxable Val</th>
-                      <th className="p-2 text-right">Amount (₹)</th>
+                      <th className="py-1.5 px-2 border-r border-slate-300 text-center" style={{ wordBreak: "break-word" }}>#</th>
+                      <th className="py-1.5 px-2 border-r border-slate-300 text-left" style={{ wordBreak: "break-word" }}>Item Description</th>
+                      <th className="py-1.5 px-2 border-r border-slate-300 text-center" style={{ wordBreak: "break-word" }}>HSN</th>
+                      <th className="py-1.5 px-2 border-r border-slate-300 text-center" style={{ wordBreak: "break-word" }}>Qty</th>
+                      <th className="py-1.5 px-2 border-r border-slate-300 text-right" style={{ wordBreak: "break-word" }}>Unit Rate</th>
+                      <th className="py-1.5 px-2 border-r border-slate-300 text-right" style={{ wordBreak: "break-word" }}>Taxable</th>
+                      <th className="py-1.5 px-2 text-right" style={{ wordBreak: "break-word" }}>Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {order.items?.map((it: any, idx: number) => {
                       const hsn = it.item?.type === "FRAME" ? "9003" : "9001";
                       const extra = (it.coating_charges || 0) + (it.fitting_charges || 0);
+                      const taxable = it.subtotal || (it.unit_price * (it.quantity || 1) + extra);
 
                       return (
                         <tr key={it.id || idx}>
-                          <td className="p-2 border-r border-slate-300 text-center font-mono">
+                          <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono text-[10px]" style={{ wordBreak: "break-word" }}>
                             {idx + 1}
                           </td>
-                          <td className="p-2 border-r border-slate-300">
-                            <p className="font-bold text-slate-900 leading-tight">
+                          <td className="py-1.5 px-2 border-r border-slate-300" style={{ wordBreak: "break-word" }}>
+                            <p className="font-bold text-slate-900 leading-snug">
                               {it.item?.brand} - {it.item?.model || it.item?.type}
                             </p>
-                            <p className="text-[10px] text-slate-400 font-mono">
-                              SKU: {it.item?.sku} {it.item?.size && `• Size: ${it.item.size}`}
+                            <p className="text-[9px] text-slate-500 font-mono leading-tight">
+                              SKU: {it.item?.sku || "—"} {it.item?.size ? `• Size: ${it.item.size}` : ""} {extra > 0 ? `• Fit/Coat: ${formatCurrency(extra)}` : ""}
                             </p>
                           </td>
-                          <td className="p-2 border-r border-slate-300 text-center font-mono text-[10px]">
+                          <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono text-[10px]" style={{ wordBreak: "break-word" }}>
                             {hsn}
                           </td>
-                          <td className="p-2 border-r border-slate-300 text-center font-bold">
-                            {it.quantity}
+                          <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold" style={{ wordBreak: "break-word" }}>
+                            {it.quantity || 1}
                           </td>
-                          <td className="p-2 border-r border-slate-300 text-right font-mono">
+                          <td className="py-1.5 px-2 border-r border-slate-300 text-right font-mono" style={{ wordBreak: "break-word" }}>
                             {formatCurrency(it.unit_price)}
                           </td>
-                          <td className="p-2 border-r border-slate-300 text-right font-mono text-slate-500">
-                            {extra > 0 ? formatCurrency(extra) : "—"}
+                          <td className="py-1.5 px-2 border-r border-slate-300 text-right font-mono" style={{ wordBreak: "break-word" }}>
+                            {formatCurrency(taxable)}
                           </td>
-                          <td className="p-2 border-r border-slate-300 text-right font-mono">
-                            {formatCurrency(it.subtotal)}
-                          </td>
-                          <td className="p-2 text-right font-black font-mono">
-                            {formatCurrency(it.subtotal)}
+                          <td className="py-1.5 px-2 text-right font-black font-mono" style={{ wordBreak: "break-word" }}>
+                            {formatCurrency(taxable)}
                           </td>
                         </tr>
                       );
@@ -407,45 +480,43 @@ ${rxSummary}
                 </table>
               </div>
 
-              {/* ======================================================== */}
-              {/* 3. GST BREAKUP & TOTAL AMOUNT (RESPONSIVE FULL-WIDTH)    */}
-              {/* ======================================================== */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+              {/* Tax Breakup & Settlement Cards: 2-column clean compact grid */}
+              <div className="grid grid-cols-2 gap-3 text-[11px] mb-3">
                 {/* GST Tax Breakdown Card */}
-                <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50 space-y-2 text-xs">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                    <h4 className="font-bold text-[11px] uppercase tracking-wider text-slate-700">
+                <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 space-y-1">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-1">
+                    <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-700">
                       GST Tax Breakup (Intra-State: 27)
                     </h4>
-                    <span className="text-[10px] font-bold text-cyan-800 bg-cyan-100/70 px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-bold text-cyan-800 bg-cyan-100/70 px-1.5 py-0.5 rounded-full">
                       HSN 9001 / 9003
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-0.5 text-slate-700">
-                    <span className="text-slate-600 font-medium">Taxable Value:</span>
+                    <span className="text-slate-600">Taxable Value:</span>
                     <span className="font-mono font-semibold text-slate-900">{formatCurrency(taxableSubtotal)}</span>
                   </div>
                   <div className="flex justify-between items-center py-0.5 text-slate-700">
-                    <span className="text-slate-600 font-medium">Central GST (CGST 6%):</span>
+                    <span className="text-slate-600">Central GST (CGST 6%):</span>
                     <span className="font-mono font-bold text-slate-900">{formatCurrency(cgstAmount)}</span>
                   </div>
                   <div className="flex justify-between items-center py-0.5 text-slate-700">
-                    <span className="text-slate-600 font-medium">State GST (SGST 6%):</span>
+                    <span className="text-slate-600">State GST (SGST 6%):</span>
                     <span className="font-mono font-bold text-slate-900">{formatCurrency(sgstAmount)}</span>
                   </div>
-                  <div className="flex justify-between items-center font-bold text-slate-900 pt-2 border-t border-slate-200">
+                  <div className="flex justify-between items-center font-bold text-slate-900 pt-1 border-t border-slate-200">
                     <span className="text-slate-800 font-extrabold">Total GST Tax (12%):</span>
                     <span className="font-mono text-cyan-900 font-black">{formatCurrency(totalTax)}</span>
                   </div>
                 </div>
 
                 {/* Net Bill Settlement & Payment Ledger Card */}
-                <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50 space-y-2 text-xs">
-                  <div className="border-b border-slate-200 pb-1.5 flex items-center justify-between">
-                    <h4 className="font-bold text-[11px] uppercase tracking-wider text-slate-700">
+                <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50 space-y-1">
+                  <div className="border-b border-slate-200 pb-1 flex items-center justify-between">
+                    <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-700">
                       Settlement & Ledger
                     </h4>
-                    <span className="text-[10px] font-mono text-slate-500 uppercase">
+                    <span className="text-[9px] font-mono text-slate-500 uppercase">
                       {order.payments?.[0]?.method || "UPI / Counter"}
                     </span>
                   </div>
@@ -455,7 +526,7 @@ ${rxSummary}
                   </div>
                   {order.discount_amount > 0 && (
                     <div className="flex justify-between items-center py-0.5 text-emerald-700 font-medium">
-                      <span>Store Privilege Discount:</span>
+                      <span>Store Discount:</span>
                       <span className="font-mono font-bold">-{formatCurrency(order.discount_amount)}</span>
                     </div>
                   )}
@@ -464,55 +535,59 @@ ${rxSummary}
                     <span className="font-mono font-semibold text-slate-800">+{formatCurrency(totalTax)}</span>
                   </div>
 
-                  {/* Prominent High-Contrast Highlights */}
-                  <div className="pt-1.5 space-y-1.5">
-                    <div className="flex justify-between items-center p-2.5 rounded-xl bg-slate-900 text-white font-bold shadow-xs">
-                      <span className="text-xs uppercase tracking-wide text-slate-300 font-bold">
+                  {/* Highlights */}
+                  <div className="pt-1 space-y-1">
+                    <div className="flex justify-between items-center px-2 py-1 rounded-md bg-slate-900 text-white font-bold">
+                      <span className="text-[10px] uppercase tracking-wide text-slate-300 font-bold">
                         Net Payable:
                       </span>
-                      <span className="font-mono text-base font-black text-cyan-300 tracking-tight">
-                        {formatCurrency(order.final_payable)}
+                      <span className="font-mono text-xs font-black text-cyan-300">
+                        {formatCurrency(finalPayable)}
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold">
-                      <span className="text-xs flex items-center gap-1.5 text-emerald-700">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        Amount Received:
+                    <div className="flex justify-between items-center px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold">
+                      <span className="text-[10px] flex items-center gap-1 text-emerald-700">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        Advance Paid:
                       </span>
-                      <span className="font-mono text-sm font-extrabold text-emerald-700">
-                        {formatCurrency(order.paid_amount)}
+                      <span className="font-mono text-xs font-extrabold text-emerald-700">
+                        {formatCurrency(paidAmount)}
                       </span>
                     </div>
 
-                    {order.balance_amount > 0 && (
-                      <div className="flex justify-between items-center p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 font-bold">
-                        <span className="text-xs text-rose-700">Balance Due at Pickup:</span>
-                        <span className="font-mono text-sm font-extrabold text-rose-700">
-                          {formatCurrency(order.balance_amount)}
-                        </span>
-                      </div>
-                    )}
+                    <div className={`flex justify-between items-center px-2 py-1 rounded-md border font-bold ${
+                      balanceDue > 0
+                        ? "bg-rose-50 border-rose-200 text-rose-900"
+                        : "bg-slate-100 border-slate-200 text-slate-700"
+                    }`}>
+                      <span className={`text-[10px] ${balanceDue > 0 ? "text-rose-700" : "text-slate-600"}`}>
+                        Balance Due at Pickup:
+                      </span>
+                      <span className={`font-mono text-xs font-extrabold ${balanceDue > 0 ? "text-rose-700" : "text-slate-800"}`}>
+                        {formatCurrency(balanceDue)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Terms & Conditions and Authorized Signatory Stamp Box */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-200 text-[10px]">
-                <div className="space-y-1 text-slate-600">
-                  <h5 className="font-bold text-slate-800 uppercase">Terms & Conditions:</h5>
+              {/* Terms & Conditions and Authorized Signatory Stamp Box: Compact Footer */}
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200 text-[9px] text-gray-600 mt-2">
+                <div className="space-y-0.5">
+                  <h5 className="font-bold text-slate-800 uppercase text-[9px]">Terms & Conditions:</h5>
                   <p>1. 1-Year warranty against frame manufacturing defects.</p>
                   <p>2. Optical power adaptation guarantee for 14 days from delivery.</p>
                   <p>3. Custom cut lenses cannot be returned once edged and glazed.</p>
                   <p>4. Subject to Mumbai Jurisdiction only.</p>
                 </div>
 
-                <div className="flex flex-col items-start sm:items-end justify-between min-h-[5rem] pt-2 sm:pt-0">
-                  <p className="font-bold text-slate-800 uppercase">
+                <div className="flex flex-col items-end justify-between min-h-[3.5rem]">
+                  <p className="font-bold text-slate-800 uppercase text-[9px]">
                     For VISIONPULSE EYEWEAR STUDIO
                   </p>
-                  <div className="text-center pt-8 border-t border-slate-400 w-44">
-                    <p className="font-bold text-slate-700">Authorized Signatory</p>
+                  <div className="text-center pt-5 border-t border-slate-400 w-36">
+                    <p className="font-bold text-slate-700 text-[9px]">Authorized Signatory</p>
                   </div>
                 </div>
               </div>
@@ -639,7 +714,7 @@ ${rxSummary}
         {/* ======================================================== */}
         {/* 4. STICKY & ACCESSIBLE MODAL FOOTER                      */}
         {/* ======================================================== */}
-        <div className="sticky bottom-0 z-20 shrink-0 px-4 py-3 sm:px-6 sm:py-3.5 border-t border-slate-200 bg-white/95 backdrop-blur-md flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-lg print:hidden">
+        <div className="sticky bottom-0 z-20 shrink-0 px-4 py-3 sm:px-6 sm:py-3.5 border-t border-slate-200 bg-white/95 backdrop-blur-md flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-lg print:hidden no-print">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"

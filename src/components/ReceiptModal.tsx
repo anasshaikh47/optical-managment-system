@@ -115,9 +115,27 @@ ${rxSummary}
         dangerouslySetInnerHTML={{
           __html: `
 @media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #printable-invoice, #printable-invoice * {
+    visibility: visible !important;
+  }
+  #printable-invoice {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: ${printFormat === "THERMAL_80MM" ? "4mm 3mm" : "10mm 12mm"} !important;
+    background: #ffffff !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
   @page {
     size: ${printFormat === "THERMAL_80MM" ? "80mm auto" : "A4 portrait"};
-    margin: ${printFormat === "THERMAL_80MM" ? "2mm 3mm" : "10mm 12mm"};
+    margin: 0;
   }
   html, body {
     height: auto !important;
@@ -128,47 +146,8 @@ ${rxSummary}
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .invoice-print-container {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-  }
-  /* Hide all modal backdrops, headers, buttons during print */
   header, nav, .bottom-nav, button, .no-print {
     display: none !important;
-  }
-  .modal-print-backdrop {
-    position: static !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: transparent !important;
-    overflow: visible !important;
-    display: block !important;
-    inset: auto !important;
-    z-index: auto !important;
-  }
-  .modal-print-wrapper {
-    position: static !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    max-height: none !important;
-    height: auto !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    overflow: visible !important;
-    background: transparent !important;
-  }
-  .modal-print-content {
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    background: transparent !important;
   }
 }
 `,
@@ -267,6 +246,7 @@ ${rxSummary}
           {/* ======================================================== */}
           {printFormat === "A4_INVOICE" ? (
             <div
+              id="printable-invoice"
               ref={printRef}
               className="invoice-print-container w-full max-w-[800px] bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-200 text-slate-800 font-sans text-xs print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:w-full"
             >
@@ -421,12 +401,12 @@ ${rxSummary}
                 <table className="w-full text-left text-[11px] border-collapse" style={{ tableLayout: "fixed", width: "100%" }}>
                   <colgroup>
                     <col style={{ width: "5%" }} />
-                    <col style={{ width: "40%" }} />
-                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "38%" }} />
+                    <col style={{ width: "10%" }} />
                     <col style={{ width: "8%" }} />
-                    <col style={{ width: "15%" }} />
-                    <col style={{ width: "10%" }} />
-                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "14%" }} />
+                    <col style={{ width: "11%" }} />
+                    <col style={{ width: "14%" }} />
                   </colgroup>
                   <thead className="bg-slate-100 border-b border-slate-300 text-slate-700 uppercase font-bold text-[9px]">
                     <tr>
@@ -436,7 +416,7 @@ ${rxSummary}
                       <th className="py-1.5 px-2 border-r border-slate-300 text-center" style={{ wordBreak: "break-word" }}>Qty</th>
                       <th className="py-1.5 px-2 border-r border-slate-300 text-right" style={{ wordBreak: "break-word" }}>Unit Rate</th>
                       <th className="py-1.5 px-2 border-r border-slate-300 text-right" style={{ wordBreak: "break-word" }}>Taxable</th>
-                      <th className="py-1.5 px-2 text-right" style={{ wordBreak: "break-word" }}>Total</th>
+                      <th className="py-1.5 px-2 text-right min-w-[90px] whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -470,7 +450,7 @@ ${rxSummary}
                           <td className="py-1.5 px-2 border-r border-slate-300 text-right font-mono" style={{ wordBreak: "break-word" }}>
                             {formatCurrency(taxable)}
                           </td>
-                          <td className="py-1.5 px-2 text-right font-black font-mono" style={{ wordBreak: "break-word" }}>
+                          <td className="py-1.5 px-2 text-right font-black font-mono min-w-[90px] whitespace-nowrap">
                             {formatCurrency(taxable)}
                           </td>
                         </tr>
@@ -597,6 +577,7 @@ ${rxSummary}
             /* TEMPLATE 2: 80MM / 58MM ESC/POS COMPACT THERMAL RECEIPT  */
             /* ======================================================== */
             <div
+              id="printable-invoice"
               ref={printRef}
               className="w-full max-w-[340px] bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-slate-200 font-mono text-[11px] text-black space-y-3 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:w-full"
             >

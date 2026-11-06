@@ -147,12 +147,14 @@ export default function POSPage() {
   // Cart & Financials
   const [cart, setCart] = useState<any[]>([]);
   const [discountMode, setDiscountMode] = useState<"FLAT" | "PERCENT">("FLAT");
-  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [discountValue, setDiscountValue] = useState<number | string>(0);
+  const [isDiscountFocused, setIsDiscountFocused] = useState(false);
   const [gstRate, setGstRate] = useState<number>(12.0); // Optical GST standard 12%
 
   // Advance & Payments
   const [paymentMethod, setPaymentMethod] = useState("UPI");
-  const [advancePaid, setAdvancePaid] = useState<number>(0);
+  const [advancePaid, setAdvancePaid] = useState<number | string>(0);
+  const [isAdvanceFocused, setIsAdvanceFocused] = useState(false);
   const [isAdvanceUserModified, setIsAdvanceUserModified] = useState(false);
   const [transactionRef, setTransactionRef] = useState("");
 
@@ -589,10 +591,12 @@ export default function POSPage() {
   // Financial Calculations
   const rawSubtotal = cart.reduce((acc, item) => acc + item.subtotal, 0);
 
+  const numericDiscount = discountValue === "" ? 0 : Number(discountValue) || 0;
+
   const calculatedDiscount =
     discountMode === "PERCENT"
-      ? Math.round((rawSubtotal * (discountValue || 0)) / 100)
-      : Math.min(rawSubtotal, discountValue || 0);
+      ? Math.round((rawSubtotal * Math.min(100, Math.max(0, numericDiscount))) / 100)
+      : Math.min(rawSubtotal, Math.max(0, numericDiscount));
 
   const taxableAmount = Math.max(0, rawSubtotal - calculatedDiscount);
   const totalTax = (taxableAmount * gstRate) / 100;
@@ -607,7 +611,8 @@ export default function POSPage() {
     }
   }, [finalPayable, isAdvanceUserModified]);
 
-  const effectiveAdvancePaid = Math.min(finalPayable, Math.max(0, advancePaid || 0));
+  const numericAdvancePaid = advancePaid === "" ? 0 : Number(advancePaid) || 0;
+  const effectiveAdvancePaid = Math.min(finalPayable, Math.max(0, numericAdvancePaid));
   const balanceRemaining = Math.max(0, finalPayable - effectiveAdvancePaid);
   const paymentStatus = balanceRemaining === 0 ? "PAID" : "PARTIAL";
 
@@ -1833,8 +1838,27 @@ We will message you the moment your glasses pass optical lab inspection!`;
             <input
               type="number"
               min="0"
-              value={discountValue}
-              onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+              value={discountValue === 0 && isDiscountFocused ? "" : discountValue}
+              onFocus={(e) => {
+                setIsDiscountFocused(true);
+                if (discountValue === 0 || discountValue === "0") {
+                  setDiscountValue("");
+                } else {
+                  e.target.select();
+                }
+              }}
+              onBlur={() => {
+                setIsDiscountFocused(false);
+                if (discountValue === "" || isNaN(Number(discountValue))) {
+                  setDiscountValue(0);
+                } else {
+                  setDiscountValue(Math.max(0, Number(discountValue)));
+                }
+              }}
+              onChange={(e) => {
+                const val = e.target.value.replace(/^0+(?=\d)/, "");
+                setDiscountValue(val === "" ? "" : Math.max(0, Number(val)));
+              }}
               className="w-24 px-2 py-1 text-right bg-white border border-slate-300 rounded-lg text-xs sm:text-sm font-bold"
             />
             {calculatedDiscount > 0 && (
@@ -1895,6 +1919,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             onClick={() => {
               setAdvancePaid(finalPayable);
               setIsAdvanceUserModified(true);
+              setIsAdvanceFocused(false);
             }}
             className="py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 transition-colors cursor-pointer"
           >
@@ -1905,6 +1930,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             onClick={() => {
               setAdvancePaid(Math.round(finalPayable * 0.5));
               setIsAdvanceUserModified(true);
+              setIsAdvanceFocused(false);
             }}
             className="py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 transition-colors cursor-pointer"
           >
@@ -1915,6 +1941,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             onClick={() => {
               setAdvancePaid(Math.min(1000, finalPayable));
               setIsAdvanceUserModified(true);
+              setIsAdvanceFocused(false);
             }}
             className="py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 transition-colors cursor-pointer"
           >
@@ -1925,6 +1952,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             onClick={() => {
               setAdvancePaid(0);
               setIsAdvanceUserModified(true);
+              setIsAdvanceFocused(false);
             }}
             className="py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 transition-colors cursor-pointer"
           >
@@ -1941,10 +1969,27 @@ We will message you the moment your glasses pass optical lab inspection!`;
               type="number"
               min="0"
               max={finalPayable}
-              value={advancePaid}
+              value={advancePaid === 0 && isAdvanceFocused ? "" : advancePaid}
+              onFocus={(e) => {
+                setIsAdvanceFocused(true);
+                if (advancePaid === 0 || advancePaid === "0") {
+                  setAdvancePaid("");
+                } else {
+                  e.target.select();
+                }
+              }}
+              onBlur={() => {
+                setIsAdvanceFocused(false);
+                if (advancePaid === "" || isNaN(Number(advancePaid))) {
+                  setAdvancePaid(0);
+                } else {
+                  setAdvancePaid(Math.max(0, Number(advancePaid)));
+                }
+              }}
               onChange={(e) => {
-                setAdvancePaid(parseFloat(e.target.value) || 0);
                 setIsAdvanceUserModified(true);
+                const val = e.target.value.replace(/^0+(?=\d)/, "");
+                setAdvancePaid(val === "" ? "" : Math.max(0, Number(val)));
               }}
               className="w-full px-3 py-2 bg-white border border-cyan-400 rounded-xl text-sm font-bold text-cyan-900"
             />

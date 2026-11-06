@@ -894,7 +894,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                   max={balanceModalOrder.balance_amount}
                   required
                   value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
+                  onFocus={(e) => { if (payAmount === "0") setPayAmount(""); else e.target.select(); }} onBlur={() => { if (payAmount === "" || isNaN(Number(payAmount))) setPayAmount(balanceModalOrder.balance_amount.toString()); }} onChange={(e) => setPayAmount(e.target.value.replace(/^0+(?=\d)/, ""))}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-black text-sm"
                 />
               </div>

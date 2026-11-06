@@ -86,6 +86,7 @@ export function NewCustomerModal({
           loyalty_points: 50,
         });
         onSuccess(data.data);
+        onClose();
       } else {
         const errMsg = data.error || `Failed to create customer in database (HTTP ${res.status})`;
         setError(errMsg);
@@ -237,7 +238,7 @@ export function NewCustomerModal({
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold bg-blue-600 hover:bg-blue-700 shadow-sm transition-all disabled:opacity-60 cursor-pointer"
             >
               <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>{submitting ? "Saving Patient..." : "Save Patient & Activate"}</span>
+              <span>{submitting ? "Saving Patient..." : "+ Save Patient & Activate"}</span>
             </button>
           </div>
         </form>
@@ -245,3 +246,6 @@ export function NewCustomerModal({
     </div>
   );
 }
+
+export { NewCustomerModal as QuickCustomerModal };
+

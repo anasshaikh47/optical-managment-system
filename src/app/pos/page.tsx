@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   Search,
@@ -59,12 +60,26 @@ const FITTING_OPTIONS = [
 ];
 
 export default function POSPage() {
+  const router = useRouter();
   const { shopId, tenantFetch } = useAuth();
   // Inventory Items & Filtering
   const [items, setItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeType, setActiveType] = useState("ALL");
+
+  // Global / Barcode Toast Feedback
+  const [toastFeedback, setToastFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToastFeedback({ type, message });
+    setTimeout(() => {
+      setToastFeedback(null);
+    }, 3000);
+  };
 
   // Barcode Scanner Field
   const [barcodeInput, setBarcodeInput] = useState("");
@@ -83,6 +98,10 @@ export default function POSPage() {
   } | null>(null);
   const cartSearchInputRef = useRef<HTMLInputElement>(null);
   const cartSearchDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Settlement section view observer for sticky bar auto-hide
+  const checkoutSectionRef = useRef<HTMLDivElement>(null);
+  const [isCheckoutInView, setIsCheckoutInView] = useState(false);
 
   // Mode toggles & collapsible sections
   const [searchMode, setSearchMode] = useState<"SEARCH" | "BARCODE">("SEARCH");
@@ -147,9 +166,43 @@ export default function POSPage() {
   // Modals & UI States
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
+  const isCustomerModalOpen = isNewCustomerOpen;
+  const setIsCustomerModalOpen = setIsNewCustomerOpen;
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // Monitor checkout section visibility to hide sticky Proceed to Bill bar
+  useEffect(() => {
+    const el = checkoutSectionRef.current || document.getElementById("pos-checkout-section");
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsCheckoutInView(entry.isIntersecting);
+      },
+      {
+        threshold: 0,
+        rootMargin: "0px 0px -40px 0px",
+      }
+    );
+
+    observer.observe(el);
+
+    const handleScroll = () => {
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const inView = rect.top < window.innerHeight - 80 && rect.bottom > 80;
+      setIsCheckoutInView(inView);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   // Load Inventory & Customers on Mount
   useEffect(() => {
@@ -164,7 +217,11 @@ export default function POSPage() {
       fetchCustomers();
       if (e?.detail?.id) {
         setSelectedCustomerId(e.detail.id);
-        setCustomerSearch(e.detail.name || "");
+        setSelectedCustomerDetails(e.detail);
+        setCustomerSearch("");
+        setShowCustomerDropdown(false);
+        setIsCustomerModalOpen(false);
+        showToast("Customer selected");
       }
     };
     window.addEventListener("customer-created", handleCustomerCreated);
@@ -460,6 +517,42 @@ export default function POSPage() {
     setCheckoutError(null);
   };
 
+  const resetPOS = () => {
+    setCart([]);
+    setSelectedCustomerId("");
+    setSelectedCustomerDetails(null);
+    setCustomerSearch("");
+    setShowCustomerDropdown(false);
+    setDiscountValue(0);
+    setDiscountMode("FLAT");
+    setAdvancePaid(0);
+    setIsAdvanceUserModified(false);
+    setPaymentMethod("UPI");
+    setTransactionRef("");
+    setCheckoutError(null);
+    setSearchQuery("");
+    setCartSearchQuery("");
+    setRxLoadedAlert(null);
+    setRxData({
+      optometristName: "Dr. Priya Nair, M.Opt",
+      od_sph: "",
+      od_cyl: "",
+      od_axis: "",
+      od_add: "",
+      os_sph: "",
+      os_cyl: "",
+      os_axis: "",
+      os_add: "",
+      pd_distance: "63.0",
+      pd_near: "60.0",
+      lens_type: "SINGLE_VISION",
+      notes: "",
+    });
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    setDeliveryDate(d.toISOString().split("T")[0]);
+  };
+
   // Duplicate / Load previous prescription from customer history
   const loadPreviousRx = (customRx?: any) => {
     const targetRx = customRx || selectedCustomerDetails?.prescriptions?.[0];
@@ -658,17 +751,18 @@ We will message you the moment your glasses pass optical lab inspection!`;
       const data = await res.json();
       if (res.ok && (res.status === 200 || res.status === 201) && data.success) {
         const orderData = data.data;
+        const currentCustomer = selectedCustomerDetails;
         setCompletedOrder(orderData);
 
         // If WhatsApp requested, open chat window
         if (targetAction === "WHATSAPP") {
-          const waUrl = generateWhatsAppUrl(orderData, selectedCustomerDetails);
+          const waUrl = generateWhatsAppUrl(orderData, currentCustomer);
           if (waUrl) {
             window.open(waUrl, "_blank");
           }
         }
 
-        clearCart();
+        resetPOS();
         fetchInventory();
         fetchCustomers();
       } else {
@@ -713,7 +807,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
         </span>
         <button
           type="button"
-          onClick={() => setIsNewCustomerOpen(true)}
+          onClick={() => setIsCustomerModalOpen(true)}
           className="text-xs sm:text-sm font-bold text-cyan-700 hover:text-cyan-900 inline-flex items-center gap-1.5 bg-cyan-50 border border-cyan-200 px-3 py-1.5 rounded-xl hover:bg-cyan-100 transition-colors cursor-pointer active:scale-95"
         >
           <UserPlus className="w-4 h-4" />
@@ -745,7 +839,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
                     type="button"
                     onClick={() => {
                       setShowCustomerDropdown(false);
-                      setIsNewCustomerOpen(true);
+                      setIsCustomerModalOpen(true);
                     }}
                     className="mt-2 text-cyan-700 font-bold hover:underline inline-block cursor-pointer"
                   >
@@ -759,8 +853,10 @@ We will message you the moment your glasses pass optical lab inspection!`;
                     key={cust.id}
                     onClick={() => {
                       setSelectedCustomerId(cust.id);
+                      setSelectedCustomerDetails(cust);
                       setShowCustomerDropdown(false);
                       setCustomerSearch("");
+                      showToast("Customer selected");
                     }}
                     className="w-full text-left p-3 sm:p-3.5 hover:bg-cyan-50/70 transition-colors flex items-center justify-between cursor-pointer"
                   >
@@ -1005,14 +1101,17 @@ We will message you the moment your glasses pass optical lab inspection!`;
             {filteredItems.map((item) => {
               const isOutOfStock = item.stock_quantity <= 0;
               const isLowStock = item.stock_quantity <= item.min_alert_threshold && !isOutOfStock;
+              const isInCart = cart.some((c) => c.itemId === item.id);
 
               return (
                 <div
                   key={item.id}
-                  className={`flex flex-col justify-between p-3.5 rounded-2xl border bg-white shadow-xs transition-all ${
+                  className={`flex flex-col justify-between p-3.5 rounded-2xl border transition-all ${
                     isOutOfStock
-                      ? "opacity-60 border-slate-200"
-                      : "border-slate-200 hover:border-cyan-400 hover:shadow-md"
+                      ? "opacity-60 border-slate-200 bg-white"
+                      : isInCart
+                      ? "border-slate-300 bg-slate-50/60 shadow-2xs"
+                      : "border-slate-200 bg-white shadow-xs hover:border-cyan-400 hover:shadow-md"
                   }`}
                 >
                   <div>
@@ -1050,19 +1149,31 @@ We will message you the moment your glasses pass optical lab inspection!`;
                     <span className="font-mono font-black text-slate-900 text-base sm:text-lg">
                       {formatCurrency(item.selling_price)}
                     </span>
-                    <button
-                      type="button"
-                      disabled={isOutOfStock}
-                      onClick={() => addToCart(item)}
-                      className={`py-2 px-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all cursor-pointer ${
-                        isOutOfStock
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                          : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs hover:scale-105 active:scale-95"
-                      }`}
-                    >
-                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Add</span>
-                    </button>
+                    {isInCart ? (
+                      <button
+                        type="button"
+                        disabled
+                        aria-disabled="true"
+                        className="py-2 px-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-slate-700 text-slate-300 cursor-not-allowed transition-all"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>✓ In Cart</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isOutOfStock}
+                        onClick={() => addToCart(item)}
+                        className={`py-2 px-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all cursor-pointer ${
+                          isOutOfStock
+                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                            : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs hover:scale-105 active:scale-95"
+                        }`}
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Add</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1148,14 +1259,15 @@ We will message you the moment your glasses pass optical lab inspection!`;
             ) : (
               cartFilteredProducts.map((prod) => {
                 const isOutOfStock = prod.stock_quantity <= 0;
+                const isProdInCart = cart.some((i) => i.itemId === prod.id);
                 return (
                   <div
                     key={prod.id}
-                    onClick={() => !isOutOfStock && handleAddFromSearch(prod)}
-                    className={`p-3 flex items-center justify-between gap-3 transition-colors cursor-pointer ${
-                      isOutOfStock
-                        ? "opacity-60 bg-slate-50 cursor-not-allowed"
-                        : "hover:bg-cyan-50/70"
+                    onClick={() => !isOutOfStock && !isProdInCart && handleAddFromSearch(prod)}
+                    className={`p-3 flex items-center justify-between gap-3 transition-colors ${
+                      isOutOfStock || isProdInCart
+                        ? "opacity-75 bg-slate-50 cursor-not-allowed"
+                        : "hover:bg-cyan-50/70 cursor-pointer"
                     }`}
                   >
                     <div className="min-w-0 flex-1">
@@ -1190,22 +1302,34 @@ We will message you the moment your glasses pass optical lab inspection!`;
                       <span className="font-mono font-black text-slate-900 text-sm sm:text-base">
                         {formatCurrency(prod.selling_price)}
                       </span>
-                      <button
-                        type="button"
-                        disabled={isOutOfStock}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddFromSearch(prod);
-                        }}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                          isOutOfStock
-                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs active:scale-95"
-                        }`}
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Add</span>
-                      </button>
+                      {isProdInCart ? (
+                        <button
+                          type="button"
+                          disabled
+                          aria-disabled="true"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs bg-slate-700 text-slate-300 cursor-not-allowed"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>✓ In Cart</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={isOutOfStock}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddFromSearch(prod);
+                          }}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                            isOutOfStock
+                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                              : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs active:scale-95"
+                          }`}
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Add</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1665,7 +1789,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
   {/* SECTION 5: FINANCIAL LEDGER & SETTLEMENT                 */}
   {/* ======================================================== */}
   const renderLedgerSection = () => (
-    <div id="pos-checkout-section" className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
+    <div id="pos-checkout-section" ref={checkoutSectionRef} className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
       {checkoutError && (
         <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -1949,61 +2073,65 @@ We will message you the moment your glasses pass optical lab inspection!`;
   {/* SECTION 6: BOTTOM STICKY CHECKOUT BAR (Mobile & Tablet)  */}
   {/* (Positioned at bottom-16 to sit cleanly above BottomNav) */}
   {/* ======================================================== */}
-  const renderStickyCheckoutBar = () => (
-    <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 lg:hidden">
-      <div className="min-w-0">
-        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-          <span>Net Payable</span>
-          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono font-bold">
-            {cart.reduce((a, b) => a + b.quantity, 0)} items
-          </span>
-        </div>
-        <div className="text-xl sm:text-2xl font-black text-cyan-700 font-mono tracking-tight">
-          {formatCurrency(finalPayable)}
-        </div>
-      </div>
+  const renderStickyCheckoutBar = () => {
+    if (isCheckoutInView) return null;
 
-      <div className="flex items-center gap-2 shrink-0">
-        {cart.length > 0 ? (
-          <button
-            type="button"
-            onClick={scrollToCheckout}
-            className="py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
-          >
-            <Zap className="w-4 h-4 text-white" />
-            <span>Proceed to Bill</span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={scrollToCatalog}
-            className="py-2.5 px-4 rounded-xl font-bold text-xs text-cyan-800 bg-cyan-50 border border-cyan-200 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-          >
-            <Search className="w-3.5 h-3.5 text-cyan-600" />
-            <span>Browse Items</span>
-          </button>
-        )}
+    return (
+      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 lg:hidden animate-in fade-in duration-150">
+        <div className="min-w-0">
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <span>Net Payable</span>
+            <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono font-bold">
+              {cart.reduce((a, b) => a + b.quantity, 0)} items
+            </span>
+          </div>
+          <div className="text-xl sm:text-2xl font-black text-cyan-700 font-mono tracking-tight">
+            {formatCurrency(finalPayable)}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {cart.length > 0 ? (
+            <button
+              type="button"
+              onClick={scrollToCheckout}
+              className="py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm text-white bg-cyan-700 hover:bg-cyan-800 border border-cyan-600 shadow-xs flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
+            >
+              <Zap className="w-4 h-4 text-white" />
+              <span>Proceed to Bill</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={scrollToCatalog}
+              className="py-2.5 px-4 rounded-xl font-bold text-xs text-cyan-800 bg-cyan-50 border border-cyan-200 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <Search className="w-3.5 h-3.5 text-cyan-600" />
+              <span>Browse Items</span>
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen w-full bg-slate-100 flex flex-col pb-36 sm:pb-40 lg:pb-24 overflow-y-auto">
-      {/* Barcode Flash Toast Feedback */}
-      {barcodeFeedback && (
+      {/* Flash Toast Feedback */}
+      {(toastFeedback || barcodeFeedback) && (
         <div
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold shadow-xl animate-in slide-in-from-top duration-200 ${
-            barcodeFeedback.type === "success"
+            (toastFeedback?.type || barcodeFeedback?.type) === "success"
               ? "bg-emerald-600 text-white"
               : "bg-rose-600 text-white"
           }`}
         >
-          {barcodeFeedback.type === "success" ? (
+          {(toastFeedback?.type || barcodeFeedback?.type) === "success" ? (
             <CheckCircle2 className="w-4 h-4 shrink-0" />
           ) : (
             <AlertCircle className="w-4 h-4 shrink-0" />
           )}
-          <span>{barcodeFeedback.message}</span>
+          <span>{toastFeedback?.message || barcodeFeedback?.message}</span>
         </div>
       )}
 
@@ -2055,16 +2183,34 @@ We will message you the moment your glasses pass optical lab inspection!`;
 
       {/* Completed Order Receipt & Lab Job Slip Modal */}
       {completedOrder && (
-        <ReceiptModal order={completedOrder} onClose={() => setCompletedOrder(null)} />
+        <ReceiptModal
+          order={completedOrder}
+          onClose={() => {
+            setCompletedOrder(null);
+            resetPOS();
+          }}
+          onGoToDashboard={() => {
+            setCompletedOrder(null);
+            resetPOS();
+            router.push("/dashboard");
+          }}
+        />
       )}
 
       {/* New Patient Registration Modal */}
       <NewCustomerModal
-        isOpen={isNewCustomerOpen}
-        onClose={() => setIsNewCustomerOpen(false)}
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
         onSuccess={(cust) => {
           fetchCustomers();
-          setSelectedCustomerId(cust.id);
+          if (cust?.id) {
+            setSelectedCustomerId(cust.id);
+            setSelectedCustomerDetails(cust);
+          }
+          setIsCustomerModalOpen(false);
+          setShowCustomerDropdown(false);
+          setCustomerSearch("");
+          showToast("Customer selected");
         }}
       />
 

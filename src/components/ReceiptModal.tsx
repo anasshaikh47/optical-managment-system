@@ -13,15 +13,18 @@ import {
   FileText,
   Receipt,
   Building,
+  RotateCcw,
+  ArrowRight,
 } from "lucide-react";
 import { formatCurrency, formatDate, formatDateTime, formatDiopter } from "@/lib/utils";
 
 interface ReceiptModalProps {
   order: any;
   onClose: () => void;
+  onGoToDashboard?: () => void;
 }
 
-export function ReceiptModal({ order, onClose }: ReceiptModalProps) {
+export function ReceiptModal({ order, onClose, onGoToDashboard }: ReceiptModalProps) {
   const [printFormat, setPrintFormat] = useState<"A4_INVOICE" | "THERMAL_80MM">("A4_INVOICE");
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -637,13 +640,26 @@ ${rxSummary}
         {/* 4. STICKY & ACCESSIBLE MODAL FOOTER                      */}
         {/* ======================================================== */}
         <div className="sticky bottom-0 z-20 shrink-0 px-4 py-3 sm:px-6 sm:py-3.5 border-t border-slate-200 bg-white/95 backdrop-blur-md flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-lg print:hidden">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-95 border border-slate-200 transition-colors cursor-pointer text-center"
-          >
-            Close Window
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-95 border border-slate-200 transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>New Bill / Reset POS</span>
+            </button>
+            {onGoToDashboard && (
+              <button
+                type="button"
+                onClick={onGoToDashboard}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-cyan-800 bg-cyan-50 hover:bg-cyan-100 active:scale-95 border border-cyan-200 transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
+              >
+                <ArrowRight className="w-3.5 h-3.5 text-cyan-600" />
+                <span>Go to Dashboard</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {order.customer?.phone && (

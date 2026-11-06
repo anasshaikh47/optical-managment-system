@@ -41,7 +41,9 @@ export default function DashboardPage() {
   }, [isStaff, authLoading, router]);
 
   const { openNewCustomerModal, openQuickSearchModal } = useAppUi();
-  const { data, loading, isRevalidating, refetch } = useDashboardData(shopId, tenantFetch);
+  const effectiveShopId = authLoading || !shopId || shopId === "default" ? "" : shopId;
+  const { data, loading: dataLoading, isRevalidating, refetch } = useDashboardData(effectiveShopId, tenantFetch);
+  const loading = authLoading || dataLoading;
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
   const [whatsappToast, setWhatsappToast] = useState<string | null>(null);
 
@@ -197,9 +199,13 @@ export default function DashboardPage() {
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Today&apos;s Sales
             </p>
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 font-mono tracking-tight">
-              {formatCurrency(kpis.todaySales || 0)}
-            </h3>
+            {loading ? (
+              <div className="h-7 sm:h-8 w-24 sm:w-28 bg-slate-200 animate-pulse rounded-lg mt-1" />
+            ) : (
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 font-mono tracking-tight">
+                {formatCurrency(kpis.todaySales || 0)}
+              </h3>
+            )}
             <p className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" />
               <span>Payments collected today</span>
@@ -216,9 +222,13 @@ export default function DashboardPage() {
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Pending Balance
             </p>
-            <h3 className="text-xl sm:text-2xl font-black text-rose-600 mt-1 font-mono tracking-tight">
-              {formatCurrency(kpis.totalBalanceDue || 0)}
-            </h3>
+            {loading ? (
+              <div className="h-7 sm:h-8 w-24 sm:w-28 bg-slate-200 animate-pulse rounded-lg mt-1" />
+            ) : (
+              <h3 className="text-xl sm:text-2xl font-black text-rose-600 mt-1 font-mono tracking-tight">
+                {formatCurrency(kpis.totalBalanceDue || 0)}
+              </h3>
+            )}
             <p className="text-[10px] sm:text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
               <Clock className="w-3 h-3" />
               <span>Due at counter pickup</span>
@@ -235,9 +245,13 @@ export default function DashboardPage() {
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Ready for Pickup
             </p>
-            <h3 className="text-xl sm:text-2xl font-black text-purple-700 mt-1 tracking-tight">
-              {kpis.readyForPickupCount || 0}
-            </h3>
+            {loading ? (
+              <div className="h-7 sm:h-8 w-16 bg-slate-200 animate-pulse rounded-lg mt-1" />
+            ) : (
+              <h3 className="text-xl sm:text-2xl font-black text-purple-700 mt-1 tracking-tight">
+                {kpis.readyForPickupCount || 0}
+              </h3>
+            )}
             <p className="text-[10px] sm:text-[11px] text-purple-600 font-semibold mt-1 flex items-center gap-1">
               <Glasses className="w-3 h-3" />
               <span>Glazed & passed inspection</span>
@@ -254,9 +268,13 @@ export default function DashboardPage() {
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Low Stock Items
             </p>
-            <h3 className="text-xl sm:text-2xl font-black text-amber-700 mt-1 tracking-tight">
-              {kpis.lowStockCount || 0}
-            </h3>
+            {loading ? (
+              <div className="h-7 sm:h-8 w-16 bg-slate-200 animate-pulse rounded-lg mt-1" />
+            ) : (
+              <h3 className="text-xl sm:text-2xl font-black text-amber-700 mt-1 tracking-tight">
+                {kpis.lowStockCount || 0}
+              </h3>
+            )}
             <p className="text-[10px] sm:text-[11px] text-amber-600 font-semibold mt-1 flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
               <span>Below safety threshold</span>

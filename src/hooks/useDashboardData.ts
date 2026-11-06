@@ -32,12 +32,58 @@ export const DEFAULT_DASHBOARD_DATA = {
 // Global in-memory cache for 0ms remounts
 const memoryCache = new Map<string, any>();
 
+/**
+ * One-time purge of legacy mock cache from localStorage.
+ * Completely eliminates any stored sample metrics (₹22,762.35, ₹15,760.00, etc.)
+ */
+export function clearLegacyMockDashboardCache() {
+  if (typeof window === "undefined") return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (key.includes("dashboard_cache") || key.includes("dashboard")) {
+        const val = localStorage.getItem(key) || "";
+        if (
+          val.includes("22762") ||
+          val.includes("22,762") ||
+          val.includes("15760") ||
+          val.includes("15,760") ||
+          val.includes("9440") ||
+          val.includes("9,440") ||
+          key.includes("default") ||
+          !key.startsWith("dashboard_cache_v3_")
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    keysToRemove.forEach((k) => {
+      try {
+        localStorage.removeItem(k);
+      } catch {}
+    });
+    memoryCache.clear();
+  } catch (e) {
+    console.warn("Error purging legacy dashboard cache:", e);
+  }
+}
+
+// Auto-run purification on client startup
+if (typeof window !== "undefined") {
+  clearLegacyMockDashboardCache();
+}
+
 export function getDashboardCacheKey(shopId: string): string {
-  return `dashboard_cache_${shopId || "default"}`;
+  if (!shopId || shopId === "default") return "";
+  return `dashboard_cache_v3_${shopId}`;
 }
 
 export function getCachedDashboard(shopId: string) {
+  if (!shopId || shopId === "default") return null;
   const key = getDashboardCacheKey(shopId);
+  if (!key) return null;
   if (memoryCache.has(key)) {
     return memoryCache.get(key);
   }
@@ -45,6 +91,14 @@ export function getCachedDashboard(shopId: string) {
     try {
       const stored = localStorage.getItem(key);
       if (stored) {
+        if (
+          stored.includes("22762") ||
+          stored.includes("15760") ||
+          stored.includes("9440")
+        ) {
+          localStorage.removeItem(key);
+          return null;
+        }
         const parsed = JSON.parse(stored);
         if (parsed?.kpis) {
           memoryCache.set(key, parsed);
@@ -59,7 +113,9 @@ export function getCachedDashboard(shopId: string) {
 }
 
 export function setCachedDashboard(shopId: string, data: any) {
+  if (!shopId || shopId === "default" || !data?.kpis) return;
   const key = getDashboardCacheKey(shopId);
+  if (!key) return;
   memoryCache.set(key, data);
   if (typeof window !== "undefined") {
     try {
@@ -71,20 +127,20 @@ export function setCachedDashboard(shopId: string, data: any) {
 }
 
 /**
- * 1. fetchOrders: Select ONLY required summary columns using indexed shopId/userId and createdAt
+ * 1. fetchOrders: Select ONLY required summary columns using authenticated shopId/userId and createdAt
  */
 export async function fetchOrders(supabase: any, shopId: string) {
-  let query = supabase
+  if (!shopId || shopId === "default") {
+    return [];
+  }
+  const { data, error } = await supabase
     .from("Order")
     .select(
       `id, bill_no, status, total_amount, totalAmount, paid_amount, paidAmount, balance_amount, pendingAmount, discount_amount, delivery_due_date, createdAt, customerName, customerPhone, itemsJson, customer:Customer(name, phone), prescription:Prescription(lens_type), items:OrderItem(quantity, unit_price, subtotal, coating_charges, fitting_charges, item:InventoryItem(brand, model, type, lens_index, cost_price)), payments:Payment(amount, createdAt)`
     )
+    .or(`shopId.eq.${shopId},userId.eq.${shopId}`)
     .order("createdAt", { ascending: false });
 
-  if (shopId && shopId !== "default") {
-    query = query.or(`shopId.eq.${shopId},userId.eq.${shopId}`);
-  }
-  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 }
@@ -93,15 +149,15 @@ export async function fetchOrders(supabase: any, shopId: string) {
  * 2. fetchCustomers: Select ONLY required summary columns for metric calculation
  */
 export async function fetchCustomers(supabase: any, shopId: string) {
-  let query = supabase
+  if (!shopId || shopId === "default") {
+    return [];
+  }
+  const { data, error } = await supabase
     .from("Customer")
     .select("id, name, phone, createdAt")
+    .or(`shopId.eq.${shopId},userId.eq.${shopId}`)
     .order("createdAt", { ascending: false });
 
-  if (shopId && shopId !== "default") {
-    query = query.or(`shopId.eq.${shopId},userId.eq.${shopId}`);
-  }
-  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 }
@@ -110,15 +166,15 @@ export async function fetchCustomers(supabase: any, shopId: string) {
  * 3. fetchStockSummary: Select ONLY required inventory summary columns
  */
 export async function fetchStockSummary(supabase: any, shopId: string) {
-  let query = supabase
+  if (!shopId || shopId === "default") {
+    return [];
+  }
+  const { data, error } = await supabase
     .from("InventoryItem")
     .select("id, brand, model, type, sku, stock_quantity, min_alert_threshold, selling_price, cost_price, createdAt")
+    .eq("shopId", shopId)
     .order("createdAt", { ascending: false });
 
-  if (shopId && shopId !== "default") {
-    query = query.eq("shopId", shopId);
-  }
-  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 }
@@ -457,13 +513,15 @@ export async function loadDashboardDataParallel(shopId: string, supabaseClient?:
 export function useDashboardData(shopId: string, tenantFetch?: (url: string, init?: any) => Promise<Response>) {
   const supabase = useMemo(() => createClient(), []);
 
-  // Synchronous cache read for instant 0ms mount
+  // Synchronous cache read for instant 0ms mount if valid shopId
   const [data, setData] = useState<any>(() => {
+    if (!shopId || shopId === "default") return DEFAULT_DASHBOARD_DATA;
     const cached = getCachedDashboard(shopId);
     return cached || DEFAULT_DASHBOARD_DATA;
   });
 
   const [loading, setLoading] = useState<boolean>(() => {
+    if (!shopId || shopId === "default") return true;
     const cached = getCachedDashboard(shopId);
     return !cached;
   });
@@ -471,6 +529,13 @@ export function useDashboardData(shopId: string, tenantFetch?: (url: string, ini
   const [isRevalidating, setIsRevalidating] = useState(false);
 
   const revalidate = useCallback(async () => {
+    if (!shopId || shopId === "default") {
+      setData(DEFAULT_DASHBOARD_DATA);
+      setLoading(false);
+      setIsRevalidating(false);
+      return;
+    }
+
     setIsRevalidating(true);
     try {
       const freshData = await loadDashboardDataParallel(shopId, supabase);
@@ -480,7 +545,7 @@ export function useDashboardData(shopId: string, tenantFetch?: (url: string, ini
       console.warn("Direct Supabase parallel fetch fallback to API route:", err);
       try {
         const fetchFn = tenantFetch || fetch;
-        const res = await fetchFn(`/api/dashboard?shopId=${encodeURIComponent(shopId || "default")}`);
+        const res = await fetchFn(`/api/dashboard?shopId=${encodeURIComponent(shopId)}`);
         const json = await res.json();
         if (json.success && json.data) {
           setData(json.data);
@@ -496,14 +561,23 @@ export function useDashboardData(shopId: string, tenantFetch?: (url: string, ini
   }, [shopId, supabase, tenantFetch]);
 
   useEffect(() => {
-    // If cached data was not in localStorage during SSR/hydration, try reading it client-side
+    clearLegacyMockDashboardCache();
+
+    if (!shopId || shopId === "default") {
+      setData(DEFAULT_DASHBOARD_DATA);
+      setLoading(true);
+      return;
+    }
+
     const cached = getCachedDashboard(shopId);
     if (cached) {
       setData(cached);
       setLoading(false);
+    } else {
+      setLoading(true);
     }
 
-    // Trigger instant background revalidation
+    // Trigger instant background revalidation against real database
     revalidate();
 
     const handleCustomerCreated = () => {

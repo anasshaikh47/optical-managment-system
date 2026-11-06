@@ -5,6 +5,38 @@ import prisma from "@/lib/prisma";
 export async function GET(request: Request) {
   try {
     const shopId = getShopIdFromRequest(request);
+
+    if (!shopId || shopId === "default") {
+      return NextResponse.json({
+        success: true,
+        data: {
+          kpis: {
+            todaySales: 0,
+            salesChangePercent: 0,
+            totalNetProfit: 0,
+            totalBalanceDue: 0,
+            readyForPickupCount: 0,
+            lowStockCount: 0,
+            dueTodayCount: 0,
+            totalRevenue: 0,
+            totalOrders: 0,
+            totalCustomers: 0,
+          },
+          analytics: {
+            salesBreakdown: [],
+            dailyTrend: [],
+            weeklyTrend: [],
+            monthlyTrend: [],
+            topBrands: [],
+            topLensTypes: [],
+          },
+          urgentOrders: [],
+          lowStockItems: [],
+          storeSetting: null,
+        },
+      });
+    }
+
     const tenant = loadTenantState(shopId);
 
     let inventoryItems: any[] = [];
@@ -18,10 +50,7 @@ export async function GET(request: Request) {
       const [dbItems, dbOrders, dbCustomers, dbSetting] = await Promise.all([
         prisma.inventoryItem.findMany({
           where: {
-            OR: [
-              { shopId },
-              ...(shopId === "default" ? [{ shopId: "default" }] : []),
-            ],
+            shopId,
           },
           select: {
             id: true,
@@ -43,7 +72,6 @@ export async function GET(request: Request) {
             OR: [
               { shopId },
               { userId: shopId },
-              ...(shopId === "default" ? [{ shopId: "default" }] : []),
             ],
           },
           select: {
@@ -118,7 +146,6 @@ export async function GET(request: Request) {
             OR: [
               { shopId },
               { userId: shopId },
-              ...(shopId === "default" ? [{ shopId: "default" }] : []),
             ],
           },
           select: {

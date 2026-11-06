@@ -1102,7 +1102,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             )}
           </div>
         ) : (
-          <div className={`grid ${isMobile ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 md:grid-cols-3 xl:grid-cols-4"} gap-3`}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {filteredItems.map((item) => {
               const isOutOfStock = item.stock_quantity <= 0;
               const isLowStock = item.stock_quantity <= item.min_alert_threshold && !isOutOfStock;
@@ -1111,47 +1111,47 @@ We will message you the moment your glasses pass optical lab inspection!`;
               return (
                 <div
                   key={item.id}
-                  className={`flex flex-col justify-between p-3.5 rounded-2xl border transition-all ${
+                  className={`w-full min-w-0 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col justify-between transition-all ${
                     isOutOfStock
-                      ? "opacity-60 border-slate-200 bg-white"
+                      ? "opacity-60"
                       : isInCart
-                      ? "border-slate-300 bg-slate-50/60 shadow-2xs"
-                      : "border-slate-200 bg-white shadow-xs hover:border-cyan-400 hover:shadow-md"
+                      ? "border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60"
+                      : "hover:border-cyan-400 dark:hover:border-cyan-500 hover:shadow-md"
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 truncate">
                         {item.type.replace("_", " ")}
                       </span>
                       {isOutOfStock ? (
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-full shrink-0">
                           Out of stock
                         </span>
                       ) : isLowStock ? (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full shrink-0">
                           {item.stock_quantity} left
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full shrink-0">
                           {item.stock_quantity} in stock
                         </span>
                       )}
                     </div>
 
-                    <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-snug line-clamp-2">
                       {item.brand} - {item.model || item.type}
                     </h4>
-                    <p className="font-mono text-xs text-slate-400 mt-0.5 truncate">
+                    <p className="font-mono text-[11px] text-slate-400 mt-0.5 truncate">
                       SKU: {item.sku}
                     </p>
                     {item.color && (
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">Color: {item.color}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">Color: {item.color}</p>
                     )}
                   </div>
 
-                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <span className="font-mono font-black text-slate-900 text-base sm:text-lg">
+                  <div className="mt-auto pt-2 flex items-center justify-between gap-1 w-full border-t border-slate-100 dark:border-slate-800">
+                    <span className="font-mono font-black text-slate-900 dark:text-white text-xs sm:text-sm truncate min-w-0">
                       {formatCurrency(item.selling_price)}
                     </span>
                     {isInCart ? (
@@ -1159,9 +1159,9 @@ We will message you the moment your glasses pass optical lab inspection!`;
                         type="button"
                         disabled
                         aria-disabled="true"
-                        className="py-2 px-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-slate-700 text-slate-300 cursor-not-allowed transition-all"
+                        className="shrink-0 px-2.5 py-1 text-xs font-medium rounded-lg whitespace-nowrap inline-flex items-center gap-1 bg-slate-700 text-slate-300 cursor-not-allowed"
                       >
-                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <Check className="w-3 h-3 stroke-[2.5]" />
                         <span>✓ In Cart</span>
                       </button>
                     ) : (
@@ -1169,14 +1169,14 @@ We will message you the moment your glasses pass optical lab inspection!`;
                         type="button"
                         disabled={isOutOfStock}
                         onClick={() => addToCart(item)}
-                        className={`py-2 px-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all cursor-pointer ${
+                        className={`shrink-0 px-2.5 py-1 text-xs font-medium rounded-lg whitespace-nowrap inline-flex items-center gap-1 transition-all cursor-pointer ${
                           isOutOfStock
-                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs hover:scale-105 active:scale-95"
+                            ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                            : "bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs active:scale-95"
                         }`}
                       >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Add</span>
+                        <Plus className="w-3 h-3 stroke-[2.5]" />
+                        <span>+ Add</span>
                       </button>
                     )}
                   </div>

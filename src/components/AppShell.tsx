@@ -13,15 +13,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthPage = pathname === "/login" || pathname.startsWith("/auth");
 
   if (isAuthPage) {
-    return <main className="h-full w-full overflow-y-auto">{children}</main>;
+    return (
+      <main
+        className="min-h-screen md:h-full w-full overflow-y-auto [WebkitOverflowScrolling:touch]"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        {children}
+      </main>
+    );
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden relative">
+    <div className="flex min-h-screen md:h-full w-full md:overflow-hidden relative">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 w-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 w-full min-h-screen md:min-h-0 md:overflow-hidden">
         <Header />
-        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto w-full">
+        <main
+          className="flex-1 flex flex-col min-h-0 overflow-y-auto w-full [WebkitOverflowScrolling:touch]"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           {children}
         </main>
       </div>

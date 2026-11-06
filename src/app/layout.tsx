@@ -52,7 +52,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body
-        className={`${inter.className} h-full bg-slate-100 text-slate-900 flex overflow-hidden antialiased`}
+        className={`${inter.className} min-h-screen md:h-full bg-slate-100 text-slate-900 flex md:overflow-hidden antialiased`}
       >
         <AuthProvider>
           <AppUiProvider>

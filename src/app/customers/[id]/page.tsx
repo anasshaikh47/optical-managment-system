@@ -67,7 +67,10 @@ export default function CustomerProfilePage({
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col h-full bg-slate-100 items-center justify-center text-slate-400 text-xs">
+      <div
+        className="min-h-screen w-full overflow-y-auto pb-32 bg-slate-100 flex flex-col items-center justify-center text-slate-400 text-xs [WebkitOverflowScrolling:touch]"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         Loading patient CRM profile...
       </div>
     );
@@ -75,8 +78,11 @@ export default function CustomerProfilePage({
 
   if (error || !customer) {
     return (
-      <div className="flex-1 flex flex-col h-full bg-slate-100 p-6">
-        <div className="p-8 text-center text-rose-600 bg-white rounded-2xl border border-rose-200 mt-4 space-y-3">
+      <div
+        className="min-h-screen w-full overflow-y-auto pb-32 bg-slate-100 p-6 [WebkitOverflowScrolling:touch]"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        <div className="p-8 text-center text-rose-600 bg-white rounded-2xl border border-rose-200 mt-4 space-y-3 max-w-lg mx-auto">
           <AlertTriangle className="w-8 h-8 mx-auto" />
           <p className="font-bold">{error || "Patient not found."}</p>
           <Link
@@ -151,8 +157,11 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-      <div className="flex-1 flex flex-col overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4">
+    <div
+      className="min-h-screen w-full overflow-y-auto pb-32 sm:pb-36 bg-slate-100 [WebkitOverflowScrolling:touch]"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
         {/* Navigation & Action Bar */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
           <Link

@@ -1,23 +1,42 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
-  getShopIdFromRequest,
   loadTenantState,
   saveTenantState,
 } from "@/lib/tenant/store";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function GET(request: Request) {
   try {
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     try {
       let dbSetting = await prisma.storeSetting.findUnique({
         where: { id: shopId },
       });
 
+      // If missing for this authenticated Supabase UID, associate store configuration with this exact UID
       if (!dbSetting && shopId !== "default") {
-        dbSetting = await prisma.storeSetting.findUnique({
+        const defaultSetting = await prisma.storeSetting.findUnique({
           where: { id: "default" },
+        });
+
+        dbSetting = await prisma.storeSetting.create({
+          data: {
+            id: shopId,
+            storeName: defaultSetting?.storeName || "VisionPulse Eyewear Studio",
+            tagline: defaultSetting?.tagline || "Precision Optometry & Designer Eyewear",
+            gstin: defaultSetting?.gstin || "",
+            phone: defaultSetting?.phone || "",
+            email: defaultSetting?.email || "",
+            address: defaultSetting?.address || "",
+            currencySymbol: defaultSetting?.currencySymbol || "₹",
+            currencyCode: defaultSetting?.currencyCode || "INR",
+            defaultGstRate: defaultSetting?.defaultGstRate ?? 12.0,
+            receiptFooter:
+              defaultSetting?.receiptFooter ||
+              "1-Year warranty against frame manufacturing defects. Spectacle power adaptation guarantee for 14 days.",
+          },
         });
       }
 
@@ -44,7 +63,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
 
     const parsedRate =

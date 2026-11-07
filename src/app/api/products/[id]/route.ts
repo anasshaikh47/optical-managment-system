@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  getShopIdFromRequest,
   loadTenantState,
   saveTenantState,
 } from "@/lib/tenant/store";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function GET(
   request: Request,
@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     const item = await prisma.inventoryItem.findFirst({
       where: { id, shopId },
@@ -48,7 +48,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
 
     const existing = await prisma.inventoryItem.findFirst({
@@ -114,7 +114,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     await prisma.inventoryItem.deleteMany({
       where: { id, shopId },

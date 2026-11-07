@@ -40,6 +40,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
+  const syncPublicUser = useCallback(async (authUser: User) => {
+    try {
+      await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: authUser }),
+      });
+    } catch (err) {
+      console.warn("Public user sync warning:", err);
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
@@ -49,6 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.user) {
+        syncPublicUser(session.user);
+      }
     });
 
     // Listen to Supabase auth state change events
@@ -58,13 +73,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.user) {
+        syncPublicUser(session.user);
+      }
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, syncPublicUser]);
 
   // Sync role with database table
   useEffect(() => {
@@ -163,6 +181,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (result.error) {
           console.error("Supabase Auth Detailed Error:", result.error);
+        } else if (result.data?.user) {
+          await syncPublicUser(result.data.user);
         }
         return result;
       } catch (error: any) {
@@ -170,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { data: null, error };
       }
     },
-    [supabase]
+    [supabase, syncPublicUser]
   );
 
   // Sign Up with Email & Password (First store creator becomes OWNER)
@@ -196,6 +216,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (result.error) {
           console.error("Supabase Auth Detailed Error:", result.error);
+        } else if (result.data?.user) {
+          await syncPublicUser(result.data.user);
         }
         return result;
       } catch (error: any) {
@@ -203,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { data: null, error };
       }
     },
-    [supabase]
+    [supabase, syncPublicUser]
   );
 
   // Sign Out
@@ -234,6 +256,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Merge headers
       const headers = new Headers(init?.headers || {});
+      if (session?.access_token && !headers.has("Authorization")) {
+        headers.set("Authorization", `Bearer ${session.access_token}`);
+      }
       if (!headers.has("x-shop-id")) {
         headers.set("x-shop-id", currentShopId);
       }
@@ -246,7 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers,
       });
     },
-    [user]
+    [user, session]
   );
 
   return (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getShopIdFromRequest, loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function GET(
   request: Request,
@@ -8,11 +9,18 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     try {
       const customer = await prisma.customer.findFirst({
-        where: { id },
+        where: {
+          id,
+          OR: [
+            { shopId },
+            { userId: shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
         include: {
           orders: {
             include: {
@@ -109,10 +117,28 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
 
     try {
+      const existing = await prisma.customer.findFirst({
+        where: {
+          id,
+          OR: [
+            { shopId },
+            { userId: shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
+      });
+
+      if (!existing) {
+        return NextResponse.json(
+          { success: false, error: "Customer not found" },
+          { status: 404 }
+        );
+      }
+
       const dataToUpdate: any = {};
       if (body.name !== undefined) dataToUpdate.name = String(body.name).trim();
       if (body.phone !== undefined) dataToUpdate.phone = String(body.phone).trim();
@@ -169,12 +195,25 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     try {
-      await prisma.customer.delete({
-        where: { id },
+      const existing = await prisma.customer.findFirst({
+        where: {
+          id,
+          OR: [
+            { shopId },
+            { userId: shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
       });
+
+      if (existing) {
+        await prisma.customer.delete({
+          where: { id },
+        });
+      }
     } catch (e) {
       console.warn("Prisma DELETE customer fallback:", e);
     }

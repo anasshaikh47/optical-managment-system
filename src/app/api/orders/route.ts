@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getShopIdFromRequest, loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function GET(request: Request) {
   try {
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status");
     const query = searchParams.get("query");
     const customerId = searchParams.get("customerId");
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     try {
       const where: any = {
@@ -171,7 +172,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
     const {
       customerId,
@@ -301,7 +302,15 @@ export async function POST(request: Request) {
 
     // Generate unique bill number
     const year = new Date().getFullYear();
-    const orderCount = await prisma.order.count({ where: { shopId } });
+    const orderCount = await prisma.order.count({
+      where: {
+        OR: [
+          { shopId },
+          { userId: shopId },
+          ...(shopId === "default" ? [{ shopId: "default" }] : []),
+        ],
+      },
+    });
     let bill_no = `VP-${year}-${String(orderCount + 1).padStart(4, "0")}`;
     let existingOrderWithBill = await prisma.order.findUnique({ where: { bill_no } });
     let inc = 1;

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getShopIdFromRequest, loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query");
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     try {
       const where: any = {
@@ -121,7 +122,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
     const { name, phone, email, address, dob, loyalty_points = 0 } = body;
 

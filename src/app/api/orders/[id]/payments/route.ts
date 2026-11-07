@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getShopIdFromRequest, loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function POST(
   request: Request,
@@ -8,7 +9,7 @@ export async function POST(
 ) {
   try {
     const { id: orderId } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
     const { amount, method = "UPI", transaction_ref } = body;
 
@@ -22,7 +23,14 @@ export async function POST(
 
     try {
       const order = await prisma.order.findFirst({
-        where: { id: orderId },
+        where: {
+          id: orderId,
+          OR: [
+            { shopId },
+            { userId: shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
       });
 
       if (!order) {

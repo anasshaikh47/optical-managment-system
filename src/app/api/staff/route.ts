@@ -98,22 +98,8 @@ export async function POST(request: Request) {
     const normalizedEmail = email.toLowerCase().trim();
     const assignedRole = role === "OWNER" ? "OWNER" : "STAFF";
 
-    // 1. Upsert into database (Prisma user table)
-    const dbUser = await prisma.user.upsert({
-      where: { email: normalizedEmail },
-      update: {
-        name: name.trim(),
-        role: assignedRole,
-      },
-      create: {
-        name: name.trim(),
-        email: normalizedEmail,
-        role: assignedRole,
-        pin_hash: password.slice(0, 8),
-      },
-    });
-
-    // 2. Register/Sync in Supabase Auth with explicit role in user_metadata
+    // 1. Register/Sync in Supabase Auth with explicit role in user_metadata
+    let authUser: any = null;
     try {
       const supabase = getIsolatedSupabaseClient();
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -132,9 +118,40 @@ export async function POST(request: Request) {
 
       if (authError) {
         console.warn("Supabase Auth notice during staff registration:", authError.message);
+      } else if (authData?.user) {
+        authUser = authData.user;
       }
     } catch (authErr) {
       console.warn("Supabase isolated signup error:", authErr);
+    }
+
+    // 2. Synchronize Supabase Auth UID with Prisma User table
+    let dbUser: any = null;
+    if (authUser?.id) {
+      const { syncUserWithPublicTable } = await import("@/lib/auth-sync");
+      dbUser = await syncUserWithPublicTable({
+        id: authUser.id,
+        email: normalizedEmail,
+        user_metadata: {
+          name: name.trim(),
+          role: assignedRole,
+        },
+      });
+    } else {
+      // Fallback if authUser wasn't returned directly by signUp (e.g. email confirmation required)
+      dbUser = await prisma.user.upsert({
+        where: { email: normalizedEmail },
+        update: {
+          name: name.trim(),
+          role: assignedRole,
+        },
+        create: {
+          name: name.trim(),
+          email: normalizedEmail,
+          role: assignedRole,
+          pin_hash: password.slice(0, 8),
+        },
+      });
     }
 
     return NextResponse.json(

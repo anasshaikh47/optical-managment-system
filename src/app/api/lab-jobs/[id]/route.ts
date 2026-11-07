@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getShopIdFromRequest, loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { loadTenantState, saveTenantState } from "@/lib/tenant/store";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function PATCH(
   request: Request,
@@ -8,11 +9,29 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
     const { status, delivery_due_date } = body;
 
     try {
+      const existing = await prisma.order.findFirst({
+        where: {
+          id,
+          OR: [
+            { shopId },
+            { userId: shopId },
+            ...(shopId === "default" ? [{ shopId: "default" }] : []),
+          ],
+        },
+      });
+
+      if (!existing) {
+        return NextResponse.json(
+          { success: false, error: "Order not found" },
+          { status: 404 }
+        );
+      }
+
       const dataToUpdate: any = {};
       if (status) dataToUpdate.status = status;
       if (delivery_due_date) dataToUpdate.delivery_due_date = new Date(delivery_due_date);

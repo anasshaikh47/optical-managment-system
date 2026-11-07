@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import {
-  getShopIdFromRequest,
   loadTenantState,
   saveTenantState,
   TenantInventoryItem,
 } from "@/lib/tenant/store";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const type = searchParams.get("type") || searchParams.get("category");
     const query = searchParams.get("query");
     const lowStock = searchParams.get("lowStock");
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     try {
       const where: any = { shopId };
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
     const {
       sku,
@@ -179,7 +179,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
     const body = await request.json();
     const { ids } = body;
 

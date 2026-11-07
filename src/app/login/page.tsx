@@ -67,6 +67,19 @@ function LoginContent() {
         } else {
           setSuccessMsg("Credentials verified. Initializing session...");
 
+          // Synchronize Supabase Auth UID with public User table
+          if (data?.user) {
+            try {
+              await fetch("/api/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user: data.user }),
+              });
+            } catch (syncErr) {
+              console.warn("User DB sync warning:", syncErr);
+            }
+          }
+
           // Determine role from metadata or database
           const metaRole = (data.user?.user_metadata?.role || "").toUpperCase();
 
@@ -112,20 +125,17 @@ function LoginContent() {
           console.error("Supabase Auth registration error:", error);
           setErrorMsg(error.message || "Could not register store account.");
         } else {
-          // Sync with database User table
-          try {
-            await fetch("/api/staff", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: displayName,
-                email: cleanEmail,
-                password,
-                role: "OWNER",
-              }),
-            });
-          } catch (syncErr) {
-            console.warn("User DB sync warning:", syncErr);
+          // Synchronize Supabase Auth UID with public User table
+          if (data?.user) {
+            try {
+              await fetch("/api/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user: data.user }),
+              });
+            } catch (syncErr) {
+              console.warn("User DB sync warning:", syncErr);
+            }
           }
 
           if (data?.session) {

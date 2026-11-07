@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getShopIdFromRequest, loadTenantState } from "@/lib/tenant/store";
+import { loadTenantState } from "@/lib/tenant/store";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedShopId } from "@/lib/auth-sync";
 
 export async function GET(request: Request) {
   try {
-    const shopId = getShopIdFromRequest(request);
+    const shopId = await getAuthenticatedShopId(request);
 
     if (!shopId || shopId === "default") {
       return NextResponse.json({

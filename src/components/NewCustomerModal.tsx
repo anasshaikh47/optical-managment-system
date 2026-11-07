@@ -101,7 +101,7 @@ export function NewCustomerModal({
             phone: formattedPhone,
           }
         );
-        setError(data.message || "Yeh mobile number pehle se registered hai");
+        setError(data.message || "This mobile number is already registered to another patient.");
         return;
       }
 
@@ -166,10 +166,10 @@ export function NewCustomerModal({
                 <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
                 <div className="text-xs space-y-1">
                   <p className="font-bold text-amber-950">
-                    ⚠️ Yeh mobile number pehle se registered hai (Patient: {existingCustomer.name}).
+                    ⚠️ This mobile number is already registered ({existingCustomer.name || "Existing Patient"}).
                   </p>
                   <p className="text-amber-800 text-[11px] leading-relaxed">
-                    Kripya doosra number enter karein ya purana record open karein.
+                    Please use a different number or view the existing record.
                   </p>
                 </div>
               </div>
@@ -310,5 +310,5 @@ export function NewCustomerModal({
   );
 }
 
-export { NewCustomerModal as QuickCustomerModal };
+export { NewCustomerModal as QuickCustomerModal, NewCustomerModal as AddCustomerModal };
 

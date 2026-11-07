@@ -142,7 +142,7 @@ export function EditCustomerModal({
             phone: formattedPhone,
           }
         );
-        setError(data.message || "Yeh mobile number pehle se doosre customer ke paas registered hai.");
+        setError(data.message || "This mobile number is already registered to another patient.");
         return;
       }
 
@@ -194,10 +194,10 @@ export function EditCustomerModal({
                 <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
                 <div className="text-xs space-y-1">
                   <p className="font-bold text-amber-950">
-                    ⚠️ Yeh mobile number pehle se doosre customer ke paas registered hai (Patient: {conflictCustomer.name}).
+                    ⚠️ This mobile number is already registered ({conflictCustomer.name || "Existing Patient"}).
                   </p>
                   <p className="text-amber-800 text-[11px] leading-relaxed">
-                    Kripya doosra mobile number enter karein.
+                    Please use a different number or view the existing record.
                   </p>
                 </div>
               </div>
@@ -212,7 +212,7 @@ export function EditCustomerModal({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-800 hover:bg-amber-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>View Conflicting Patient Profile</span>
+                    <span>View Existing Patient Profile</span>
                   </button>
                 </div>
               )}

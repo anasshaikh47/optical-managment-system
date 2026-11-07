@@ -178,7 +178,7 @@ export async function PATCH(
             {
               success: false,
               error: "ALREADY_EXISTS",
-              message: "Yeh mobile number pehle se doosre customer ke paas registered hai",
+              message: "This mobile number is already registered to another patient.",
               existingCustomer: {
                 id: conflict.id,
                 name: conflict.name,
@@ -209,7 +209,7 @@ export async function PATCH(
             {
               success: false,
               error: "ALREADY_EXISTS",
-              message: "Yeh mobile number pehle se doosre customer ke paas registered hai",
+              message: "This mobile number is already registered to another patient.",
             },
             { status: 409 }
           );

@@ -199,7 +199,7 @@ export async function POST(request: Request) {
         {
           success: false,
           error: "ALREADY_EXISTS",
-          message: "Yeh mobile number pehle se registered hai",
+          message: "This mobile number is already registered to another patient.",
           existingCustomer: {
             id: existing.id,
             name: existing.name,
@@ -246,7 +246,7 @@ export async function POST(request: Request) {
           {
             success: false,
             error: "ALREADY_EXISTS",
-            message: "Yeh mobile number pehle se registered hai",
+            message: "This mobile number is already registered to another patient.",
             existingCustomer: conflict
               ? { id: conflict.id, name: conflict.name, phone: conflict.phone }
               : { id: "", name: "Registered Customer", phone: trimmedPhone },

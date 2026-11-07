@@ -136,40 +136,126 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check duplicate phone in database for this shop
-    const existing = await prisma.customer.findFirst({
-      where: {
-        phone: trimmedPhone,
-        OR: [
-          { shopId },
-          { userId: shopId },
-        ],
-      },
-    });
+    // Clean 10-digit phone digits for thorough duplicate matching
+    const rawDigits = trimmedPhone.replace(/\D/g, "");
+    let clean10Digits = rawDigits;
+    if (rawDigits.length === 12 && rawDigits.startsWith("91")) {
+      clean10Digits = rawDigits.slice(2);
+    } else if (rawDigits.length === 11 && rawDigits.startsWith("0")) {
+      clean10Digits = rawDigits.slice(1);
+    }
+
+    const possiblePhones = Array.from(
+      new Set(
+        [
+          trimmedPhone,
+          clean10Digits,
+          clean10Digits.length === 10 ? `+91 ${clean10Digits.slice(0, 5)} ${clean10Digits.slice(5)}` : "",
+          clean10Digits.length === 10 ? `+91${clean10Digits}` : "",
+          clean10Digits.length === 10 ? `0${clean10Digits}` : "",
+        ].filter(Boolean)
+      )
+    );
+
+    // Check duplicate phone in database for this store
+    let existing = null;
+    try {
+      existing = await prisma.customer.findFirst({
+        where: {
+          OR: possiblePhones.map((p) => ({ phone: p })),
+        },
+      });
+
+      if (!existing && clean10Digits.length === 10) {
+        existing = await prisma.customer.findFirst({
+          where: {
+            phone: { contains: clean10Digits },
+          },
+        });
+      }
+    } catch (e: any) {
+      console.warn("Prisma duplicate check warning:", e.message);
+    }
+
+    // Also check tenant store cache as fallback
+    if (!existing) {
+      try {
+        const tenant = loadTenantState(shopId);
+        const cached = tenant.customers.find((c) => {
+          const cDigits = (c.phone || "").replace(/\D/g, "");
+          return (
+            c.phone === trimmedPhone ||
+            (clean10Digits.length === 10 && cDigits.includes(clean10Digits))
+          );
+        });
+        if (cached) {
+          existing = cached as any;
+        }
+      } catch {}
+    }
 
     if (existing) {
       return NextResponse.json(
-        { success: false, error: `Customer with phone "${trimmedPhone}" already registered in this store.` },
+        {
+          success: false,
+          error: "ALREADY_EXISTS",
+          message: "Yeh mobile number pehle se registered hai",
+          existingCustomer: {
+            id: existing.id,
+            name: existing.name,
+            phone: existing.phone,
+          },
+        },
         { status: 409 }
       );
     }
 
-    const newCustomer = await prisma.customer.create({
-      data: {
-        name: trimmedName,
-        phone: trimmedPhone,
-        email: email ? String(email).trim() : null,
-        address: address ? String(address).trim() : null,
-        dob: dob ? new Date(dob) : null,
-        loyalty_points: parseInt(loyalty_points, 10) || 0,
-        shopId,
-        userId: shopId,
-      },
-      include: {
-        orders: true,
-        prescriptions: true,
-      },
-    });
+    let newCustomer;
+    try {
+      newCustomer = await prisma.customer.create({
+        data: {
+          name: trimmedName,
+          phone: trimmedPhone,
+          email: email ? String(email).trim() : null,
+          address: address ? String(address).trim() : null,
+          dob: dob ? new Date(dob) : null,
+          loyalty_points: parseInt(loyalty_points, 10) || 0,
+          shopId,
+          userId: shopId,
+        },
+        include: {
+          orders: true,
+          prescriptions: true,
+        },
+      });
+    } catch (createErr: any) {
+      // Gracefully catch unique constraint (P2002) without crashing
+      if (
+        createErr.code === "P2002" ||
+        String(createErr.message || "").toLowerCase().includes("unique constraint")
+      ) {
+        const conflict = await prisma.customer
+          .findFirst({
+            where: {
+              OR: possiblePhones.map((p) => ({ phone: p })),
+            },
+          })
+          .catch(() => null);
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: "ALREADY_EXISTS",
+            message: "Yeh mobile number pehle se registered hai",
+            existingCustomer: conflict
+              ? { id: conflict.id, name: conflict.name, phone: conflict.phone }
+              : { id: "", name: "Registered Customer", phone: trimmedPhone },
+          },
+          { status: 409 }
+        );
+      }
+      throw createErr;
+    }
 
     const serializedCustomer = {
       ...newCustomer,

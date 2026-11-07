@@ -141,16 +141,97 @@ export async function PATCH(
 
       const dataToUpdate: any = {};
       if (body.name !== undefined) dataToUpdate.name = String(body.name).trim();
-      if (body.phone !== undefined) dataToUpdate.phone = String(body.phone).trim();
+      if (body.phone !== undefined) {
+        const trimmedPhone = String(body.phone).trim();
+        dataToUpdate.phone = trimmedPhone;
+
+        const rawDigits = trimmedPhone.replace(/\D/g, "");
+        let clean10Digits = rawDigits;
+        if (rawDigits.length === 12 && rawDigits.startsWith("91")) {
+          clean10Digits = rawDigits.slice(2);
+        } else if (rawDigits.length === 11 && rawDigits.startsWith("0")) {
+          clean10Digits = rawDigits.slice(1);
+        }
+
+        const possiblePhones = Array.from(
+          new Set(
+            [
+              trimmedPhone,
+              clean10Digits,
+              clean10Digits.length === 10 ? `+91 ${clean10Digits.slice(0, 5)} ${clean10Digits.slice(5)}` : "",
+              clean10Digits.length === 10 ? `+91${clean10Digits}` : "",
+              clean10Digits.length === 10 ? `0${clean10Digits}` : "",
+            ].filter(Boolean)
+          )
+        );
+
+        // Check if phone belongs to another customer
+        const conflict = await prisma.customer.findFirst({
+          where: {
+            id: { not: id },
+            OR: possiblePhones.map((p) => ({ phone: p })),
+          },
+        });
+
+        if (conflict) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "ALREADY_EXISTS",
+              message: "Yeh mobile number pehle se doosre customer ke paas registered hai",
+              existingCustomer: {
+                id: conflict.id,
+                name: conflict.name,
+                phone: conflict.phone,
+              },
+            },
+            { status: 409 }
+          );
+        }
+      }
       if (body.email !== undefined) dataToUpdate.email = body.email ? String(body.email).trim() : null;
       if (body.address !== undefined) dataToUpdate.address = body.address ? String(body.address).trim() : null;
       if (body.dob !== undefined) dataToUpdate.dob = body.dob ? new Date(body.dob) : null;
       if (body.loyalty_points !== undefined) dataToUpdate.loyalty_points = parseInt(body.loyalty_points, 10) || 0;
 
-      const updated = await prisma.customer.update({
-        where: { id },
-        data: dataToUpdate,
-      });
+      let updated;
+      try {
+        updated = await prisma.customer.update({
+          where: { id },
+          data: dataToUpdate,
+        });
+      } catch (updateErr: any) {
+        if (
+          updateErr.code === "P2002" ||
+          String(updateErr.message || "").toLowerCase().includes("unique constraint")
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "ALREADY_EXISTS",
+              message: "Yeh mobile number pehle se doosre customer ke paas registered hai",
+            },
+            { status: 409 }
+          );
+        }
+        throw updateErr;
+      }
+
+      // Sync updated record with tenant fallback store
+      try {
+        const tenant = loadTenantState(shopId);
+        const idx = tenant.customers.findIndex((c) => c.id === id);
+        if (idx !== -1) {
+          tenant.customers[idx] = {
+            ...tenant.customers[idx],
+            ...updated,
+            createdAt: updated.createdAt ? updated.createdAt.toISOString() : tenant.customers[idx].createdAt,
+            dob: updated.dob ? updated.dob.toISOString() : null,
+            updatedAt: updated.updatedAt.toISOString(),
+          } as any;
+          saveTenantState(tenant);
+        }
+      } catch {}
 
       return NextResponse.json({
         success: true,
@@ -188,6 +269,8 @@ export async function PATCH(
     );
   }
 }
+
+export const PUT = PATCH;
 
 export async function DELETE(
   request: Request,

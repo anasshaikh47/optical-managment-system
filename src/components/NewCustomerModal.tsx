@@ -1,7 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { X, UserPlus, Check, Phone, MapPin, Mail, Calendar, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  X,
+  UserPlus,
+  Check,
+  Phone,
+  MapPin,
+  Mail,
+  Calendar,
+  AlertCircle,
+  AlertTriangle,
+  ExternalLink,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 interface NewCustomerModalProps {
@@ -15,9 +27,15 @@ export function NewCustomerModal({
   onClose,
   onSuccess,
 }: NewCustomerModalProps) {
+  const router = useRouter();
   const { shopId, tenantFetch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingCustomer, setExistingCustomer] = useState<{
+    id: string;
+    name: string;
+    phone: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -75,6 +93,18 @@ export function NewCustomerModal({
       });
 
       const data = await res.json();
+      if (res.status === 409 || data.error === "ALREADY_EXISTS") {
+        setExistingCustomer(
+          data.existingCustomer || {
+            id: "",
+            name: "Registered Customer",
+            phone: formattedPhone,
+          }
+        );
+        setError(data.message || "Yeh mobile number pehle se registered hai");
+        return;
+      }
+
       if (res.ok && (res.status === 200 || res.status === 201) && data.success) {
         // Reset form
         setFormData({
@@ -85,17 +115,17 @@ export function NewCustomerModal({
           dob: "",
           loyalty_points: 50,
         });
+        setExistingCustomer(null);
+        setError(null);
         onSuccess(data.data);
         onClose();
       } else {
-        const errMsg = data.error || `Failed to create customer in database (HTTP ${res.status})`;
+        const errMsg = data.error || data.message || `Failed to create customer in database (HTTP ${res.status})`;
         setError(errMsg);
-        alert(errMsg);
       }
     } catch (err: any) {
       const errMsg = err.message || "An unexpected error occurred while saving customer to database";
       setError(errMsg);
-      alert(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -130,12 +160,41 @@ export function NewCustomerModal({
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto">
-          {error && (
+          {existingCustomer ? (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 space-y-2 animate-in fade-in duration-150">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-amber-950">
+                    ⚠️ Yeh mobile number pehle se registered hai (Patient: {existingCustomer.name}).
+                  </p>
+                  <p className="text-amber-800 text-[11px] leading-relaxed">
+                    Kripya doosra number enter karein ya purana record open karein.
+                  </p>
+                </div>
+              </div>
+              {existingCustomer.id && (
+                <div className="pt-1 pl-7.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      router.push(`/customers/${existingCustomer.id}`);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-800 hover:bg-amber-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>View Existing Patient Profile</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : error ? (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span className="font-semibold">{error}</span>
             </div>
-          )}
+          ) : null}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
@@ -166,7 +225,11 @@ export function NewCustomerModal({
                   required
                   placeholder="98201 12345"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, phone: e.target.value });
+                    if (existingCustomer) setExistingCustomer(null);
+                    if (error) setError(null);
+                  }}
                   maxLength={15}
                   className="w-full pl-11 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs font-mono font-semibold focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none transition-all"
                 />

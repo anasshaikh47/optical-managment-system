@@ -284,16 +284,45 @@ export async function PATCH(
           updateErr.code === "P2002" ||
           String(updateErr.message || "").toLowerCase().includes("unique constraint")
         ) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "ALREADY_EXISTS",
-              message: "This mobile number is already registered in your shop.",
-            },
-            { status: 409 }
+          const conflictInShop = await prisma.customer
+            .findFirst({
+              where: {
+                id: { not: id },
+                shopId,
+                phone: String(body.phone || "").trim(),
+              },
+            })
+            .catch(() => null);
+
+          const target = updateErr.meta?.target;
+          const targetStr = Array.isArray(target) ? target.join(",") : String(target || "");
+          const isShopPhoneConstraint =
+            targetStr.includes("shop_customer_phone_unique") ||
+            (targetStr.includes("shopId") && targetStr.includes("phone"));
+
+          if (conflictInShop || isShopPhoneConstraint) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "ALREADY_EXISTS",
+                message: "This mobile number is already registered in your shop.",
+              },
+              { status: 409 }
+            );
+          }
+
+          console.warn(
+            "P2002 update conflict from legacy global index across another shop. Applying to tenant fallback store:",
+            shopId
           );
+          updated = {
+            ...existing,
+            ...dataToUpdate,
+            updatedAt: new Date(),
+          };
+        } else {
+          throw updateErr;
         }
-        throw updateErr;
       }
 
       // Sync updated record with tenant fallback store

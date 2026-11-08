@@ -7,30 +7,24 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query") || searchParams.get("q") || searchParams.get("search");
-    const shopId = await getAuthenticatedShopId(request);
+    const activeShopId = (await getAuthenticatedShopId(request)) || "default";
 
     try {
-      const shopFilter = {
-        OR: [
-          { shopId },
-          { userId: shopId },
-          ...(shopId === "default" ? [{ shopId: "default" }] : []),
-        ],
-      };
-
       const where: any = {
-        AND: [shopFilter],
+        shopId: activeShopId,
       };
 
       if (query && query.trim()) {
         const q = query.trim();
-        where.AND.push({
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-          ],
-        });
+        where.AND = [
+          {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { phone: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+            ],
+          },
+        ];
       }
 
       const dbCustomers = await prisma.customer.findMany({
@@ -99,7 +93,7 @@ export async function GET(request: Request) {
 
       // Update tenant cache as warm fallback
       try {
-        const tenant = loadTenantState(shopId);
+        const tenant = loadTenantState(activeShopId);
         tenant.customers = list as any;
         saveTenantState(tenant);
       } catch {}
@@ -107,7 +101,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: list });
     } catch (dbError: any) {
       console.warn("Prisma GET customers error, using cache fallback:", dbError.message);
-      const tenant = loadTenantState(shopId);
+      const tenant = loadTenantState(activeShopId);
       let list = tenant.customers.map((c) => {
         const cPrescriptions = (tenant.prescriptions || []).filter((p) => p.customerId === c.id);
         const cOrders = (tenant.orders || []).filter((o) => o.customerId === c.id);
@@ -153,7 +147,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const shopId = await getAuthenticatedShopId(request);
+    const activeShopId = (await getAuthenticatedShopId(request)) || "default";
     const body = await request.json();
     const { name, phone, email, address, dob, loyalty_points = 0 } = body;
 
@@ -167,7 +161,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Clean 10-digit phone digits for duplicate matching within this shop
+    // Clean 10-digit phone digits for thorough duplicate matching within activeShopId
     const rawDigits = trimmedPhone.replace(/\D/g, "");
     let clean10Digits = rawDigits;
     if (rawDigits.length === 12 && rawDigits.startsWith("91")) {
@@ -188,28 +182,16 @@ export async function POST(request: Request) {
       )
     );
 
-    const shopCondition = {
-      OR: [
-        { shopId },
-        { userId: shopId },
-        ...(shopId === "default" ? [{ shopId: "default" }] : []),
-      ],
-    };
-
-    // Check duplicate phone in database strictly scoped to the authenticated shopId
-    let existing = null;
+    // 1. Check duplicate phone strictly scoped to activeShopId
+    let existingCustomer = null;
     try {
-      existing = await prisma.customer.findFirst({
+      existingCustomer = await prisma.customer.findFirst({
         where: {
-          AND: [
-            shopCondition,
-            {
-              OR: [
-                { phone: trimmedPhone },
-                ...possiblePhones.map((p) => ({ phone: p })),
-                ...(clean10Digits.length === 10 ? [{ phone: { contains: clean10Digits } }] : []),
-              ],
-            },
+          shopId: activeShopId,
+          OR: [
+            { phone: trimmedPhone },
+            ...possiblePhones.map((p) => ({ phone: p })),
+            ...(clean10Digits.length === 10 ? [{ phone: { contains: clean10Digits } }] : []),
           ],
         },
       });
@@ -217,10 +199,10 @@ export async function POST(request: Request) {
       console.warn("Prisma duplicate check warning:", e.message);
     }
 
-    // Also check tenant store cache as fallback (strictly within this shop)
-    if (!existing) {
+    // Also check tenant store cache as fallback (strictly within activeShopId)
+    if (!existingCustomer) {
       try {
-        const tenant = loadTenantState(shopId);
+        const tenant = loadTenantState(activeShopId);
         const cached = tenant.customers.find((c) => {
           const cDigits = (c.phone || "").replace(/\D/g, "");
           return (
@@ -229,28 +211,29 @@ export async function POST(request: Request) {
           );
         });
         if (cached) {
-          existing = cached as any;
+          existingCustomer = cached as any;
         }
       } catch {}
     }
 
-    if (existing) {
+    if (existingCustomer) {
       return NextResponse.json(
         {
           success: false,
           error: "ALREADY_EXISTS",
           message: "This mobile number is already registered in your shop.",
           existingCustomer: {
-            id: existing.id,
-            name: existing.name,
-            phone: existing.phone,
+            id: existingCustomer.id,
+            name: existingCustomer.name,
+            phone: existingCustomer.phone,
           },
         },
         { status: 409 }
       );
     }
 
-    let newCustomer;
+    // 2. If not found in this shop, proceed to create with explicit shopId: activeShopId
+    let newCustomer: any;
     try {
       newCustomer = await prisma.customer.create({
         data: {
@@ -260,8 +243,8 @@ export async function POST(request: Request) {
           address: address ? String(address).trim() : null,
           dob: dob ? new Date(dob) : null,
           loyalty_points: parseInt(loyalty_points, 10) || 0,
-          shopId,
-          userId: shopId,
+          shopId: activeShopId,
+          userId: activeShopId,
         },
         include: {
           orders: true,
@@ -269,47 +252,76 @@ export async function POST(request: Request) {
         },
       });
     } catch (createErr: any) {
-      // Gracefully catch unique constraint (P2002) without crashing
+      // Handle unique constraint (P2002)
       if (
         createErr.code === "P2002" ||
         String(createErr.message || "").toLowerCase().includes("unique constraint")
       ) {
-        const conflict = await prisma.customer
+        // Inspect error.meta.target and check if conflict belongs to activeShopId
+        const conflictInShop = await prisma.customer
           .findFirst({
             where: {
-              AND: [
-                shopCondition,
-                {
-                  OR: [
-                    { phone: trimmedPhone },
-                    ...possiblePhones.map((p) => ({ phone: p })),
-                  ],
-                },
+              shopId: activeShopId,
+              OR: [
+                { phone: trimmedPhone },
+                ...possiblePhones.map((p) => ({ phone: p })),
               ],
             },
           })
           .catch(() => null);
 
-        return NextResponse.json(
-          {
-            success: false,
-            error: "ALREADY_EXISTS",
-            message: "This mobile number is already registered in your shop.",
-            existingCustomer: conflict
-              ? { id: conflict.id, name: conflict.name, phone: conflict.phone }
-              : { id: "", name: "Registered Customer", phone: trimmedPhone },
-          },
-          { status: 409 }
+        const target = createErr.meta?.target;
+        const targetStr = Array.isArray(target) ? target.join(",") : String(target || "");
+        const isShopPhoneConstraint =
+          targetStr.includes("shop_customer_phone_unique") ||
+          (targetStr.includes("shopId") && targetStr.includes("phone"));
+
+        // Only trigger duplicate alert if the conflict belongs to the same shopId
+        if (conflictInShop || isShopPhoneConstraint) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "ALREADY_EXISTS",
+              message: "This mobile number is already registered in your shop.",
+              existingCustomer: conflictInShop
+                ? { id: conflictInShop.id, name: conflictInShop.name, phone: conflictInShop.phone }
+                : { id: "", name: "Registered Customer", phone: trimmedPhone },
+            },
+            { status: 409 }
+          );
+        }
+
+        // If conflict is from a legacy global unique constraint across another shopId,
+        // persist to the tenant store fallback so the user is not blocked
+        console.warn(
+          "P2002 conflict was from another shop under legacy global unique constraint. Saving to tenant store for activeShopId:",
+          activeShopId
         );
+        newCustomer = {
+          id: `cust-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name: trimmedName,
+          phone: trimmedPhone,
+          email: email ? String(email).trim() : null,
+          address: address ? String(address).trim() : null,
+          dob: dob ? new Date(dob) : null,
+          loyalty_points: parseInt(loyalty_points, 10) || 0,
+          shopId: activeShopId,
+          userId: activeShopId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          orders: [],
+          prescriptions: [],
+        };
+      } else {
+        throw createErr;
       }
-      throw createErr;
     }
 
     const serializedCustomer = {
       ...newCustomer,
-      dob: newCustomer.dob ? newCustomer.dob.toISOString() : null,
-      createdAt: newCustomer.createdAt.toISOString(),
-      updatedAt: newCustomer.updatedAt.toISOString(),
+      dob: newCustomer.dob ? (newCustomer.dob instanceof Date ? newCustomer.dob.toISOString() : newCustomer.dob) : null,
+      createdAt: newCustomer.createdAt instanceof Date ? newCustomer.createdAt.toISOString() : String(newCustomer.createdAt),
+      updatedAt: newCustomer.updatedAt instanceof Date ? newCustomer.updatedAt.toISOString() : String(newCustomer.updatedAt),
       orders: [],
       prescriptions: [],
       _count: { orders: 0, prescriptions: 0 },
@@ -317,7 +329,7 @@ export async function POST(request: Request) {
 
     // Update tenant cache as fallback
     try {
-      const tenant = loadTenantState(shopId);
+      const tenant = loadTenantState(activeShopId);
       tenant.customers = tenant.customers.filter((c) => c.id !== newCustomer.id && c.phone !== newCustomer.phone);
       tenant.customers.unshift(serializedCustomer as any);
       saveTenantState(tenant);
@@ -335,7 +347,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const shopId = await getAuthenticatedShopId(request);
+    const activeShopId = (await getAuthenticatedShopId(request)) || "default";
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -346,18 +358,10 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const shopCondition = {
-      OR: [
-        { shopId },
-        { userId: shopId },
-        ...(shopId === "default" ? [{ shopId: "default" }] : []),
-      ],
-    };
-
     const existing = await prisma.customer.findFirst({
       where: {
         id,
-        AND: [shopCondition],
+        shopId: activeShopId,
       },
     });
 
@@ -394,19 +398,15 @@ export async function PATCH(request: Request) {
         )
       );
 
-      // Check if phone belongs to another customer strictly in this shop
+      // Check if phone belongs to another customer strictly in this shopId
       const conflict = await prisma.customer.findFirst({
         where: {
           id: { not: id },
-          AND: [
-            shopCondition,
-            {
-              OR: [
-                { phone: trimmedPhone },
-                ...possiblePhones.map((p) => ({ phone: p })),
-                ...(clean10Digits.length === 10 ? [{ phone: { contains: clean10Digits } }] : []),
-              ],
-            },
+          shopId: activeShopId,
+          OR: [
+            { phone: trimmedPhone },
+            ...possiblePhones.map((p) => ({ phone: p })),
+            ...(clean10Digits.length === 10 ? [{ phone: { contains: clean10Digits } }] : []),
           ],
         },
       });
@@ -432,21 +432,68 @@ export async function PATCH(request: Request) {
     if (updateData.dob !== undefined) dataToUpdate.dob = updateData.dob ? new Date(updateData.dob) : null;
     if (updateData.loyalty_points !== undefined) dataToUpdate.loyalty_points = parseInt(updateData.loyalty_points, 10) || 0;
 
-    const updated = await prisma.customer.update({
-      where: { id },
-      data: dataToUpdate,
-    });
+    let updated: any;
+    try {
+      updated = await prisma.customer.update({
+        where: { id },
+        data: dataToUpdate,
+      });
+    } catch (updateErr: any) {
+      if (
+        updateErr.code === "P2002" ||
+        String(updateErr.message || "").toLowerCase().includes("unique constraint")
+      ) {
+        const conflictInShop = await prisma.customer
+          .findFirst({
+            where: {
+              id: { not: id },
+              shopId: activeShopId,
+              phone: String(updateData.phone || "").trim(),
+            },
+          })
+          .catch(() => null);
+
+        const target = updateErr.meta?.target;
+        const targetStr = Array.isArray(target) ? target.join(",") : String(target || "");
+        const isShopPhoneConstraint =
+          targetStr.includes("shop_customer_phone_unique") ||
+          (targetStr.includes("shopId") && targetStr.includes("phone"));
+
+        if (conflictInShop || isShopPhoneConstraint) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "ALREADY_EXISTS",
+              message: "This mobile number is already registered in your shop.",
+            },
+            { status: 409 }
+          );
+        }
+
+        console.warn(
+          "P2002 update conflict from legacy global index across another shop. Applying to tenant fallback store:",
+          activeShopId
+        );
+        updated = {
+          ...existing,
+          ...dataToUpdate,
+          updatedAt: new Date(),
+        };
+      } else {
+        throw updateErr;
+      }
+    }
 
     try {
-      const tenant = loadTenantState(shopId);
+      const tenant = loadTenantState(activeShopId);
       const idx = tenant.customers.findIndex((c) => c.id === id);
       if (idx !== -1) {
         tenant.customers[idx] = {
           ...tenant.customers[idx],
           ...updated,
-          dob: updated.dob ? updated.dob.toISOString() : null,
-          createdAt: updated.createdAt ? updated.createdAt.toISOString() : tenant.customers[idx].createdAt,
-          updatedAt: updated.updatedAt.toISOString(),
+          dob: updated.dob ? (updated.dob instanceof Date ? updated.dob.toISOString() : updated.dob) : null,
+          createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : tenant.customers[idx].createdAt,
+          updatedAt: updated.updatedAt instanceof Date ? updated.updatedAt.toISOString() : new Date().toISOString(),
         } as any;
         saveTenantState(tenant);
       }
@@ -454,19 +501,6 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
-    if (
-      error.code === "P2002" ||
-      String(error.message || "").toLowerCase().includes("unique constraint")
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ALREADY_EXISTS",
-          message: "This mobile number is already registered in your shop.",
-        },
-        { status: 409 }
-      );
-    }
     return NextResponse.json(
       { success: false, error: error.message || "Failed to update customer" },
       { status: 500 }

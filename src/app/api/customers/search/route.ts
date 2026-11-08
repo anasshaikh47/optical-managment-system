@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       searchParams.get("phone") ||
       searchParams.get("search") ||
       "";
-    const activeShopId = await getAuthenticatedShopId(request);
+    const activeShopId = (await getAuthenticatedShopId(request)) || "default";
 
     const shopCondition = {
       OR: [

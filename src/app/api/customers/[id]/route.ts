@@ -187,14 +187,18 @@ export async function PATCH(
     const body = await request.json();
 
     try {
+      const shopCondition = {
+        OR: [
+          { shopId },
+          { userId: shopId },
+          ...(shopId === "default" ? [{ shopId: "default" }] : []),
+        ],
+      };
+
       const existing = await prisma.customer.findFirst({
         where: {
           id,
-          OR: [
-            { shopId },
-            { userId: shopId },
-            ...(shopId === "default" ? [{ shopId: "default" }] : []),
-          ],
+          AND: [shopCondition],
         },
       });
 
@@ -231,11 +235,20 @@ export async function PATCH(
           )
         );
 
-        // Check if phone belongs to another customer
+        // Check if phone belongs to another customer strictly in this shop
         const conflict = await prisma.customer.findFirst({
           where: {
             id: { not: id },
-            OR: possiblePhones.map((p) => ({ phone: p })),
+            AND: [
+              shopCondition,
+              {
+                OR: [
+                  { phone: trimmedPhone },
+                  ...possiblePhones.map((p) => ({ phone: p })),
+                  ...(clean10Digits.length === 10 ? [{ phone: { contains: clean10Digits } }] : []),
+                ],
+              },
+            ],
           },
         });
 
@@ -244,7 +257,7 @@ export async function PATCH(
             {
               success: false,
               error: "ALREADY_EXISTS",
-              message: "This mobile number is already registered to another patient.",
+              message: "This mobile number is already registered in your shop.",
               existingCustomer: {
                 id: conflict.id,
                 name: conflict.name,
@@ -275,7 +288,7 @@ export async function PATCH(
             {
               success: false,
               error: "ALREADY_EXISTS",
-              message: "This mobile number is already registered to another patient.",
+              message: "This mobile number is already registered in your shop.",
             },
             { status: 409 }
           );
@@ -317,6 +330,28 @@ export async function PATCH(
           { success: false, error: "Customer not found" },
           { status: 404 }
         );
+      }
+
+      if (body.phone) {
+        const trimmedPhone = String(body.phone).trim();
+        const conflictInTenant = tenant.customers.find(
+          (c) => c.id !== id && c.phone === trimmedPhone
+        );
+        if (conflictInTenant) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "ALREADY_EXISTS",
+              message: "This mobile number is already registered in your shop.",
+              existingCustomer: {
+                id: conflictInTenant.id,
+                name: conflictInTenant.name,
+                phone: conflictInTenant.phone,
+              },
+            },
+            { status: 409 }
+          );
+        }
       }
 
       tenant.customers[index] = {

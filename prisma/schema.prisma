@@ -23,7 +23,7 @@ model Customer {
   shopId         String         @default("default")
   userId         String?        @default("default")
   name           String
-  phone          String         @unique
+  phone          String
   email          String?
   address        String?
   dob            DateTime?
@@ -33,6 +33,7 @@ model Customer {
   orders         Order[]
   prescriptions  Prescription[]
 
+  @@unique([shopId, phone], name: "shop_customer_phone_unique")
   @@index([shopId])
   @@index([shopId, createdAt])
 }

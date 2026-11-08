@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ResponsiveContainer,
@@ -9,28 +9,64 @@ import {
   Cell,
   Tooltip,
 } from "recharts";
-import { PieChart as PieChartIcon, Glasses, Layers, Wrench, Zap } from "lucide-react";
+import { PieChart as PieChartIcon, Glasses, Layers, Wrench, Zap, Calendar } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import {
+  SalesPeriodFilter,
+  filterOrdersByPeriod,
+  computeSalesBreakdown,
+  getPeriodSubtitle,
+  CategoryBreakdownItem,
+} from "@/lib/salesBreakdown";
+import { getCachedOrders } from "@/hooks/useOrders";
 
 interface DashboardChartsProps {
   analytics?: {
-    salesBreakdown?: Array<{
-      name: string;
-      label?: string;
-      value: number;
-      percentage: number;
-      color: string;
-      count?: number;
-    }>;
+    salesBreakdown?: CategoryBreakdownItem[];
+    orders?: any[];
   };
+  orders?: any[];
+  shopId?: string;
 }
 
-export function DashboardCharts({ analytics }: DashboardChartsProps) {
+export function DashboardCharts({ analytics, orders, shopId }: DashboardChartsProps) {
+  const [period, setPeriod] = useState<SalesPeriodFilter>("ALL_TIME");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const touchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const breakdownData = analytics?.salesBreakdown || [];
-  const totalValue = breakdownData.reduce((acc, curr) => acc + curr.value, 0);
+  // Available orders for instant period filtering
+  const allOrders = useMemo(() => {
+    if (orders && orders.length > 0) return orders;
+    if (analytics?.orders && analytics.orders.length > 0) return analytics.orders;
+    if (shopId) {
+      const cached = getCachedOrders(shopId);
+      if (cached && cached.length > 0) return cached;
+    }
+    return [];
+  }, [orders, analytics?.orders, shopId]);
+
+  // Compute breakdown dynamically based on selected period
+  const { breakdownData, totalValue, subtitle } = useMemo(() => {
+    if (allOrders.length > 0) {
+      const filtered = filterOrdersByPeriod(allOrders, period);
+      const res = computeSalesBreakdown(filtered);
+      return {
+        breakdownData: res.breakdown,
+        totalValue: res.totalAuditedRevenue,
+        subtitle: getPeriodSubtitle(period),
+      };
+    }
+
+    // Fallback if raw orders array is not yet hydrated:
+    const fallbackList = analytics?.salesBreakdown || [];
+    const fallbackTotal = fallbackList.reduce((acc, curr) => acc + curr.value, 0);
+    return {
+      breakdownData: fallbackList,
+      totalValue: fallbackTotal,
+      subtitle: getPeriodSubtitle(period),
+    };
+  }, [allOrders, period, analytics?.salesBreakdown]);
+
   const hasData = breakdownData.length > 0 && totalValue > 0;
 
   const handleSliceHover = (index: number) => {
@@ -45,7 +81,7 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
   const handleSliceClick = (index: number) => {
     setActiveIndex((prev) => (prev === index ? null : index));
     if (touchTimeoutRef.current) clearTimeout(touchTimeoutRef.current);
-    // Auto-dismiss active touch selection after 2.5s so it never gets permanently stuck
+    // Auto-dismiss active touch selection after 2.5s
     touchTimeoutRef.current = setTimeout(() => {
       setActiveIndex(null);
     }, 2500);
@@ -95,28 +131,55 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
       {/* Chart Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
             <PieChartIcon className="w-5 h-5 stroke-[2.2]" />
           </div>
           <div>
-            <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">
-              Sales Breakdown
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">
+                Sales Breakdown
+              </h3>
+            </div>
             <p className="text-[11px] text-slate-500 font-medium">
               Revenue distribution across Frames vs Lenses vs Services & Repairing
             </p>
           </div>
         </div>
 
-        <div className="text-left sm:text-right">
-          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-            Total Revenue Audited
-          </span>
-          <span className="font-black text-slate-900 text-base font-mono">
-            {formatCurrency(totalValue)}
-          </span>
+        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+          {/* Period Filter Dropdown */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300 transition-colors shadow-2xs">
+            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <select
+              value={period}
+              onChange={(e) => {
+                setActiveIndex(null);
+                setPeriod(e.target.value as SalesPeriodFilter);
+              }}
+              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer pr-1"
+              aria-label="Filter sales breakdown period"
+            >
+              <option value="ALL_TIME">All Time</option>
+              <option value="TODAY">Today (Daily)</option>
+              <option value="THIS_WEEK">This Week</option>
+              <option value="THIS_MONTH">This Month</option>
+            </select>
+          </div>
+
+          {/* Total Revenue Audited with Subtitle */}
+          <div className="text-right shrink-0">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+              Total Revenue Audited
+            </span>
+            <span className="font-black text-slate-900 text-base font-mono">
+              {formatCurrency(totalValue)}
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium block">
+              {subtitle}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -182,7 +245,7 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
             </svg>
           )}
 
-          {/* Center Info in Donut (Always vertically & horizontally centered with clean backing and z-index) */}
+          {/* Center Info in Donut */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center z-10 select-none">
             <div className="w-[124px] sm:w-[144px] aspect-square rounded-full bg-white/95 backdrop-blur-2xs flex flex-col items-center justify-center shadow-xs border border-slate-100/90 p-2 transition-all duration-200">
               <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[110px]">
@@ -285,10 +348,10 @@ export function DashboardCharts({ analytics }: DashboardChartsProps) {
             </div>
             <div className="max-w-md">
               <h4 className="font-extrabold text-slate-800 text-sm sm:text-base tracking-tight">
-                No Sales Recorded Yet
+                No Sales Recorded for this Period
               </h4>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Ring up your first optical sale on the POS Terminal. Your live revenue distribution across Frames, Prescription Lenses, and Workshop Services will calculate here automatically.
+                Ring up optical sales on the POS Terminal. Your live revenue distribution across Frames, Prescription Lenses, and Workshop Services will calculate here automatically.
               </p>
             </div>
             <Link

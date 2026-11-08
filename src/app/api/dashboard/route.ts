@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { loadTenantState } from "@/lib/tenant/store";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedShopId } from "@/lib/auth-sync";
+import { computeSalesBreakdown } from "@/lib/salesBreakdown";
 
 export async function GET(request: Request) {
   try {
@@ -413,65 +414,9 @@ export async function GET(request: Request) {
 
     const topLensTypes = Object.values(lensTypeMap).sort((a, b) => b.value - a.value);
 
-    // Sales Breakdown
-    let framesAmount = 0;
-    let framesCount = 0;
-    let lensesAmount = 0;
-    let lensesCount = 0;
-    let servicesAmount = 0;
-    let servicesCount = 0;
-
-    orders.forEach((order: any) => {
-      order.items?.forEach((oi: any) => {
-        if (oi.item?.type === "FRAME") {
-          framesAmount += oi.subtotal;
-          framesCount += oi.quantity;
-        } else if (oi.item?.type === "LENS" || oi.item?.type === "CONTACT_LENS") {
-          lensesAmount += oi.subtotal;
-          lensesCount += oi.quantity;
-        } else {
-          framesAmount += oi.subtotal;
-          framesCount += oi.quantity;
-        }
-
-        if ((oi.coating_charges || 0) > 0 || (oi.fitting_charges || 0) > 0) {
-          servicesAmount += (oi.coating_charges || 0) + (oi.fitting_charges || 0);
-          servicesCount += 1;
-        }
-      });
-    });
-
-    const totalCalculatedBreakdown = framesAmount + lensesAmount + servicesAmount;
-    let salesBreakdown: any[] = [];
-
-    if (totalCalculatedBreakdown > 0) {
-      salesBreakdown = [
-        {
-          name: "Frames",
-          label: "Spectacle Frames",
-          value: framesAmount,
-          count: framesCount,
-          percentage: Math.round((framesAmount / totalCalculatedBreakdown) * 100),
-          color: "#2563EB",
-        },
-        {
-          name: "Lenses",
-          label: "Prescription Lenses",
-          value: lensesAmount,
-          count: lensesCount,
-          percentage: Math.round((lensesAmount / totalCalculatedBreakdown) * 100),
-          color: "#10B981",
-        },
-        {
-          name: "Services/Repairing",
-          label: "Fitting, Lab & Repairs",
-          value: servicesAmount,
-          count: servicesCount,
-          percentage: Math.max(0, Math.round((servicesAmount / totalCalculatedBreakdown) * 100)),
-          color: "#F59E0B",
-        },
-      ];
-    }
+    // Sales Breakdown with exact net revenue calculation and proportional discounts/taxes
+    const breakdownResult = computeSalesBreakdown(orders);
+    const salesBreakdown = breakdownResult.breakdown;
 
     // 6. Urgent Orders
     const urgentOrders = orders
@@ -499,12 +444,14 @@ export async function GET(request: Request) {
         },
         analytics: {
           salesBreakdown,
+          orders,
           dailyTrend,
           weeklyTrend,
           monthlyTrend,
           topBrands,
           topLensTypes,
         },
+        orders,
         urgentOrders,
         lowStockItems: lowStockItems.slice(0, 5),
         storeSetting: settings,

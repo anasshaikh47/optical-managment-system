@@ -209,7 +209,7 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       {/* SECTION 2: SALES BREAKDOWN DONUT CHART                   */}
       {/* ======================================================== */}
-      <DashboardCharts analytics={data?.analytics} />
+      <DashboardCharts analytics={data?.analytics} orders={data?.orders} shopId={effectiveShopId} />
 
       {/* ======================================================== */}
       {/* SECTION 3: METRIC SUMMARY CARDS                          */}

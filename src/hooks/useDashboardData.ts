@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { computeSalesBreakdown } from "@/lib/salesBreakdown";
 
 export const DEFAULT_DASHBOARD_DATA = {
   kpis: {
@@ -18,12 +19,14 @@ export const DEFAULT_DASHBOARD_DATA = {
   },
   analytics: {
     salesBreakdown: [] as any[],
+    orders: [] as any[],
     dailyTrend: [] as any[],
     weeklyTrend: [] as any[],
     monthlyTrend: [] as any[],
     topBrands: [] as any[],
     topLensTypes: [] as any[],
   },
+  orders: [] as any[],
   urgentOrders: [] as any[],
   lowStockItems: [] as any[],
   storeSetting: null as any,
@@ -380,77 +383,9 @@ export function calculateDashboardMetrics(orders: any[], customers: any[], inven
 
   const topLensTypes = Object.values(lensTypeMap).sort((a, b) => b.value - a.value);
 
-  // Sales Breakdown
-  let framesAmount = 0;
-  let framesCount = 0;
-  let lensesAmount = 0;
-  let lensesCount = 0;
-  let servicesAmount = 0;
-  let servicesCount = 0;
-
-  orders.forEach((order: any) => {
-    const orderItems =
-      order.items && order.items.length > 0
-        ? order.items
-        : Array.isArray(order.itemsJson)
-        ? order.itemsJson
-        : [];
-
-    orderItems.forEach((oi: any) => {
-      const type = oi.item?.type || oi.type;
-      const qty = oi.quantity || 1;
-      const subtotal = oi.subtotal || 0;
-
-      if (type === "FRAME") {
-        framesAmount += subtotal;
-        framesCount += qty;
-      } else if (type === "LENS" || type === "CONTACT_LENS") {
-        lensesAmount += subtotal;
-        lensesCount += qty;
-      } else {
-        framesAmount += subtotal;
-        framesCount += qty;
-      }
-
-      const services = (oi.coating_charges || 0) + (oi.fitting_charges || 0);
-      if (services > 0) {
-        servicesAmount += services;
-        servicesCount += 1;
-      }
-    });
-  });
-
-  const totalCalculatedBreakdown = framesAmount + lensesAmount + servicesAmount;
-  let salesBreakdown: any[] = [];
-
-  if (totalCalculatedBreakdown > 0) {
-    salesBreakdown = [
-      {
-        name: "Frames",
-        label: "Spectacle Frames",
-        value: framesAmount,
-        count: framesCount,
-        percentage: Math.round((framesAmount / totalCalculatedBreakdown) * 100),
-        color: "#2563EB",
-      },
-      {
-        name: "Lenses",
-        label: "Prescription Lenses",
-        value: lensesAmount,
-        count: lensesCount,
-        percentage: Math.round((lensesAmount / totalCalculatedBreakdown) * 100),
-        color: "#10B981",
-      },
-      {
-        name: "Services/Repairing",
-        label: "Fitting, Lab & Repairs",
-        value: servicesAmount,
-        count: servicesCount,
-        percentage: Math.max(0, Math.round((servicesAmount / totalCalculatedBreakdown) * 100)),
-        color: "#F59E0B",
-      },
-    ];
-  }
+  // Sales Breakdown with exact net revenue calculation and proportional discounts/taxes
+  const breakdownResult = computeSalesBreakdown(orders);
+  const salesBreakdown = breakdownResult.breakdown;
 
   // 6. Urgent Orders
   const urgentOrders = orders
@@ -476,12 +411,14 @@ export function calculateDashboardMetrics(orders: any[], customers: any[], inven
     },
     analytics: {
       salesBreakdown,
+      orders,
       dailyTrend,
       weeklyTrend,
       monthlyTrend,
       topBrands,
       topLensTypes,
     },
+    orders,
     urgentOrders,
     lowStockItems: lowStockItems.slice(0, 5),
     storeSetting,

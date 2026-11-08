@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
-import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
+import { formatDate, formatDateTime, formatCurrency, formatDiopter, formatAdd, formatAxis, normalizeRx } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 const STAGES = [
@@ -267,7 +267,8 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
     );
   }
 
-  const rx = order.prescription;
+  const safeRx = normalizeRx(order.prescription);
+  const rx = safeRx.hasRx ? safeRx : null;
   const frameItem = order.items?.find((i: any) => i.item?.type === "FRAME")?.item;
   const lensItem = order.items?.find((i: any) => i.item?.type === "LENS")?.item;
 
@@ -471,27 +472,27 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                             <td className="p-2.5 text-left pl-3 font-sans font-bold text-cyan-800">
                               OD (Right)
                             </td>
-                            <td className="p-2.5 font-bold">{formatDiopter(rx.od_sph)}</td>
-                            <td className="p-2.5">{formatDiopter(rx.od_cyl)}</td>
-                            <td className="p-2.5">{rx.od_axis !== null ? `${rx.od_axis}°` : "—"}</td>
+                            <td className="p-2.5 font-bold">{safeRx.formatted.od.sph}</td>
+                            <td className="p-2.5">{safeRx.formatted.od.cyl}</td>
+                            <td className="p-2.5">{safeRx.formatted.od.axis}</td>
                             <td className="p-2.5 text-cyan-700 font-bold">
-                              {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
+                              {safeRx.formatted.od.add}
                             </td>
-                            <td className="p-2.5">{rx.pd_distance || "63.0"} mm</td>
-                            <td className="p-2.5">{rx.pd_near || "60.0"} mm</td>
+                            <td className="p-2.5">{safeRx.pd_distance !== "—" ? `${safeRx.pd_distance} mm` : "63.0 mm"}</td>
+                            <td className="p-2.5">{safeRx.pd_near !== "—" ? `${safeRx.pd_near} mm` : "60.0 mm"}</td>
                           </tr>
                           <tr>
                             <td className="p-2.5 text-left pl-3 font-sans font-bold text-blue-800">
                               OS (Left)
                             </td>
-                            <td className="p-2.5 font-bold">{formatDiopter(rx.os_sph)}</td>
-                            <td className="p-2.5">{formatDiopter(rx.os_cyl)}</td>
-                            <td className="p-2.5">{rx.os_axis !== null ? `${rx.os_axis}°` : "—"}</td>
+                            <td className="p-2.5 font-bold">{safeRx.formatted.os.sph}</td>
+                            <td className="p-2.5">{safeRx.formatted.os.cyl}</td>
+                            <td className="p-2.5">{safeRx.formatted.os.axis}</td>
                             <td className="p-2.5 text-cyan-700 font-bold">
-                              {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
+                              {safeRx.formatted.os.add}
                             </td>
-                            <td className="p-2.5">{rx.pd_distance || "63.0"} mm</td>
-                            <td className="p-2.5">{rx.pd_near || "60.0"} mm</td>
+                            <td className="p-2.5">{safeRx.pd_distance !== "—" ? `${safeRx.pd_distance} mm` : "63.0 mm"}</td>
+                            <td className="p-2.5">{safeRx.pd_near !== "—" ? `${safeRx.pd_near} mm` : "60.0 mm"}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -504,7 +505,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                           Optical Design
                         </span>
                         <span className="font-bold text-slate-900 uppercase">
-                          {(rx.lens_type || "Single Vision").replace("_", " ")}
+                          {safeRx.formatted.lensDesign}
                         </span>
                       </div>
                       <div>
@@ -512,7 +513,7 @@ Thank you for choosing VisionPulse Eyewear Studio. For any adjustment or cleanin
                           Pupillary Distance
                         </span>
                         <span className="font-bold text-slate-900">
-                          {rx.pd_distance || 63} mm (Dist) • {rx.pd_near || 60} mm (Near)
+                          {safeRx.pd_distance !== "—" ? `${safeRx.pd_distance} mm (Dist)` : "63 mm (Dist)"} • {safeRx.pd_near !== "—" ? `${safeRx.pd_near} mm (Near)` : "60 mm (Near)"}
                         </span>
                       </div>
                       <div>

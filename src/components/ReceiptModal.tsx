@@ -16,7 +16,7 @@ import {
   RotateCcw,
   ArrowRight,
 } from "lucide-react";
-import { formatCurrency, formatDate, formatDateTime, formatDiopter } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime, formatDiopter, formatAdd, formatAxis, normalizeRx } from "@/lib/utils";
 
 export interface ReceiptModalProps {
   order: any;
@@ -44,8 +44,9 @@ export function ReceiptModal({ order, onClose, onGoToDashboard }: ReceiptModalPr
   };
 
   const handleWhatsApp = () => {
-    if (!order.customer?.phone) return;
-    let cleanPhone = order.customer.phone.replace(/[^0-9]/g, "");
+    const custPhone = order.customer?.phone || order.customerPhone || "";
+    if (!custPhone) return;
+    let cleanPhone = custPhone.replace(/[^0-9]/g, "");
     if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
 
     const itemsSummary = order.items
@@ -53,7 +54,7 @@ export function ReceiptModal({ order, onClose, onGoToDashboard }: ReceiptModalPr
         (it: any) =>
           `• ${it.item ? `${it.item.brand} - ${it.item.model || it.item.type}` : "Eyewear Item"} (x${it.quantity}) - ₹${it.subtotal}`
       )
-      .join("\n");
+      .join("\n") || "• Eyewear Purchase";
 
     const deliveryFormatted = order.delivery_due_date
       ? new Date(order.delivery_due_date).toLocaleDateString("en-IN", {
@@ -64,28 +65,29 @@ export function ReceiptModal({ order, onClose, onGoToDashboard }: ReceiptModalPr
       : "2 Days";
 
     let rxSummary = "";
-    if (order.prescription) {
-      const rx = order.prescription;
+    const safeRx = normalizeRx(order.prescription);
+    if (safeRx.hasRx) {
       rxSummary = `\n👁️ *Prescription Specs*:
-• OD (Right): SPH ${formatDiopter(rx.od_sph)} | CYL ${formatDiopter(rx.od_cyl)} x ${rx.od_axis || 0}° ${rx.od_add ? `| ADD +${rx.od_add.toFixed(2)}` : ""}
-• OS (Left): SPH ${formatDiopter(rx.os_sph)} | CYL ${formatDiopter(rx.os_cyl)} x ${rx.os_axis || 0}° ${rx.os_add ? `| ADD +${rx.os_add.toFixed(2)}` : ""}
-• Lens Type: ${(rx.lens_type || "Single Vision").replace("_", " ")}
-• PD: ${rx.pd_distance || "63"}mm`;
+• OD (Right): ${safeRx.formatted.od.summary}
+• OS (Left): ${safeRx.formatted.os.summary}
+• Lens Type: ${safeRx.formatted.lensDesign}
+• PD: ${safeRx.pd_distance !== "—" ? `${safeRx.pd_distance}mm` : "Standard"}`;
     }
 
+    const customerName = order.customer?.name || order.customerName || "Customer";
     const message = `👓 *VISIONPULSE EYEWEAR STUDIO*
 Precision Clinical Optometry & Premium Eyewear
 
-Dear *${order.customer.name}*,
+Dear *${customerName}*,
 Thank you for your order! Here are your GST Tax Invoice & Lab Job details:
 
 🧾 *Bill / Job Order*: #${order.bill_no}
 📅 *Ready for Delivery*: ${deliveryFormatted}
 
 💰 *Payment Breakdown*:
-• Net Payable: ₹${order.final_payable}
-• Advance Received: ₹${order.paid_amount}
-• Balance Due at Pickup: ₹${order.balance_amount}
+• Net Payable: ₹${order.final_payable ?? order.total_amount ?? 0}
+• Advance Received: ₹${order.paid_amount ?? 0}
+• Balance Due at Pickup: ₹${order.balance_amount ?? 0}
 
 📦 *Items*:
 ${itemsSummary}
@@ -97,7 +99,8 @@ ${rxSummary}
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
   };
 
-  const rx = order.prescription;
+  const safeRx = normalizeRx(order.prescription);
+  const rx = safeRx.hasRx ? safeRx : null;
 
   // Calculate CGST and SGST amounts (half of tax_amount each for intra-state Maharashtra 27)
   const totalTax = order.tax_amount || 0;
@@ -333,7 +336,7 @@ ${rxSummary}
               </div>
 
               {/* Optical Prescription Matrix Table (If attached) */}
-              {rx && (
+              {safeRx.hasRx && (
                 <div className="border border-cyan-200 bg-cyan-50/40 rounded-lg p-2 mb-3 text-[10px] leading-tight">
                   <div className="flex items-center justify-between text-cyan-900 font-bold text-[11px] mb-1">
                     <span className="flex items-center gap-1">
@@ -341,7 +344,7 @@ ${rxSummary}
                       Refraction Prescription Record
                     </span>
                     <span className="text-[9px] font-sans font-normal text-cyan-800">
-                      Optometrist: {rx.optometristName || "Dr. Staff"}
+                      Optometrist: {safeRx.optometristName || "Dr. Staff"}
                     </span>
                   </div>
 
@@ -363,35 +366,35 @@ ${rxSummary}
                           <td className="py-0.5 px-1 border-r border-cyan-300 font-sans font-bold text-left pl-1.5 text-cyan-950">
                             OD (Right)
                           </td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold">{formatDiopter(rx.od_sph)}</td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300">{formatDiopter(rx.od_cyl)}</td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.od_axis !== null && rx.od_axis !== undefined ? `${rx.od_axis}°` : "—"}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold">{safeRx.formatted.od.sph}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{safeRx.formatted.od.cyl}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{safeRx.formatted.od.axis}</td>
                           <td className="py-0.5 px-1 border-r border-cyan-300 font-bold text-cyan-700">
-                            {rx.od_add ? `+${Number(rx.od_add).toFixed(2)}` : "—"}
+                            {safeRx.formatted.od.add}
                           </td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.pd_distance || "—"} mm</td>
-                          <td className="py-0.5 px-1">{rx.pd_near || "—"} mm</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{safeRx.pd_distance !== "—" ? `${safeRx.pd_distance} mm` : "—"}</td>
+                          <td className="py-0.5 px-1">{safeRx.pd_near !== "—" ? `${safeRx.pd_near} mm` : "—"}</td>
                         </tr>
                         <tr className="border-t border-cyan-200">
                           <td className="py-0.5 px-1 border-r border-cyan-300 font-sans font-bold text-left pl-1.5 text-cyan-950">
                             OS (Left)
                           </td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold">{formatDiopter(rx.os_sph)}</td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300">{formatDiopter(rx.os_cyl)}</td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.os_axis !== null && rx.os_axis !== undefined ? `${rx.os_axis}°` : "—"}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300 font-bold">{safeRx.formatted.os.sph}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{safeRx.formatted.os.cyl}</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{safeRx.formatted.os.axis}</td>
                           <td className="py-0.5 px-1 border-r border-cyan-300 font-bold text-cyan-700">
-                            {rx.os_add ? `+${Number(rx.os_add).toFixed(2)}` : "—"}
+                            {safeRx.formatted.os.add}
                           </td>
-                          <td className="py-0.5 px-1 border-r border-cyan-300">{rx.pd_distance || "—"} mm</td>
-                          <td className="py-0.5 px-1">{rx.pd_near || "—"} mm</td>
+                          <td className="py-0.5 px-1 border-r border-cyan-300">{safeRx.pd_distance !== "—" ? `${safeRx.pd_distance} mm` : "—"}</td>
+                          <td className="py-0.5 px-1">{safeRx.pd_near !== "—" ? `${safeRx.pd_near} mm` : "—"}</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
 
                   <p className="text-[9px] text-cyan-900 mt-1">
-                    Lens Design: <strong className="uppercase">{(rx.lens_type || "Single Vision").replace("_", " ")}</strong>
-                    {rx.notes && <span> • Notes: {rx.notes}</span>}
+                    Lens Design: <strong className="uppercase">{safeRx.formatted.lensDesign}</strong>
+                    {safeRx.notes && <span> • Notes: {safeRx.notes}</span>}
                   </p>
                 </div>
               )}
@@ -619,12 +622,12 @@ ${rxSummary}
               </div>
 
               {/* Brief Prescription Specs if available */}
-              {rx && (
+              {safeRx.hasRx && (
                 <div className="border-b border-dashed border-black pb-2 text-[10px] space-y-0.5">
                   <p className="font-black">REFRACTION RX:</p>
-                  <p>OD: SPH {formatDiopter(rx.od_sph)} | CYL {formatDiopter(rx.od_cyl)} x {rx.od_axis || 0}°</p>
-                  <p>OS: SPH {formatDiopter(rx.os_sph)} | CYL {formatDiopter(rx.os_cyl)} x {rx.os_axis || 0}°</p>
-                  <p>PD: {rx.pd_distance || 63}mm • {rx.lens_type?.replace("_", " ") || "Single Vision"}</p>
+                  <p>OD: {safeRx.formatted.od.summary}</p>
+                  <p>OS: {safeRx.formatted.os.summary}</p>
+                  <p>PD: {safeRx.pd_distance !== "—" ? `${safeRx.pd_distance}mm` : "Standard"} • {safeRx.formatted.lensDesign}</p>
                 </div>
               )}
 

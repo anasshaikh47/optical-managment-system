@@ -2,9 +2,9 @@
 
 import { useRef, useEffect } from "react";
 import { Printer, X, Glasses, Check, AlertTriangle, Calendar, Phone, Clock, Wrench } from "lucide-react";
-import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
+import { formatDate, formatDateTime, formatCurrency, formatDiopter, normalizeRx } from "@/lib/utils";
 
-interface ThermalJobSlipModalProps {
+export interface ThermalJobSlipModalProps {
   order: any;
   onClose: () => void;
 }
@@ -27,7 +27,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
     window.print();
   };
 
-  const rx = order.prescription;
+  const safeRx = normalizeRx(order.prescription);
   const frameItem = order.items?.find((i: any) => i.item?.type === "FRAME")?.item;
   const lensItem = order.items?.find((i: any) => i.item?.type === "LENS")?.item;
   const allItems = order.items || [];
@@ -39,6 +39,10 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
     : null;
   const isDueToday = orderDueStr === todayStr;
   const isOverdue = orderDueStr && orderDueStr < todayStr && order.status !== "DELIVERED";
+
+  const customerName = order.customer?.name || order.customerName || "Walk-in Guest";
+  const customerPhone = order.customer?.phone || order.customerPhone || "";
+  const orderStatus = (order.status || "PLACED").replace(/_/g, " ");
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
@@ -80,7 +84,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
                 VISIONPULSE OPTICAL LAB
               </h2>
               <p className="text-[10px] font-sans font-semibold">
-                PRECISION LENS GLAZING & WORKSHOP TICKET
+                PRECISION LENS GLAZING &amp; WORKSHOP TICKET
               </p>
               <p className="text-[9px] mt-0.5">
                 Galleria Arcade, Powai, Mumbai • Tel: 98201 12345
@@ -123,30 +127,30 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
               <div className="flex justify-between">
                 <span className="font-sans font-bold">PATIENT:</span>
                 <span className="font-bold uppercase">
-                  {order.customer ? order.customer.name : "Walk-in Guest"}
+                  {customerName}
                 </span>
               </div>
-              {order.customer?.phone && (
+              {customerPhone && (
                 <div className="flex justify-between">
                   <span className="font-sans font-bold">CONTACT:</span>
-                  <span>{order.customer.phone}</span>
+                  <span>{customerPhone}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="font-sans font-bold">CURRENT STATUS:</span>
-                <span className="font-black uppercase">{order.status.replace("_", " ")}</span>
+                <span className="font-black uppercase">{orderStatus}</span>
               </div>
             </div>
 
             {/* Eye Prescription Power Matrix (OD & OS) */}
-            {rx ? (
+            {safeRx.hasRx ? (
               <div className="space-y-1.5 border-b border-dashed border-black pb-2.5">
                 <div className="flex justify-between items-center">
                   <span className="font-black text-[10px] uppercase">
                     OPTICAL POWER MATRIX
                   </span>
                   <span className="text-[9px]">
-                    Optom: {rx.optometristName || "Dr. Staff"}
+                    Optom: {safeRx.optometristName || "Dr. Staff"}
                   </span>
                 </div>
 
@@ -163,17 +167,17 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
                   <tbody>
                     <tr className="border-b border-black font-bold">
                       <td className="p-0.5 border-r border-black text-left pl-1 font-black">OD (R)</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.od_sph)}</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.od_cyl)}</td>
-                      <td className="p-0.5 border-r border-black">{rx.od_axis !== null ? `${rx.od_axis}°` : "—"}</td>
-                      <td className="p-0.5">{rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}</td>
+                      <td className="p-0.5 border-r border-black">{safeRx.formatted.od.sph}</td>
+                      <td className="p-0.5 border-r border-black">{safeRx.formatted.od.cyl}</td>
+                      <td className="p-0.5 border-r border-black">{safeRx.formatted.od.axis}</td>
+                      <td className="p-0.5">{safeRx.formatted.od.add}</td>
                     </tr>
                     <tr className="font-bold">
                       <td className="p-0.5 border-r border-black text-left pl-1 font-black">OS (L)</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.os_sph)}</td>
-                      <td className="p-0.5 border-r border-black">{formatDiopter(rx.os_cyl)}</td>
-                      <td className="p-0.5 border-r border-black">{rx.os_axis !== null ? `${rx.os_axis}°` : "—"}</td>
-                      <td className="p-0.5">{rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}</td>
+                      <td className="p-0.5 border-r border-black">{safeRx.formatted.os.sph}</td>
+                      <td className="p-0.5 border-r border-black">{safeRx.formatted.os.cyl}</td>
+                      <td className="p-0.5 border-r border-black">{safeRx.formatted.os.axis}</td>
+                      <td className="p-0.5">{safeRx.formatted.os.add}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -182,23 +186,23 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
                 <div className="grid grid-cols-2 gap-1 text-[9px] pt-1">
                   <div>
                     <span className="font-bold">PD (Distance):</span>{" "}
-                    <strong>{rx.pd_distance ? `${rx.pd_distance} mm` : "63.0 mm"}</strong>
+                    <strong>{safeRx.pd_distance !== "—" ? `${safeRx.pd_distance} mm` : "63.0 mm"}</strong>
                   </div>
                   <div>
                     <span className="font-bold">PD (Near):</span>{" "}
-                    <strong>{rx.pd_near ? `${rx.pd_near} mm` : "60.0 mm"}</strong>
+                    <strong>{safeRx.pd_near !== "—" ? `${safeRx.pd_near} mm` : "60.0 mm"}</strong>
                   </div>
                   <div className="col-span-2">
                     <span className="font-bold">LENS DESIGN:</span>{" "}
                     <strong className="uppercase">
-                      {(rx.lens_type || "Single Vision").replace("_", " ")}
+                      {safeRx.formatted.lensDesign}
                     </strong>
                   </div>
                 </div>
 
-                {rx.notes && (
+                {safeRx.notes && (
                   <div className="text-[9px] bg-slate-50 p-1 border border-slate-300 rounded mt-1">
-                    <span className="font-black">RX NOTE:</span> {rx.notes}
+                    <span className="font-black">RX NOTE:</span> {safeRx.notes}
                   </div>
                 )}
               </div>
@@ -211,7 +215,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
             {/* Frame & Mounting Details */}
             <div className="space-y-1 text-[10px] border-b border-dashed border-black pb-2">
               <span className="font-black uppercase text-[10px]">
-                FRAME & MOUNTING SPECIFICATIONS
+                FRAME &amp; MOUNTING SPECIFICATIONS
               </span>
               {frameItem ? (
                 <div className="space-y-0.5">
@@ -238,7 +242,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
             {/* Lens Material, Index & Coating Details */}
             <div className="space-y-1 text-[10px] border-b border-dashed border-black pb-2">
               <span className="font-black uppercase text-[10px]">
-                LENS & COATING SPECIFICATIONS
+                LENS &amp; COATING SPECIFICATIONS
               </span>
               {lensItem ? (
                 <div className="space-y-0.5">
@@ -291,7 +295,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
               <div className="space-y-1 font-sans">
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 border border-black inline-block" />
-                  <span>Lens Edged & Optical Axis Calibrated</span>
+                  <span>Lens Edged &amp; Optical Axis Calibrated</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 border border-black inline-block" />
@@ -299,7 +303,7 @@ export function ThermalJobSlipModal({ order, onClose }: ThermalJobSlipModalProps
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 border border-black inline-block" />
-                  <span>Ultrasonic Cleaned & Pantoscopic Tilt Checked</span>
+                  <span>Ultrasonic Cleaned &amp; Pantoscopic Tilt Checked</span>
                 </div>
               </div>
 

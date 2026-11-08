@@ -67,6 +67,18 @@ export async function GET(
               ...order.prescription,
               createdAt: order.prescription.createdAt.toISOString(),
               updatedAt: order.prescription.updatedAt.toISOString(),
+              rightEye: {
+                sph: order.prescription.od_sph,
+                cyl: order.prescription.od_cyl,
+                axis: order.prescription.od_axis,
+                add: order.prescription.od_add,
+              },
+              leftEye: {
+                sph: order.prescription.os_sph,
+                cyl: order.prescription.os_cyl,
+                axis: order.prescription.os_axis,
+                add: order.prescription.os_add,
+              },
             }
           : null,
         items: order.items.map((it) => ({

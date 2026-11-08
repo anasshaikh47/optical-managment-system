@@ -1,7 +1,7 @@
 "use client";
 
 import { X, Glasses, ShoppingCart, Calendar, Phone, Award } from "lucide-react";
-import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
+import { formatDate, formatCurrency, formatDiopter, formatAdd, formatAxis } from "@/lib/utils";
 
 interface CustomerHistoryModalProps {
   isOpen: boolean;
@@ -100,8 +100,8 @@ export function CustomerHistoryModal({
                             <td className="text-left font-sans font-bold text-cyan-700 py-1">OD (Right)</td>
                             <td>{formatDiopter(rx.od_sph)}</td>
                             <td>{formatDiopter(rx.od_cyl)}</td>
-                            <td>{rx.od_axis !== null ? `${rx.od_axis}°` : "—"}</td>
-                            <td className="text-cyan-600 font-bold">{rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}</td>
+                            <td>{formatAxis(rx.od_axis)}</td>
+                            <td className="text-cyan-600 font-bold">{formatAdd(rx.od_add)}</td>
                             <td>{rx.pd_distance || "—"}</td>
                             <td>{rx.pd_near || "—"}</td>
                           </tr>
@@ -109,8 +109,8 @@ export function CustomerHistoryModal({
                             <td className="text-left font-sans font-bold text-cyan-700 py-1">OS (Left)</td>
                             <td>{formatDiopter(rx.os_sph)}</td>
                             <td>{formatDiopter(rx.os_cyl)}</td>
-                            <td>{rx.os_axis !== null ? `${rx.os_axis}°` : "—"}</td>
-                            <td className="text-cyan-600 font-bold">{rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}</td>
+                            <td>{formatAxis(rx.os_axis)}</td>
+                            <td className="text-cyan-600 font-bold">{formatAdd(rx.os_add)}</td>
                             <td>{rx.pd_distance || "—"}</td>
                             <td>{rx.pd_near || "—"}</td>
                           </tr>

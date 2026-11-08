@@ -34,8 +34,10 @@ export function formatDateTime(date: string | Date | null | undefined): string {
   });
 }
 
-export function formatDiopter(val: number | null | undefined): string {
-  if (val === null || val === undefined || isNaN(val)) return "0.00";
-  const sign = val > 0 ? "+" : "";
-  return `${sign}${val.toFixed(2)}`;
-}
+export {
+  formatDiopter,
+  formatAdd,
+  formatAxis,
+  normalizeRx,
+  type NormalizedPrescription,
+} from "./prescription";

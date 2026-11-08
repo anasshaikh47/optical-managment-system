@@ -242,28 +242,65 @@ export async function POST(request: Request) {
       }
     }
 
-    // Optional inline prescription creation
+    // Optional inline prescription creation with defensive type casting
     let finalRxId = existingPrescriptionId || null;
     if (prescriptionData && !finalRxId) {
-      const createdRx = await prisma.prescription.create({
-        data: {
-          customerId,
-          optometristName: prescriptionData.optometristName || "Dr. Staff Optometrist",
-          od_sph: prescriptionData.od_sph !== "" && prescriptionData.od_sph !== undefined ? parseFloat(prescriptionData.od_sph) : null,
-          od_cyl: prescriptionData.od_cyl !== "" && prescriptionData.od_cyl !== undefined ? parseFloat(prescriptionData.od_cyl) : null,
-          od_axis: prescriptionData.od_axis !== "" && prescriptionData.od_axis !== undefined ? parseInt(prescriptionData.od_axis, 10) : null,
-          od_add: prescriptionData.od_add !== "" && prescriptionData.od_add !== undefined ? parseFloat(prescriptionData.od_add) : null,
-          os_sph: prescriptionData.os_sph !== "" && prescriptionData.os_sph !== undefined ? parseFloat(prescriptionData.os_sph) : null,
-          os_cyl: prescriptionData.os_cyl !== "" && prescriptionData.os_cyl !== undefined ? parseFloat(prescriptionData.os_cyl) : null,
-          os_axis: prescriptionData.os_axis !== "" && prescriptionData.os_axis !== undefined ? parseInt(prescriptionData.os_axis, 10) : null,
-          os_add: prescriptionData.os_add !== "" && prescriptionData.os_add !== undefined ? parseFloat(prescriptionData.os_add) : null,
-          pd_distance: prescriptionData.pd_distance !== "" && prescriptionData.pd_distance !== undefined ? parseFloat(prescriptionData.pd_distance) : null,
-          pd_near: prescriptionData.pd_near !== "" && prescriptionData.pd_near !== undefined ? parseFloat(prescriptionData.pd_near) : null,
-          lens_type: prescriptionData.lens_type || "SINGLE_VISION",
-          notes: prescriptionData.notes || null,
-        },
-      });
-      finalRxId = createdRx.id;
+      const parseSafeFloat = (val: any) => {
+        if (val === null || val === undefined || val === "") return null;
+        const n = parseFloat(val);
+        return isNaN(n) ? null : n;
+      };
+
+      const parseSafeInt = (val: any) => {
+        if (val === null || val === undefined || val === "") return null;
+        const n = parseInt(val, 10);
+        return isNaN(n) ? null : n;
+      };
+
+      const rEye = prescriptionData.rightEye || prescriptionData.od || {};
+      const lEye = prescriptionData.leftEye || prescriptionData.os || {};
+
+      const od_sph = parseSafeFloat(prescriptionData.od_sph ?? rEye.sph ?? rEye.od_sph);
+      const od_cyl = parseSafeFloat(prescriptionData.od_cyl ?? rEye.cyl ?? rEye.od_cyl);
+      const od_axis = parseSafeInt(prescriptionData.od_axis ?? rEye.axis ?? rEye.od_axis);
+      const od_add = parseSafeFloat(prescriptionData.od_add ?? rEye.add ?? rEye.od_add);
+
+      const os_sph = parseSafeFloat(prescriptionData.os_sph ?? lEye.sph ?? lEye.os_sph);
+      const os_cyl = parseSafeFloat(prescriptionData.os_cyl ?? lEye.cyl ?? lEye.os_cyl);
+      const os_axis = parseSafeInt(prescriptionData.os_axis ?? lEye.axis ?? lEye.os_axis);
+      const os_add = parseSafeFloat(prescriptionData.os_add ?? lEye.add ?? lEye.os_add);
+
+      const pd_distance = parseSafeFloat(prescriptionData.pd_distance ?? prescriptionData.pdDist ?? prescriptionData.pd);
+      const pd_near = parseSafeFloat(prescriptionData.pd_near ?? prescriptionData.pdNear);
+      const lens_type = prescriptionData.lens_type || prescriptionData.designType || "SINGLE_VISION";
+      const optometristName = prescriptionData.optometristName || prescriptionData.optometrist || "Dr. Staff Optometrist";
+      const notes = prescriptionData.notes || null;
+
+      const hasAnyField =
+        [od_sph, od_cyl, od_axis, od_add, os_sph, os_cyl, os_axis, os_add].some((v) => v !== null) ||
+        Boolean(notes);
+
+      if (hasAnyField) {
+        const createdRx = await prisma.prescription.create({
+          data: {
+            customerId,
+            optometristName,
+            od_sph,
+            od_cyl,
+            od_axis,
+            od_add,
+            os_sph,
+            os_cyl,
+            os_axis,
+            os_add,
+            pd_distance,
+            pd_near,
+            lens_type,
+            notes,
+          },
+        });
+        finalRxId = createdRx.id;
+      }
     }
 
     const subtotalNum = parseFloat(subtotal ?? total_amount) || 0;
@@ -434,6 +471,18 @@ export async function POST(request: Request) {
             ...newOrder.prescription,
             createdAt: newOrder.prescription.createdAt.toISOString(),
             updatedAt: newOrder.prescription.updatedAt.toISOString(),
+            rightEye: {
+              sph: newOrder.prescription.od_sph,
+              cyl: newOrder.prescription.od_cyl,
+              axis: newOrder.prescription.od_axis,
+              add: newOrder.prescription.od_add,
+            },
+            leftEye: {
+              sph: newOrder.prescription.os_sph,
+              cyl: newOrder.prescription.os_cyl,
+              axis: newOrder.prescription.os_axis,
+              add: newOrder.prescription.os_add,
+            },
           }
         : null,
       items: newOrder.items.map((it) => ({

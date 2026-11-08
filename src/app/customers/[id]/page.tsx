@@ -28,7 +28,7 @@ import { ReceiptModal } from "@/components/ReceiptModal";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
 import { EditCustomerModal } from "@/components/EditCustomerModal";
 import { CustomerProfileSkeleton } from "@/components/CustomerProfileSkeleton";
-import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
+import { formatDate, formatDateTime, formatCurrency, formatDiopter, formatAdd, formatAxis } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useCustomerProfile, setCachedCustomerDetail } from "@/hooks/useCustomerProfile";
 
@@ -392,9 +392,9 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
                           </td>
                           <td className="p-1.5 font-bold">{formatDiopter(rx.od_sph)}</td>
                           <td className="p-1.5">{formatDiopter(rx.od_cyl)}</td>
-                          <td className="p-1.5">{rx.od_axis !== null ? `${rx.od_axis}°` : "—"}</td>
+                          <td className="p-1.5">{formatAxis(rx.od_axis)}</td>
                           <td className="p-1.5 text-cyan-700 font-bold">
-                            {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
+                            {formatAdd(rx.od_add)}
                           </td>
                           <td className="p-1.5">{rx.pd_distance || "—"} mm</td>
                           <td className="p-1.5">{rx.pd_near || "—"} mm</td>
@@ -405,9 +405,9 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
                           </td>
                           <td className="p-1.5 font-bold">{formatDiopter(rx.os_sph)}</td>
                           <td className="p-1.5">{formatDiopter(rx.os_cyl)}</td>
-                          <td className="p-1.5">{rx.os_axis !== null ? `${rx.os_axis}°` : "—"}</td>
+                          <td className="p-1.5">{formatAxis(rx.os_axis)}</td>
                           <td className="p-1.5 text-cyan-700 font-bold">
-                            {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
+                            {formatAdd(rx.os_add)}
                           </td>
                           <td className="p-1.5">{rx.pd_distance || "—"} mm</td>
                           <td className="p-1.5">{rx.pd_near || "—"} mm</td>

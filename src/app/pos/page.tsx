@@ -41,7 +41,7 @@ import {
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { CustomerHistoryModal } from "@/components/CustomerHistoryModal";
-import { formatCurrency, formatDate, formatDiopter } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDiopter, normalizeRx } from "@/lib/utils";
 import { getCachedInventory, setCachedInventory } from "@/hooks/useInventory";
 import { getCachedCustomers, setCachedCustomers } from "@/hooks/useCustomers";
 
@@ -799,11 +799,23 @@ We will message you the moment your glasses pass optical lab inspection!`;
         method: paymentMethod,
         transaction_ref: transactionRef,
         delivery_due_date: deliveryDate,
-        prescriptionData:
-          attachPrescription && (rxData.od_sph !== "" || rxData.os_sph !== "") ? rxData : null,
+        prescriptionData: attachPrescription ? rxData : null,
         shopId,
         userId: shopId,
       };
+
+      // Safe normalized optimistic prescription object to prevent hydration or type crashes
+      const safeOptimisticRx = attachPrescription ? (() => {
+        const norm = normalizeRx(rxData);
+        return norm.hasRx
+          ? {
+              ...rxData,
+              id: `rx-${Date.now()}`,
+              rightEye: norm.rightEye,
+              leftEye: norm.leftEye,
+            }
+          : null;
+      })() : null;
 
       // Optimistic In-Memory Order Object for Instant (<50ms) Dialog Pop
       const optimisticOrder = {
@@ -858,13 +870,7 @@ We will message you the moment your glasses pass optical lab inspection!`;
             createdAt: now.toISOString(),
           },
         ],
-        prescription:
-          attachPrescription && (rxData.od_sph !== "" || rxData.os_sph !== "")
-            ? {
-                ...rxData,
-                id: `rx-${Date.now()}`,
-              }
-            : null,
+        prescription: safeOptimisticRx,
         createdAt: now.toISOString(),
         shopId,
       };

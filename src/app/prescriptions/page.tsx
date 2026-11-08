@@ -14,7 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
-import { formatDate, formatDiopter } from "@/lib/utils";
+import { formatDate, formatDiopter, formatAdd, formatAxis } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 function PrescriptionsContent() {
@@ -186,10 +186,10 @@ function PrescriptionsContent() {
                           {formatDiopter(rx.od_cyl)}
                         </td>
                         <td className="p-2 border border-slate-200">
-                          {rx.od_axis !== null ? `${rx.od_axis}°` : "—"}
+                          {formatAxis(rx.od_axis)}
                         </td>
                         <td className="p-2 border border-slate-200 text-cyan-700 font-bold">
-                          {rx.od_add ? `+${rx.od_add.toFixed(2)}` : "—"}
+                          {formatAdd(rx.od_add)}
                         </td>
                         <td className="p-2 border border-slate-200">{rx.pd_distance || "—"}</td>
                         <td className="p-2 border border-slate-200">{rx.pd_near || "—"}</td>
@@ -205,10 +205,10 @@ function PrescriptionsContent() {
                           {formatDiopter(rx.os_cyl)}
                         </td>
                         <td className="p-2 border border-slate-200">
-                          {rx.os_axis !== null ? `${rx.os_axis}°` : "—"}
+                          {formatAxis(rx.os_axis)}
                         </td>
                         <td className="p-2 border border-slate-200 text-cyan-700 font-bold">
-                          {rx.os_add ? `+${rx.os_add.toFixed(2)}` : "—"}
+                          {formatAdd(rx.os_add)}
                         </td>
                         <td className="p-2 border border-slate-200">{rx.pd_distance || "—"}</td>
                         <td className="p-2 border border-slate-200">{rx.pd_near || "—"}</td>

@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useAppUi } from "@/context/AppUiContext";
+import { SUPPORT_CONFIG } from "@/config/support";
 import { InstallPwaButton } from "@/components/InstallPwaButton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -101,10 +102,7 @@ export function Sidebar() {
   });
 
   const handleSupportClick = () => {
-    window.open(
-      "https://wa.me/919820112345?text=Hello%20Optical%20ERP%20Support%2C%20I%20need%20accounting%20assistance%20for%20My%20Optics%20Shop.",
-      "_blank"
-    );
+    window.open(SUPPORT_CONFIG.whatsappUrl, "_blank");
   };
 
   const handleLogoutClick = async () => {

@@ -67,7 +67,7 @@ export function Header({ children }: HeaderProps) {
         </div>
 
         {/* Mobile-Only Avatar Quick Indicator */}
-        <div className="md:hidden flex items-center gap-2">
+        <Link href="/profile" className="md:hidden flex items-center gap-2 hover:opacity-85 transition-opacity" title="View Store & Account Profile">
           {userAvatarUrl ? (
             <img
               src={userAvatarUrl}
@@ -81,7 +81,7 @@ export function Header({ children }: HeaderProps) {
                 : "V"}
             </div>
           )}
-        </div>
+        </Link>
 
         {/* Desktop-Only Action Buttons */}
         <div className="hidden md:flex items-center gap-2 lg:gap-2.5">

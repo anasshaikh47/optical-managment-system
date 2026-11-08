@@ -21,6 +21,7 @@ import {
   Users,
   Search,
   Zap,
+  CreditCard,
   Loader2,
 } from "lucide-react";
 import { DashboardCharts } from "@/components/DashboardCharts";
@@ -104,7 +105,7 @@ export default function DashboardPage() {
       {/* ======================================================== */}
       {/* SECTION 1: QUICK ACTION CARDS                            */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {/* Card 1: + Add Customer */}
         <button
           type="button"
@@ -143,7 +144,33 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Card 3: Search Record */}
+        {/* Card 3: Payment Collection (Pending Dues) */}
+        <Link
+          href="/payments/due"
+          prefetch={true}
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-rose-300 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:scale-105 transition-transform">
+              <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            </div>
+            {kpis.totalBalanceDue > 0 && (
+              <span className="text-[10px] font-mono font-bold uppercase bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
+                {formatCurrency(kpis.totalBalanceDue)}
+              </span>
+            )}
+          </div>
+          <div>
+            <h4 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight group-hover:text-rose-700 transition-colors">
+              Payment Collection
+            </h4>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
+              Collect due balances & cash settlements
+            </p>
+          </div>
+        </Link>
+
+        {/* Card 4: Search Record */}
         <button
           type="button"
           onClick={openQuickSearchModal}
@@ -162,7 +189,7 @@ export default function DashboardPage() {
           </div>
         </button>
 
-        {/* Card 4: Inventory Stock */}
+        {/* Card 5: Inventory Stock */}
         <Link
           href="/inventory"
           prefetch={true}
@@ -181,7 +208,7 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Card 5: Create Bill / POS */}
+        {/* Card 6: Create Bill / POS */}
         <Link
           href="/pos"
           prefetch={true}
@@ -239,9 +266,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Metric 2: Pending Balance */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between transition-all hover:border-slate-300">
+        <Link
+          href="/payments/due"
+          prefetch={true}
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between transition-all hover:border-slate-300 group cursor-pointer"
+        >
           <div>
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-rose-600 transition-colors">
               Pending Balance
             </p>
             {loading ? (
@@ -253,13 +284,13 @@ export default function DashboardPage() {
             )}
             <p className="text-[10px] sm:text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              <span>Due at counter pickup</span>
+              <span>Click to collect dues &rarr;</span>
             </p>
           </div>
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
-            <Clock className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100 group-hover:scale-105 transition-transform">
+            <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
           </div>
-        </div>
+        </Link>
 
         {/* Metric 3: Ready for Pickup */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between transition-all hover:border-slate-300">

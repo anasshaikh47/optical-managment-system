@@ -616,135 +616,72 @@ We look forward to serving you again!`;
                 return (
                   <div
                     key={ord.id}
-                    className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs hover:border-slate-300 transition-all space-y-3.5"
+                    className="py-2.5 px-3 mb-2 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition-all shadow-2xs space-y-1.5"
                   >
-                    {/* Top Row: Bill No & Timestamp + Status & Payment Badges */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-mono font-black text-cyan-800 text-sm sm:text-base">
+                    {/* Line 1: Bill No (#VP-2026-...) • Customer Name • Date/Time (Left) & Total Amount (Right bold) */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+                        <span className="font-mono font-bold text-xs text-cyan-800 shrink-0">
                           #{ord.bill_no}
                         </span>
-                        <span className="text-[11px] text-slate-400 font-medium">
-                          • {formatInvoiceTimestamp(ord.createdAt)}
+                        <span className="text-slate-300 text-xs shrink-0">•</span>
+                        {customerId ? (
+                          <Link
+                            href={`/customers/${customerId}`}
+                            prefetch={true}
+                            onMouseEnter={() => prefetchCustomerProfile(customerId, tenantFetch, customer)}
+                            onTouchStart={() => prefetchCustomerProfile(customerId, tenantFetch, customer)}
+                            className="font-bold text-xs text-slate-900 hover:text-cyan-700 truncate transition-colors"
+                          >
+                            {customer.name}
+                          </Link>
+                        ) : (
+                          <span className="font-bold text-xs text-slate-900 truncate">
+                            {customer.name}
+                          </span>
+                        )}
+                        <span className="text-slate-300 text-xs shrink-0">•</span>
+                        <span className="text-[11px] text-slate-500 shrink-0 font-medium font-sans">
+                          {formatInvoiceTimestamp(ord.createdAt)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${stageObj.badge}`}
-                        >
-                          {stageObj.label}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${paymentBadge.classes}`}
-                        >
-                          {paymentBadge.label}
+                      {/* Right side: Bold Net Amount */}
+                      <div className="text-right shrink-0">
+                        <span className="font-black font-mono text-sm text-slate-900">
+                          {formatCurrency(netPayable)}
                         </span>
                       </div>
                     </div>
 
-                    {/* Middle Row: Customer Details & Prescription Spec */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-cyan-400 flex items-center justify-center font-bold text-sm shrink-0 border border-slate-800">
-                          {(customer.name || "CU").substring(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            {customerId ? (
-                              <Link
-                                href={`/customers/${customerId}`}
-                                prefetch={true}
-                                onMouseEnter={() => prefetchCustomerProfile(customerId, tenantFetch, customer)}
-                                onTouchStart={() => prefetchCustomerProfile(customerId, tenantFetch, customer)}
-                                className="font-extrabold text-slate-900 text-sm hover:text-cyan-700 transition-colors flex items-center gap-1 group"
-                              >
-                                <span>{customer.name}</span>
-                                <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-cyan-600 transition-colors" />
-                              </Link>
-                            ) : (
-                              <h4 className="font-extrabold text-slate-900 text-sm">
-                                {customer.name}
-                              </h4>
-                            )}
-                          </div>
-                          <p className="font-mono text-xs text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            {customer.phone ? (
-                              <a
-                                href={`tel:${customer.phone}`}
-                                className="hover:text-cyan-700 hover:underline"
-                              >
-                                {customer.phone}
-                              </a>
-                            ) : (
-                              <span>No Phone</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-
-                      {ord.prescription && (
-                        <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 text-[11px] font-mono text-slate-600">
-                          <span className="font-sans font-bold text-slate-700 block text-[10px] uppercase">
-                            Rx: {(ord.prescription.lens_type || "Single Vision").replace("_", " ")}
-                          </span>
-                          <span>
-                            OD: {formatDiopter(ord.prescription.od_sph)} SPH / {formatDiopter(ord.prescription.od_cyl)} CYL
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Items Summary Row */}
-                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Glasses className="w-4 h-4 text-cyan-600 shrink-0" />
-                        <span className="text-slate-800 font-medium truncate">
+                    {/* Line 2: Items summary (compact line-clamp-1) & Payment Badge + Icon Action Buttons */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+                        <span className="text-[11px] text-slate-500 truncate line-clamp-1 font-medium">
                           {itemsSummary}
                         </span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-bold shrink-0 ml-2">
-                        {(ord.items || ord.itemsJson || []).length} lines
-                      </span>
-                    </div>
 
-                    {/* Financials & Action Buttons Row */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-4 text-xs font-mono">
-                        <div>
-                          <span className="text-[10px] font-sans font-bold uppercase text-slate-400 block">
-                            Net Payable
-                          </span>
-                          <span className="text-base font-black text-slate-900 font-mono">
-                            {formatCurrency(netPayable)}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Payment Status Badge */}
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${paymentBadge.classes}`}
+                        >
+                          {paymentBadge.label}
+                        </span>
 
-                        <div>
-                          <span className="text-[10px] font-sans font-bold uppercase text-slate-400 block">
-                            Amount Paid
-                          </span>
-                          <span className="text-sm font-bold text-emerald-600 font-mono">
-                            {formatCurrency(paid)}
-                          </span>
-                        </div>
+                        {/* WhatsApp Quick Share Icon Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleWhatsAppShare(ord)}
+                          className="p-1 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                          title="Share Invoice via WhatsApp"
+                          aria-label="Share Invoice via WhatsApp"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </button>
 
-                        {balance > 0 && (
-                          <div>
-                            <span className="text-[10px] font-sans font-bold uppercase text-rose-500 block">
-                              Balance Due
-                            </span>
-                            <span className="text-sm font-black text-rose-600 font-mono">
-                              {formatCurrency(balance)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* View / Reprint Single-Page Invoice */}
+                        {/* View / Reprint Invoice Icon Button */}
                         <button
                           type="button"
                           onClick={() =>
@@ -753,40 +690,14 @@ We look forward to serving you again!`;
                               customer,
                             })
                           }
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors cursor-pointer shadow-2xs"
+                          className="p-1 rounded-lg text-cyan-800 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 transition-colors cursor-pointer"
                           title="View / Reprint Invoice"
+                          aria-label="View / Reprint Invoice"
                         >
                           <Printer className="w-3.5 h-3.5" />
-                          <span>Reprint / View Invoice</span>
                         </button>
 
-                        {/* WhatsApp Quick Share */}
-                        <button
-                          type="button"
-                          onClick={() => handleWhatsAppShare(ord)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
-                          title="Share Invoice via WhatsApp"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>WhatsApp</span>
-                        </button>
-
-                        {/* Customer Profile Link */}
-                        {customerId && (
-                          <Link
-                            href={`/customers/${customerId}`}
-                            prefetch={true}
-                            onMouseEnter={() => prefetchCustomerProfile(customerId, tenantFetch, customer)}
-                            onTouchStart={() => prefetchCustomerProfile(customerId, tenantFetch, customer)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                            title="View Customer Profile"
-                          >
-                            <User className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Patient Profile</span>
-                          </Link>
-                        )}
-
-                        {/* Collect Balance if Due */}
+                        {/* Collect Balance Action Button if Due */}
                         {balance > 0 && (
                           <button
                             type="button"
@@ -794,10 +705,10 @@ We look forward to serving you again!`;
                               setBalanceModalOrder(ord);
                               setPayAmount(balance.toString());
                             }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-colors cursor-pointer"
+                            className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                            title="Collect Balance"
                           >
-                            <CreditCard className="w-3.5 h-3.5" />
-                            <span>Collect Due</span>
+                            Collect
                           </button>
                         )}
                       </div>

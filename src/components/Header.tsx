@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAppUi } from "@/context/AppUiContext";
 import { useAuth } from "@/context/AuthContext";
+import { useStoreBranding } from "@/hooks";
 import { InstallPwaButton } from "@/components/InstallPwaButton";
 import { VisionPulseMark } from "@/components/VisionPulseLogo";
 
@@ -27,6 +28,7 @@ interface HeaderProps {
 export function Header({ children }: HeaderProps) {
   const { openNewCustomerModal, openQuickSearchModal, openMobileSyncModal, toggleSidebar } = useAppUi();
   const { userDisplayName, userAvatarUrl, isStaff, isOwner } = useAuth();
+  const { storeName } = useStoreBranding();
 
   return (
     <header className="bg-white border-b border-slate-200 flex flex-col flex-shrink-0 z-20 shadow-xs select-none">
@@ -52,8 +54,11 @@ export function Header({ children }: HeaderProps) {
           </div>
 
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none truncate">
-              {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
+            <h2
+              className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none truncate max-w-[180px] xs:max-w-[240px] sm:max-w-xs md:max-w-sm lg:max-w-md"
+              title={storeName}
+            >
+              {storeName}
             </h2>
             <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate mt-0.5 hidden xs:block">
               {isStaff ? "Staff Counter Terminal Active" : userDisplayName ? `Active Counter • ${userDisplayName}` : "Counter Terminal Active"}

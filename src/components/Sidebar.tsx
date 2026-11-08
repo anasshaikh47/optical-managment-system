@@ -24,6 +24,7 @@ import { useAppUi } from "@/context/AppUiContext";
 import { InstallPwaButton } from "@/components/InstallPwaButton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useStoreBranding } from "@/hooks";
 import { VisionPulseMark } from "@/components/VisionPulseLogo";
 import { APP_VERSION_DISPLAY } from "@/config/version";
 
@@ -31,6 +32,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { openNewCustomerModal, isSidebarOpen, closeSidebar } = useAppUi();
   const { user, userDisplayName, userEmail, userAvatarUrl, signOut, isStaff, isOwner } = useAuth();
+  const { storeName } = useStoreBranding();
 
   // Auto-close mobile sidebar drawer whenever route changes
   useEffect(() => {
@@ -141,8 +143,8 @@ export function Sidebar() {
               <VisionPulseMark className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-bold text-sm tracking-tight text-white leading-tight truncate">
-                {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
+              <h1 className="font-bold text-sm tracking-tight text-white leading-tight truncate" title={storeName}>
+                {storeName}
               </h1>
               <div className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-300">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -250,7 +252,12 @@ export function Sidebar() {
 
           {/* Logged In User Profile Card */}
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/70 border border-slate-700/60">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <Link
+              href="/profile"
+              onClick={closeSidebar}
+              className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-90 transition-opacity"
+              title="View Store & Account Profile"
+            >
               {userAvatarUrl ? (
                 <img
                   src={userAvatarUrl}
@@ -279,11 +286,11 @@ export function Sidebar() {
                   {userEmail || "user@visionpulse.in"} • {isStaff ? "STAFF" : "OWNER"}
                 </p>
               </div>
-            </div>
+            </Link>
             <button
               type="button"
               onClick={handleLogoutClick}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0 ml-1"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />

@@ -5,15 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { VisionPulseMark } from "@/components/VisionPulseLogo";
 import { useAuth } from "@/context/AuthContext";
+import { useStoreBranding } from "@/hooks";
 import { ArrowRight, ShieldCheck, Zap, Layers, Loader2 } from "lucide-react";
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { user, loading, isStaff, isOwner, userDisplayName } = useAuth();
+  const { user, loading: authLoading, isStaff, isOwner, userDisplayName } = useAuth();
+  const { storeName, tagline } = useStoreBranding();
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!authLoading && user) {
       setRedirecting(true);
       const timer = setTimeout(() => {
         if (isStaff) {
@@ -24,7 +26,12 @@ export default function SplashScreen() {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [user, loading, isStaff, router]);
+  }, [user, authLoading, isStaff, router]);
+
+  // If unauthenticated: display "Optical Store ERP & POS"
+  // If authenticated: dynamically display the logged-in store's registered name
+  const displayTitle = user ? storeName : "Optical Store ERP & POS";
+  const displayTagline = user ? (tagline || "Optical Retail & Clinical Suite") : "Precision Optometry & POS Suite";
 
   return (
     <div className="min-h-screen w-full bg-[#0B0F17] flex items-center justify-center p-4 selection:bg-slate-800 selection:text-white">
@@ -35,17 +42,20 @@ export default function SplashScreen() {
         </div>
 
         {/* Branding Typography */}
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white font-sans">
-          VisionPulse
+        <h1
+          className="text-xl sm:text-2xl font-bold tracking-tight text-white font-sans truncate max-w-full px-2"
+          title={displayTitle}
+        >
+          {displayTitle}
         </h1>
         <p className="text-xs sm:text-sm font-medium tracking-wider text-slate-400 uppercase mt-1">
-          Optical Retail &amp; Clinical Suite
+          {displayTagline}
         </p>
 
         <div className="w-12 h-px bg-slate-800 my-6" />
 
         {/* Dynamic Status / Actions */}
-        {loading ? (
+        {authLoading ? (
           <div className="flex items-center gap-2 text-xs text-slate-400 py-3">
             <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
             <span>Initializing optical workspace...</span>
@@ -60,9 +70,15 @@ export default function SplashScreen() {
                 </span>
               </div>
               <p className="text-sm font-bold text-white mt-1 truncate">
-                {userDisplayName}
+                {userDisplayName || user.email?.split("@")[0] || "Store Administrator"}
               </p>
               <p className="text-xs text-slate-400 font-mono truncate">{user.email}</p>
+              <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Registered Store:</span>
+                <span className="font-semibold text-sky-400 truncate max-w-[200px]" title={storeName}>
+                  {storeName}
+                </span>
+              </div>
             </div>
 
             <button

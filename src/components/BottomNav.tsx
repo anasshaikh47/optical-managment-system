@@ -20,12 +20,14 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAppUi } from "@/context/AppUiContext";
+import { useStoreBranding } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { APP_VERSION_DISPLAY } from "@/config/version";
 
 export function BottomNav() {
   const pathname = usePathname();
   const { user, userDisplayName, userEmail, userAvatarUrl, signOut, isStaff, isOwner } = useAuth();
+  const { storeName, tagline } = useStoreBranding();
   const { isSidebarOpen } = useAppUi();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -197,11 +199,15 @@ export function BottomNav() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h3 className="font-bold text-base text-white truncate leading-tight">
-                    {userDisplayName || userEmail?.split("@")[0] || "Store Owner"}
+                  {/* Primary title: Store Name prominently */}
+                  <h3 className="text-lg font-bold text-white truncate leading-tight" title={storeName}>
+                    {storeName}
                   </h3>
-                  <p className="text-xs text-slate-400 font-mono truncate mt-0.5">
-                    {userEmail || "owner@visionpulse.in"}
+                  {/* Underneath: Owner Name in subtle subtext */}
+                  <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
+                    {isStaff
+                      ? `Staff: ${userDisplayName || "Terminal Staff"}`
+                      : `Owner: ${userDisplayName || userEmail?.split("@")[0] || "Administrator"}`}
                   </p>
                   <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-slate-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -223,8 +229,14 @@ export function BottomNav() {
             <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-800 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-medium">Store Profile</span>
-                <span className="text-white font-bold truncate max-w-[180px]">
-                  {userDisplayName ? `${userDisplayName}'s Optics` : "VisionPulse Optics"}
+                <span className="text-white font-bold truncate max-w-[180px]" title={storeName}>
+                  {storeName}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-medium">Tagline / Motto</span>
+                <span className="text-slate-300 font-medium truncate max-w-[180px]" title={tagline}>
+                  {tagline}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -241,6 +253,17 @@ export function BottomNav() {
 
             {/* Quick Action Navigation Links */}
             <div className="space-y-1.5 text-xs font-semibold">
+              <Link
+                href="/profile"
+                onClick={() => setIsProfileOpen(false)}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800 text-slate-200 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <User className="w-4 h-4 text-sky-400" />
+                  <span>Full Profile &amp; Store Overview</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </Link>
               {!isStaff && (
                 <>
                   <Link

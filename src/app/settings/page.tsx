@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Settings, Save, Check, Store, Receipt, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { APP_VERSION_DISPLAY } from "@/config/version";
+import { setCachedStoreBranding } from "@/hooks";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -44,6 +45,7 @@ export default function SettingsPage() {
       const json = await res.json();
       if (json.success && json.data) {
         setSettings(json.data);
+        setCachedStoreBranding(shopId, json.data);
       }
     } catch (e) {
       console.error(e);
@@ -66,6 +68,11 @@ export default function SettingsPage() {
       const data = await res.json();
       if (data.success) {
         setSavedSuccess(true);
+        if (data.data) {
+          setCachedStoreBranding(shopId, data.data);
+        } else {
+          setCachedStoreBranding(shopId, settings);
+        }
         setTimeout(() => setSavedSuccess(false), 3000);
       }
     } catch (e) {

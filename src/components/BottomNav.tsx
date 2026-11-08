@@ -16,6 +16,7 @@ import {
   X,
   ChevronRight,
   MessageCircle,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAppUi } from "@/context/AppUiContext";
@@ -43,10 +44,10 @@ export function BottomNav() {
         : pathname === "/" || pathname === "/dashboard",
     },
     {
-      name: "Billing",
-      href: "/pos",
-      icon: Zap,
-      isActive: pathname.startsWith("/pos"),
+      name: "Records",
+      href: "/orders",
+      icon: FileText,
+      isActive: pathname.startsWith("/orders") || pathname.startsWith("/records"),
     },
     {
       name: "Stock",

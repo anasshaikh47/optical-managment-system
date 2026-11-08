@@ -9,6 +9,8 @@ import {
   Search,
   Wrench,
   Receipt,
+  FileText,
+  Zap,
   Package,
   Store,
   Users,
@@ -46,7 +48,12 @@ export function Sidebar() {
     {
       name: "Terminal Sales (POS)",
       href: "/pos",
-      icon: Receipt,
+      icon: Zap,
+    },
+    {
+      name: "Invoice Records",
+      href: "/orders",
+      icon: FileText,
     },
     {
       name: "Add Customer",

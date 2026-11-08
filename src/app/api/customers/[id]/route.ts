@@ -12,32 +12,88 @@ export async function GET(
     const shopId = await getAuthenticatedShopId(request);
 
     try {
-      const customer = await prisma.customer.findFirst({
-        where: {
-          id,
-          OR: [
-            { shopId },
-            { userId: shopId },
-            ...(shopId === "default" ? [{ shopId: "default" }] : []),
-          ],
-        },
-        include: {
-          orders: {
-            include: {
-              items: {
-                include: {
-                  item: true,
+      const whereShop = {
+        OR: [
+          { shopId },
+          { userId: shopId },
+          ...(shopId === "default" ? [{ shopId: "default" }] : []),
+        ],
+      };
+
+      const [customer, orders, prescriptions] = await Promise.all([
+        prisma.customer.findFirst({
+          where: {
+            id,
+            ...whereShop,
+          },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            address: true,
+            dob: true,
+            loyalty_points: true,
+            shopId: true,
+            userId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        prisma.order.findMany({
+          where: {
+            customerId: id,
+            ...whereShop,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          select: {
+            id: true,
+            bill_no: true,
+            status: true,
+            total_amount: true,
+            discount_amount: true,
+            tax_amount: true,
+            final_payable: true,
+            paid_amount: true,
+            balance_amount: true,
+            delivery_due_date: true,
+            createdAt: true,
+            updatedAt: true,
+            items: {
+              select: {
+                id: true,
+                quantity: true,
+                unit_price: true,
+                subtotal: true,
+                item: {
+                  select: {
+                    id: true,
+                    brand: true,
+                    model: true,
+                    type: true,
+                  },
                 },
               },
-              payments: true,
             },
-            orderBy: { createdAt: "desc" },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
+                method: true,
+                payment_type: true,
+                createdAt: true,
+              },
+            },
+            prescription: true,
           },
-          prescriptions: {
-            orderBy: { createdAt: "desc" },
-          },
-        },
-      });
+        }),
+        prisma.prescription.findMany({
+          where: { customerId: id },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        }),
+      ]);
 
       if (!customer) {
         return NextResponse.json(
@@ -48,38 +104,40 @@ export async function GET(
 
       const serializedCustomer = {
         ...customer,
+        loyaltyPoints: customer.loyalty_points ?? 0,
         dob: customer.dob ? customer.dob.toISOString() : null,
         createdAt: customer.createdAt.toISOString(),
         updatedAt: customer.updatedAt.toISOString(),
-        orders: customer.orders.map((o) => ({
+        orders: orders.map((o) => ({
           ...o,
+          balanceRemaining: o.balance_amount ?? 0,
           delivery_due_date: o.delivery_due_date ? o.delivery_due_date.toISOString() : null,
           createdAt: o.createdAt.toISOString(),
           updatedAt: o.updatedAt.toISOString(),
           items: o.items.map((it) => ({
             ...it,
-            createdAt: it.createdAt.toISOString(),
-            item: it.item
-              ? {
-                  ...it.item,
-                  createdAt: it.item.createdAt.toISOString(),
-                  updatedAt: it.item.updatedAt.toISOString(),
-                }
-              : null,
+            item: it.item ? { ...it.item } : null,
           })),
           payments: o.payments.map((p) => ({
             ...p,
             createdAt: p.createdAt.toISOString(),
           })),
         })),
-        prescriptions: customer.prescriptions.map((p) => ({
+        prescriptions: prescriptions.map((p) => ({
           ...p,
           createdAt: p.createdAt.toISOString(),
           updatedAt: p.updatedAt.toISOString(),
         })),
       };
 
-      return NextResponse.json({ success: true, data: serializedCustomer });
+      return NextResponse.json(
+        { success: true, data: serializedCustomer },
+        {
+          headers: {
+            "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+          },
+        }
+      );
     } catch (dbError: any) {
       console.warn("Prisma GET customer[id] fallback:", dbError.message);
       const tenant = loadTenantState(shopId);
@@ -94,14 +152,22 @@ export async function GET(
       const prescriptions = tenant.prescriptions.filter((p) => p.customerId === id);
       const orders = tenant.orders.filter((o) => o.customerId === id);
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...customer,
-          prescriptions,
-          orders,
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            ...customer,
+            loyaltyPoints: (customer as any).loyalty_points ?? (customer as any).loyaltyPoints ?? 0,
+            prescriptions,
+            orders,
+          },
         },
-      });
+        {
+          headers: {
+            "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+          },
+        }
+      );
     }
   } catch (error: any) {
     return NextResponse.json(

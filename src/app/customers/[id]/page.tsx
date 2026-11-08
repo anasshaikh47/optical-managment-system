@@ -27,8 +27,10 @@ import {
 import { ReceiptModal } from "@/components/ReceiptModal";
 import { PrescriptionModal } from "@/components/PrescriptionModal";
 import { EditCustomerModal } from "@/components/EditCustomerModal";
+import { CustomerProfileSkeleton } from "@/components/CustomerProfileSkeleton";
 import { formatDate, formatDateTime, formatCurrency, formatDiopter } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useCustomerProfile, setCachedCustomerDetail } from "@/hooks/useCustomerProfile";
 
 export default function CustomerProfilePage({
   params,
@@ -38,9 +40,13 @@ export default function CustomerProfilePage({
   const { id: customerId } = use(params);
   const { shopId, tenantFetch } = useAuth();
 
-  const [customer, setCustomer] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    customer,
+    setCustomer,
+    loading,
+    error,
+    refetch: fetchCustomerProfile,
+  } = useCustomerProfile(customerId, shopId, tenantFetch);
 
   // Modals & Feedback
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
@@ -53,36 +59,8 @@ export default function CustomerProfilePage({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  useEffect(() => {
-    fetchCustomerProfile();
-  }, [customerId, shopId]);
-
-  const fetchCustomerProfile = async () => {
-    setLoading(true);
-    try {
-      const res = await tenantFetch(`/api/customers/${customerId}`);
-      const json = await res.json();
-      if (json.success) {
-        setCustomer(json.data);
-      } else {
-        setError(json.error || "Failed to load customer profile");
-      }
-    } catch (e: any) {
-      setError(e.message || "An unexpected error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div
-        className="min-h-screen w-full overflow-y-auto pb-32 bg-slate-100 flex flex-col items-center justify-center text-slate-400 text-xs [WebkitOverflowScrolling:touch]"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        Loading patient CRM profile...
-      </div>
-    );
+  if (loading && !customer) {
+    return <CustomerProfileSkeleton />;
   }
 
   if (error || !customer) {
@@ -647,7 +625,11 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
         customer={customer}
         onSuccess={(updated) => {
           setIsEditModalOpen(false);
-          setCustomer((prev: any) => ({ ...prev, ...updated }));
+          setCustomer((prev: any) => {
+            const next = { ...prev, ...updated };
+            setCachedCustomerDetail(customerId, next);
+            return next;
+          });
           showToast("Customer details updated successfully");
           fetchCustomerProfile();
         }}

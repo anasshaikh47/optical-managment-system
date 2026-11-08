@@ -30,6 +30,7 @@ import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useCustomers } from "@/hooks/useCustomers";
+import { prefetchCustomerProfile } from "@/hooks/useCustomerProfile";
 
 export default function CustomersPage() {
   const { shopId, tenantFetch } = useAuth();
@@ -227,6 +228,9 @@ export default function CustomersPage() {
                   <Link
                     key={c.id}
                     href={`/customers/${c.id}`}
+                    prefetch={true}
+                    onMouseEnter={() => prefetchCustomerProfile(c.id, tenantFetch, c)}
+                    onTouchStart={() => prefetchCustomerProfile(c.id, tenantFetch, c)}
                     className="group bg-white rounded-2xl border border-slate-200 hover:border-cyan-500 hover:shadow-md transition-all active:scale-[0.99] flex flex-col justify-between overflow-hidden cursor-pointer"
                   >
                     <div className="p-4 sm:p-5">
@@ -336,6 +340,9 @@ export default function CustomersPage() {
                         <td className="p-3.5">
                           <Link
                             href={`/customers/${c.id}`}
+                            prefetch={true}
+                            onMouseEnter={() => prefetchCustomerProfile(c.id, tenantFetch, c)}
+                            onTouchStart={() => prefetchCustomerProfile(c.id, tenantFetch, c)}
                             className="font-bold text-slate-900 text-xs hover:text-cyan-700 hover:underline flex items-center gap-1.5"
                           >
                             <span>{c.name}</span>
@@ -390,6 +397,9 @@ export default function CustomersPage() {
                         <td className="p-3.5 text-center">
                           <Link
                             href={`/customers/${c.id}`}
+                            prefetch={true}
+                            onMouseEnter={() => prefetchCustomerProfile(c.id, tenantFetch, c)}
+                            onTouchStart={() => prefetchCustomerProfile(c.id, tenantFetch, c)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors"
                           >
                             <Eye className="w-3 h-3" />

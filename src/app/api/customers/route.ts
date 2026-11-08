@@ -33,12 +33,41 @@ export async function GET(request: Request) {
 
       const dbCustomers = await prisma.customer.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          shopId: true,
+          userId: true,
+          name: true,
+          phone: true,
+          email: true,
+          address: true,
+          dob: true,
+          loyalty_points: true,
+          createdAt: true,
+          updatedAt: true,
           orders: {
+            select: {
+              id: true,
+              bill_no: true,
+              final_payable: true,
+              paid_amount: true,
+              balance_amount: true,
+              status: true,
+              delivery_due_date: true,
+              createdAt: true,
+              updatedAt: true,
+            },
             orderBy: { createdAt: "desc" },
           },
           prescriptions: {
+            select: {
+              id: true,
+              lens_type: true,
+              createdAt: true,
+              updatedAt: true,
+            },
             orderBy: { createdAt: "desc" },
+            take: 3,
           },
         },
         orderBy: { createdAt: "desc" },

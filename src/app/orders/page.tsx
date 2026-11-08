@@ -33,6 +33,7 @@ import { ReceiptModal } from "@/components/ReceiptModal";
 import { ThermalJobSlipModal } from "@/components/ThermalJobSlipModal";
 import { formatDate, formatCurrency, formatDiopter } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useOrders } from "@/hooks/useOrders";
 
 const STAGES = [
   { key: "PLACED", label: "New Order Placed", color: "border-blue-400 bg-blue-50 text-blue-900", badge: "bg-blue-100 text-blue-800" },
@@ -50,8 +51,8 @@ const NEXT_STAGE_MAP: Record<string, { key: string; label: string }> = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { shopId, tenantFetch } = useAuth();
+  const { orders, setOrders, loading, refetch: fetchOrders } = useOrders(shopId, tenantFetch);
   const [viewMode, setViewMode] = useState<"KANBAN" | "TABLE">("KANBAN");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -75,27 +76,6 @@ export default function OrdersPage() {
 
   // WhatsApp active dropdown popup menu
   const [activeWaMenuId, setActiveWaMenuId] = useState<string | null>(null);
-
-  const { shopId, tenantFetch } = useAuth();
-
-  useEffect(() => {
-    fetchOrders();
-  }, [shopId]);
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const res = await tenantFetch("/api/orders");
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setOrders(json.data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Status Change Logic with Balance Enforcement at Delivery
   const handleStageChange = async (orderId: string, targetStage: string) => {

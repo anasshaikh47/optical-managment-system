@@ -181,22 +181,23 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
 
       <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
         {/* Navigation & Action Bar */}
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <Link
             href="/customers"
+            prefetch={true}
             className="font-bold text-slate-600 hover:text-cyan-700 flex items-center gap-1.5 text-xs transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>← Back to Customers Directory</span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
             {customer.phone && (
               <a
                 href={`tel:${customer.phone}`}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors whitespace-nowrap w-full sm:w-auto"
               >
-                <Phone className="w-3.5 h-3.5 text-slate-500" />
+                <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <span>Call Patient</span>
               </a>
             )}
@@ -204,26 +205,28 @@ We invite you to visit VisionPulse Eyewear Studio for a complimentary digital vi
             <button
               type="button"
               onClick={() => setIsEditModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors cursor-pointer whitespace-nowrap w-full sm:w-auto"
               title="Edit Profile"
             >
-              <Pencil className="w-3.5 h-3.5 text-slate-600" />
+              <Pencil className="w-3.5 h-3.5 text-slate-600 shrink-0" />
               <span>Edit Profile</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setIsNewRxOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition-colors cursor-pointer whitespace-nowrap w-full sm:w-auto"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>New Refraction Test</span>
             </button>
 
             <Link
               href="/pos"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors"
+              prefetch={true}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors whitespace-nowrap w-full sm:w-auto"
             >
-              <ShoppingCart className="w-3.5 h-3.5" />
+              <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
               <span>Create POS Bill</span>
             </Link>
           </div>

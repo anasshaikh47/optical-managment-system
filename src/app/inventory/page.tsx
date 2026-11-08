@@ -26,11 +26,11 @@ import { EditProductModal } from "@/components/EditProductModal";
 import { BarcodeStickerModal } from "@/components/BarcodeStickerModal";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useInventory } from "@/hooks/useInventory";
 
 export default function InventoryPage() {
   const { shopId, tenantFetch, isStaff, isOwner, loading: authLoading } = useAuth();
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items, setItems, loading, refetch: fetchItems } = useInventory(shopId, tenantFetch);
   const [activeType, setActiveType] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [onlyLowStock, setOnlyLowStock] = useState(false);
@@ -57,32 +57,6 @@ export default function InventoryPage() {
   // Bulk Delete Confirmation State
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [bulkDeleteSubmitting, setBulkDeleteSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading) {
-      fetchItems();
-    }
-  }, [shopId, authLoading]);
-
-  const fetchItems = async () => {
-    setLoading(true);
-    try {
-      const res = await tenantFetch("/api/inventory");
-      const json = await res.json();
-      if (json.success) {
-        console.log("Fetched persisted inventory count:", json.data?.length);
-        setItems(json.data || []);
-      } else {
-        console.error("Failed to fetch persisted inventory:", json.error);
-        setItems([]);
-      }
-    } catch (e) {
-      console.error("Error fetching inventory items:", e);
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenAdjustment = (item: any, delta: number) => {
     setAdjustingItem(item);

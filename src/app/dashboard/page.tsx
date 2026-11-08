@@ -127,6 +127,7 @@ export default function DashboardPage() {
         {/* Card 2: Customer Directory & Records */}
         <Link
           href="/customers"
+          prefetch={true}
           className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
         >
           <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100 mb-3 group-hover:scale-105 transition-transform">
@@ -164,6 +165,7 @@ export default function DashboardPage() {
         {/* Card 4: Inventory Stock */}
         <Link
           href="/inventory"
+          prefetch={true}
           className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
         >
           <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 mb-3 group-hover:scale-105 transition-transform">
@@ -182,6 +184,7 @@ export default function DashboardPage() {
         {/* Card 5: Create Bill / POS */}
         <Link
           href="/pos"
+          prefetch={true}
           className="col-span-2 md:col-span-1 lg:col-span-1 bg-cyan-700 hover:bg-cyan-800 text-white p-4 sm:p-5 rounded-2xl border border-cyan-600 shadow-xs flex flex-col justify-between text-left transition-all active:scale-[0.98] cursor-pointer group"
         >
           <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/15 text-white flex items-center justify-center border border-white/20 mb-3 group-hover:scale-105 transition-transform">

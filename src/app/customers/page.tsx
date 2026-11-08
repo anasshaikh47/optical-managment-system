@@ -29,40 +29,15 @@ import {
 import { NewCustomerModal } from "@/components/NewCustomerModal";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useCustomers } from "@/hooks/useCustomers";
 
 export default function CustomersPage() {
   const { shopId, tenantFetch } = useAuth();
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { customers, loading, refetch: fetchCustomers } = useCustomers(shopId, tenantFetch);
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterCheckupDue, setFilterCheckupDue] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-
-  useEffect(() => {
-    fetchCustomers();
-
-    const handleCustomerCreated = () => {
-      fetchCustomers();
-    };
-    window.addEventListener("customer-created", handleCustomerCreated);
-    return () => window.removeEventListener("customer-created", handleCustomerCreated);
-  }, [shopId]);
-
-  const fetchCustomers = async () => {
-    setLoading(true);
-    try {
-      const res = await tenantFetch("/api/customers");
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setCustomers(json.data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Helper to calculate checkup reminder status
   const getCheckupStatus = (latestRx: any) => {
